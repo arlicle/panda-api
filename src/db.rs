@@ -121,7 +121,6 @@ impl Database {
         }
         let d = fs::read_to_string(doc_file).expect(&format!("Unable to read file: {}", doc_file));
         let d = fix_json(d);
-        println!("d is {}", d);
         let mut v: Value = serde_json::from_str(&d).expect(&format!("Parse json file {} error", doc_file));
 
         let obj = v.as_object().unwrap();
