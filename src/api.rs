@@ -117,6 +117,9 @@ fn find_response_data(req: &HttpRequest, request_data: &Map<String, Value>, db_d
     let req_path = req.path();
 
     let req_method = req.method().as_str();
+
+    println!("request data {:?}", request_data);
+
     match api_data.get(req_path) {
         Some(x) => {
 
@@ -125,24 +128,42 @@ fn find_response_data(req: &HttpRequest, request_data: &Map<String, Value>, db_d
 //
             let test_data = &api_data.test_data;
             let test_data = test_data.as_array().unwrap();
-            'a_loop: for data in test_data {
-                let request_data = data.get("request").unwrap().as_object().unwrap();
-                let response = data.get("response").unwrap();
+            'a_loop: for test_case_data in test_data {
+                println!("test_case_data is {}", test_case_data);
+                let case_response = test_case_data.get("response").unwrap();
+                let test_request_data = test_case_data.get("request").unwrap();
 
-                for (k, v) in request_data.iter() {
-                    match request_data.get(k) {
-                        Some(v2) => {
-                            if v2 != v {
-                                continue 'a_loop;
-                            }
-                        }
-                        None => {
-                            continue 'a_loop;
+
+                let test_request_data = match test_request_data.as_object() {
+                    Some(v) => v,
+                    None => {
+                        println!("request data {:?}", request_data);
+                        if request_data.is_empty() {
+                            return HttpResponse::Ok().json(case_response);
+                        } else {
+                            // 如果请求的数据不为空，test_data的数据为空，那么就继续下一次循环
+                            continue
                         }
                     }
-                }
+                };
 
-                return HttpResponse::Ok().json(response);
+//                    .unwrap().as_object().unwrap();
+//                let response = data.get("response").unwrap();
+
+//                for (k, v) in request_data.iter() {
+//                    match request_data.get(k) {
+//                        Some(v2) => {
+//                            if v2 != v {
+//                                continue 'a_loop;
+//                            }
+//                        }
+//                        None => {
+//                            continue 'a_loop;
+//                        }
+//                    }
+//                }
+//
+//                return HttpResponse::Ok().json(response);
             }
 
         }
