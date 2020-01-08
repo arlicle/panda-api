@@ -111,19 +111,17 @@ pub fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data
 ///
 fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
-//    let data = data.lock().expect("jjjjjjjjjjjjjjjjjjjj");
     let api_data = &db_data.api_data;
     let req_path = req.path();
-
     let req_method = req.method().as_str();
 
 
     match api_data.get(req_path) {
-        Some(x) => {
-            let api_data = x.get(req_method).unwrap();
-            let api_data = api_data.lock().unwrap();
+        Some(a_api_data) => {
+            let a_api_data = a_api_data.get(req_method).unwrap();
+            let a_api_data = a_api_data.lock().unwrap();
 
-            let test_data = &api_data.test_data;
+            let test_data = &a_api_data.test_data;
             let test_data = test_data.as_array().unwrap();
             'a_loop: for test_case_data in test_data {
                 let case_response = test_case_data.get("response").unwrap();
