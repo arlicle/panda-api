@@ -84,12 +84,11 @@ pub fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>)
 
 /// 处理get请求
 pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let req_get = match req_get {
-        Some(x) => x,
-        None => web::Query(Value::Null)
-    };
-    let req_get = req_get.as_object().unwrap();
 
+    let req_get = match req_get {
+        Some(x) => Some(x.into_inner()),
+        None => None
+    };
 
     find_response_data(&req, req_get, db_data)
 }
@@ -98,11 +97,11 @@ pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web
 /// 处理post、put、delete 请求
 ///
 pub fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+
     let request_data = match request_data {
-        Some(x) => x,
-        None => web::Json(Value::Null)
+        Some(x) => Some(x.into_inner()),
+        None => None
     };
-    let request_data = request_data.as_object().unwrap();
 
     find_response_data(&req, request_data, db_data)
 }
@@ -110,7 +109,7 @@ pub fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data
 
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, request_data: &Map<String, Value>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
 //    let data = data.lock().expect("jjjjjjjjjjjjjjjjjjjj");
     let api_data = &db_data.api_data;
@@ -118,54 +117,68 @@ fn find_response_data(req: &HttpRequest, request_data: &Map<String, Value>, db_d
 
     let req_method = req.method().as_str();
 
-    println!("request data {:?}", request_data);
 
     match api_data.get(req_path) {
         Some(x) => {
-
             let api_data = x.get(req_method).unwrap();
             let api_data = api_data.lock().unwrap();
-//
+
             let test_data = &api_data.test_data;
             let test_data = test_data.as_array().unwrap();
             'a_loop: for test_case_data in test_data {
-                println!("test_case_data is {}", test_case_data);
                 let case_response = test_case_data.get("response").unwrap();
                 let test_request_data = test_case_data.get("request").unwrap();
 
+                match request_data {
+                    Some(ref request_data_map) => {
+                        let request_data_map = request_data_map.as_object().unwrap();
+                        match test_request_data.as_object() {
+                            Some(test_request_data_obj) => {
+                                if request_data_map.is_empty() && test_request_data_obj.is_empty() {
+                                    return HttpResponse::Ok().json(case_response);
+                                }
+                                for (k, v) in test_request_data_obj.iter() {
+                                    match request_data_map.get(k) {
+                                        Some(v2) => {
+                                            if v2 != v {
+                                                continue 'a_loop;
+                                            }
+                                        }
+                                        None => {
+                                            continue 'a_loop;
+                                        }
+                                    }
+                                }
 
-                let test_request_data = match test_request_data.as_object() {
-                    Some(v) => v,
-                    None => {
-                        println!("request data {:?}", request_data);
-                        if request_data.is_empty() {
-                            return HttpResponse::Ok().json(case_response);
-                        } else {
-                            // 如果请求的数据不为空，test_data的数据为空，那么就继续下一次循环
-                            continue
+                                return HttpResponse::Ok().json(case_response);
+                            }
+                            None => {
+                                if request_data_map.is_empty() {
+                                    return HttpResponse::Ok().json(case_response);
+                                } else {
+                                    // 如果请求的数据不为空，test_data的数据为空，那么就继续下一次循环
+                                    continue;
+                                }
+                            }
                         }
                     }
-                };
-
-//                    .unwrap().as_object().unwrap();
-//                let response = data.get("response").unwrap();
-
-//                for (k, v) in request_data.iter() {
-//                    match request_data.get(k) {
-//                        Some(v2) => {
-//                            if v2 != v {
-//                                continue 'a_loop;
-//                            }
-//                        }
-//                        None => {
-//                            continue 'a_loop;
-//                        }
-//                    }
-//                }
-//
-//                return HttpResponse::Ok().json(response);
+                    None => {
+                        if test_request_data.is_null() {
+                            return HttpResponse::Ok().json(case_response);
+                        }
+                        match test_request_data.as_object() {
+                            Some(t) => {
+                                if t.is_empty() {
+                                    return HttpResponse::Ok().json(case_response);
+                                }
+                            }
+                            None => {
+                                return HttpResponse::Ok().json(case_response);
+                            }
+                        }
+                    }
+                }
             }
-
         }
         None => println!("404")
     };
