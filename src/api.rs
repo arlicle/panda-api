@@ -121,11 +121,29 @@ fn find_response_data(req: &HttpRequest, request_data: &Map<String, Value>, db_d
         Some(x) => {
 
             let api_data = x.get(req_method).unwrap();
-//            let api_data = api_data.lock().unwrap();
+            let api_data = api_data.lock().unwrap();
 //
-//            let test_data = &api_data.test_data;
-//            let test_data = test_data.as_array().unwrap();
+            let test_data = &api_data.test_data;
+            let test_data = test_data.as_array().unwrap();
+            'a_loop: for data in test_data {
+                let request_data = data.get("request").unwrap().as_object().unwrap();
+                let response = data.get("response").unwrap();
 
+                for (k, v) in request_data.iter() {
+                    match request_data.get(k) {
+                        Some(v2) => {
+                            if v2 != v {
+                                continue 'a_loop;
+                            }
+                        }
+                        None => {
+                            continue 'a_loop;
+                        }
+                    }
+                }
+
+                return HttpResponse::Ok().json(response);
+            }
 
         }
         None => println!("404")
