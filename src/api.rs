@@ -125,7 +125,10 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
             let test_data = test_data.as_array().unwrap();
             'a_loop: for test_case_data in test_data {
                 let case_response = test_case_data.get("response").unwrap();
-                let test_request_data = test_case_data.get("request").unwrap();
+                let test_request_data = match test_case_data.get("request") {
+                    Some(v) => v,
+                    None => &Value::Null
+                };
 
                 match request_data {
                     Some(ref request_data_map) => {
@@ -137,6 +140,7 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
                                 }
                                 for (k, v) in test_request_data_obj.iter() {
                                     match request_data_map.get(k) {
+                                        // 判断请求数据 与测试数据集的每个字段的值是否相等
                                         Some(v2) => {
                                             if v2 != v {
                                                 continue 'a_loop;
