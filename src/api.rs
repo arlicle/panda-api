@@ -84,7 +84,6 @@ pub fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>)
 
 /// 处理get请求
 pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-
     let req_get = match req_get {
         Some(x) => Some(x.into_inner()),
         None => None
@@ -97,7 +96,6 @@ pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web
 /// 处理post、put、delete 请求
 ///
 pub fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-
     let request_data = match request_data {
         Some(x) => Some(x.into_inner()),
         None => None
@@ -118,7 +116,15 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
 
     match api_data.get(req_path) {
         Some(a_api_data) => {
-            let a_api_data = a_api_data.get(req_method).unwrap();
+            let a_api_data = match a_api_data.get(req_method) {
+                Some(v) => v,
+                None => {
+                    return HttpResponse::Ok().json(json!({
+                        "code": -1,
+                        "msg": format!("this api address {} not defined method {}", req_path, req_method)
+                     }));
+                }
+            };
             let a_api_data = a_api_data.lock().unwrap();
 
             let test_data = &a_api_data.test_data;
