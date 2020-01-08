@@ -12,8 +12,7 @@
     }
   },
   "name": {"name":"", "desc":"", "type":"string"},
-  "photoUrls": {"name":"照片列表", "desc":"", "type":"array", "item":{"name":"照片网址", "desc":"", "type":"string"}
-    },
+  "photoUrls": {"name":"照片列表", "desc":"", "type":"array", "item":{"name":"照片网址", "desc":"", "type":"string"}},
   "tags": {"name":"标签列表", "desc":"", "type":"array", "items": {"$ref": "#/components/schemas/Tag"}},
   "status": {"name":"状态", "desc":"", "type":"int", "enum":[[-1, "不正常"], [0, "无"], [1, "正常"]]},
   "_schemas":{
