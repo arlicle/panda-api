@@ -4,6 +4,8 @@ use dotenv::dotenv;
 use std::sync::{Mutex, Arc};
 use std::thread;
 //use panda_api::watch_api_docs_change;
+use actix_web::dev::ResourceDef;
+
 
 mod db;
 mod api;
@@ -34,7 +36,16 @@ async fn main() -> std::io::Result<()> {
     pretty_env_logger::init();
 
     let conf: Config = Config::from_args();
-
+    let s = "/aaa/{ddd}/dd";
+    let x = s.contains("{");
+    println!("x is {:?}", x);
+    let res = ResourceDef::new(r"/post/{id:\d+}/");
+    let res2 = ResourceDef::new("/post/{id}/{ddd}/");
+    let y = res.is_match("/post/333/");
+//    let y = res.is_match("/post/aaa/");
+    let y2 = res2.is_match("/post/3/");
+    println!("y is {:?}", y);
+    println!("y2 is {:?}", y2);
     println!("conf is {:?}", conf);
 //    let db = std::fs::read_to_string("data/model.json").expect(&format!("Unable to read file: {}", conf.folder));
 //    let data = Mutex::new(serde_json::from_str(&db).expect("Parse db file error"));

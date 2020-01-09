@@ -51,9 +51,9 @@
         ]
     },
     {
-        "name":"用户退出登录",
+        "name":"单篇文章查看",
         "desc":"",
-        "url":"/logout/",
+        "url":"/post/{id:\\d+}/",
         "method":"GET",
         "response":{
             "code":{"name":"返回结果的代码", "type":"int", "desc":"退出成功只返回1"},
@@ -62,7 +62,7 @@
         "test_data":[
             {
                 "request":null,
-                "response":{"code":1, "msg":"退出成功"}
+                "response":{"code":1, "msg":"文章详情数据"}
             }
         ]
     }
