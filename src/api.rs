@@ -1,4 +1,5 @@
 use actix_web::{http, web, HttpRequest, HttpResponse};
+use actix_web::dev::ResourceDef;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value, Map};
 use std::collections::HashMap;
@@ -113,9 +114,10 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
     let req_path = req.path();
     let req_method = req.method().as_str();
 
-
-    match api_data.get(req_path) {
-        Some(a_api_data) => {
+    for (k, a_api_data) in api_data {
+        // 匹配
+        let res = ResourceDef::new(k);
+        if res.is_match(req_path) {
             let a_api_data = match a_api_data.get(req_method) {
                 Some(v) => v,
                 None => {
@@ -188,7 +190,6 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
                 }
             }
         }
-        None => println!("404")
     };
 
     HttpResponse::Ok().json(json!({
