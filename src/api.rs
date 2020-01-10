@@ -3,7 +3,7 @@ use actix_web::dev::ResourceDef;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value, Map};
 use std::collections::HashMap;
-
+use std::fs;
 use std::sync::Mutex;
 use log::debug;
 use crate::db::{self, ApiDoc};
@@ -80,6 +80,17 @@ pub fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>)
       "read_me": &basic_data.read_me,
       "api_docs": docs
     }))
+}
+
+
+/// 获取_data目录中的数据, models数据 或者其它加载数据
+pub fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
+    let read_me = match fs::read_to_string(&req_get.filename) {
+        Ok(x) => x,
+        Err(_) => "no data file".to_string()
+    };
+
+    HttpResponse::Ok().content_type("application/json").body(read_me)
 }
 
 
