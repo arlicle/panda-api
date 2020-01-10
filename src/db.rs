@@ -94,7 +94,7 @@ pub fn load_basic_data() -> BasicData {
 
 impl Database {
     /// 加载api docs 接口的json数据、配置、相关文档
-    pub fn load(file: &String) -> Database {
+    pub fn load() -> Database {
         let basic_data = load_basic_data();
 
         let mut api_docs = HashMap::new();
