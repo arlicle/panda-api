@@ -119,9 +119,16 @@ impl Database {
         if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("/_data/") {
             return;
         }
+
         let d = fs::read_to_string(doc_file).expect(&format!("Unable to read file: {}", doc_file));
         let d = fix_json(d);
-        let mut v: Value = serde_json::from_str(&d).expect(&format!("Parse json file {} error", doc_file));
+        let mut v: Value = match serde_json::from_str(&d) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("Parse json file {} error : {:?}", doc_file, e);
+                return;
+            }
+        };
 
         let obj = v.as_object().unwrap();
         let doc_name = match obj.get("name") {
@@ -166,7 +173,18 @@ impl Database {
             };
 
             let response = match api.get("response") {
-                Some(response) => response.clone(),
+                Some(response) => {
+                    let res_map = response.as_object().unwrap();
+                    for (field_key, field_attr) in res_map {
+                        let field_attr = field_attr.as_object().unwrap();
+                        if let Some(x) = field_attr.get("$ref") {
+                            let x = x.as_str().unwrap();
+                            println!("xxxx is {:?}", x);
+                        }
+                    }
+
+                    response.clone()
+                }
                 None => Value::Null
             };
 
