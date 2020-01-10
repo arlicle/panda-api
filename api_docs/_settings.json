@@ -1,4 +1,5 @@
 {
   "project_name": "Panda Api",
-  "project_desc": "Panda Api is a simple api manage tool"
+  "project_desc": "Panda Api is a simple api manage tool",
+  "server_address": "http://139.155.127.14:8888"
 }

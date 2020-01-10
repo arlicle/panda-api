@@ -5,13 +5,15 @@ use std::sync::{Mutex, Arc};
 use std::thread;
 //use panda_api::watch_api_docs_change;
 use actix_web::dev::ResourceDef;
-
+use std::char;
 
 mod db;
 mod api;
 mod utils;
 
 use regex::Regex;
+use rand::{thread_rng, Rng};
+
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
@@ -34,10 +36,43 @@ struct Config {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     pretty_env_logger::init();
-
     let conf: Config = Config::from_args();
     let s = "/aaa/{ddd}/dd";
     let x = s.contains("{");
+
+
+    let mut x = "man\u{4e01}ana".to_string();
+//    let x = rand::random();
+    let y = "\u{9fbf}".bytes();
+    for i in y {
+        println!("i is {:?}", i);
+    }
+//    println!("chars {:?}", y);
+
+    println!("get_random_chinese_chars {}", utils::get_random_chinese_chars(100));
+
+    let s = "狻甘庘庾櫊暇锱掗曒隆";
+    let s = "矬鉩艌铂稢諼崏淈懙坍";
+    let a = '丁'.escape_unicode().to_string();
+    println!("aaa {:?}", a);
+    let mut rng = thread_rng();
+    println!("range is {} - {}",0x4e00,  0x9fa5);
+    let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
+    let n: u32 = rng.gen_range(19968, 40869);
+    println!("n is {:?}", n);
+    let c = char::from_u32(0x4e00); // produces `Some(❤)`
+    println!("c is {:?}", c);
+    let n = format!("{:#x}", n);
+    let n = n.trim_start_matches("0x");
+    println!("n is {:?}", n);
+    let s = format!(r"\u{{{}}}", "4e00");
+    println!("s is {:?}", s);
+
+    println!("{}", x); // prints "mañana"
+
+    let heart: String = '❤'.escape_unicode().collect();
+
+    println!("heart: {}", heart);
     println!("x is {:?}", x);
     let res = ResourceDef::new(r"/post/{id:\d+}/");
     let res2 = ResourceDef::new("/post/{id}/{ddd}/");

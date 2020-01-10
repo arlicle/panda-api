@@ -10,6 +10,8 @@ use actix_web::{http, web, HttpRequest, HttpResponse};
 use std::sync::mpsc::channel;
 use crate::db;
 use std::env;
+use std::char;
+use rand::{thread_rng, Rng};
 
 
 /// 建立异步线程，监控文件改动，当改动的时候，就重新生成文件
@@ -86,4 +88,23 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
     for (k, v) in api_docs {
         data.api_docs.insert(k, v);
     }
+}
+
+
+pub fn get_random_chinese_chars(mut length: u32) -> String {
+    let mut s = String::new();
+    let mut rng = thread_rng();
+    while length > 0 {
+        let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
+        let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
+        println!("n is {} {:?}", n, char::from_u32(n));
+        match char::from_u32(n) {
+            Some(c) => {
+                s.push(c);
+                length -= 1;
+            },
+            None => continue
+        }
+    }
+    s
 }

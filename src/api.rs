@@ -130,6 +130,8 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
             let a_api_data = a_api_data.lock().unwrap();
 
             let test_data = &a_api_data.test_data;
+//            let response_model = &a_api_data.response;
+            let x = create_mock_response(&a_api_data.response);
             let test_data = test_data.as_array().unwrap();
             'a_loop: for test_case_data in test_data {
                 let case_response = test_case_data.get("response").unwrap();
@@ -196,4 +198,27 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
       "code": -1,
       "msg": format!("this api address not defined {}", req_path)
     }))
+}
+
+
+pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
+    let mut result: Map<String, Value> = Map::new();
+    result.insert("Hello".to_string(), Value::from("dddd"));
+    result.insert("bbb".to_string(), Value::from(10));
+    if response_model.is_object() {
+        let response_model = response_model.as_object().unwrap();
+        for (key, value) in response_model {
+            let field_type = match value.get("type") {
+                Some(v) => v.as_str().unwrap(),
+                None => "string"
+            };
+
+            match field_type {
+                "number" => {}
+                "string" | _ => {}
+            }
+        }
+    }
+
+    result
 }
