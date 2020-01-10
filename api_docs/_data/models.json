@@ -1,6 +1,12 @@
 {
     "Response":{
         "code":{"name":"返回结果的代码", "desc":"小于0的都是报错失败，大于0的都是成功", "type":"number"},
-        "msg":{"name":"返回结果说明", "type":"string"}
+        "msg":{"name":"返回结果说明", "type":"string"},
+        "xx":{"$ref":":Ddd"}
+    },
+    "Ddd":{
+        "id":{},
+        "name":{},
+        "sort_order":{}
     }
 }
