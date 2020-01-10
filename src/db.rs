@@ -174,15 +174,6 @@ impl Database {
 
             let response = match api.get("response") {
                 Some(response) => {
-                    let res_map = response.as_object().unwrap();
-                    for (field_key, field_attr) in res_map {
-                        let field_attr = field_attr.as_object().unwrap();
-                        if let Some(x) = field_attr.get("$ref") {
-                            let x = x.as_str().unwrap();
-                            println!("xxxx is {:?}", x);
-                        }
-                    }
-
                     response.clone()
                 }
                 None => Value::Null
