@@ -116,7 +116,7 @@ impl Database {
     /// 只加载一个api_doc文件的数据
     ///
     pub fn load_a_api_json_file(doc_file: &str, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>) {
-        if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") {
+        if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("/_data/") {
             return;
         }
         let d = fs::read_to_string(doc_file).expect(&format!("Unable to read file: {}", doc_file));
