@@ -25,7 +25,7 @@
             },
             "test_data":[
                 {
-                    "request":{},
+                    "request":{"file":"aaa.jpg", "file_type":"id_no"},
                     "response":{}
                 }
             ]
