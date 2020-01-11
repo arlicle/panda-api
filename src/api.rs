@@ -141,7 +141,6 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
             let a_api_data = a_api_data.lock().unwrap();
 
             let test_data = &a_api_data.test_data;
-            println!("test_data {:?}", test_data);
             if test_data.is_null() {
                 return HttpResponse::Ok().json(json!({
                         "code": -1,
@@ -239,7 +238,7 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
 
     HttpResponse::Ok().json(json!({
       "code": -1,
-      "msg": format!("this api address not defined {}", req_path)
+      "msg": format!("this api address {} no test_data match", req_path)
     }))
 }
 
