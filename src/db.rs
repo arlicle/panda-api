@@ -154,54 +154,70 @@ impl Database {
         };
 
         let mut api_vec = Vec::new();
-        for api in apis.as_array().unwrap() {
-            let name = api.get("name").unwrap().as_str().unwrap().to_string();
-            let desc = api.get("desc").unwrap().as_str().unwrap().to_string();
-            let url = api.get("url").unwrap().as_str().unwrap().to_string();
+        if let Some(api_array) = apis.as_array() {
+            for api in api_array {
+                let name = match api.get("name") {
+                    Some(name) => name.as_str().unwrap().to_string(),
+                    None => continue
+                };
 
-            let method = match api.get("method") {
-                Some(method) => method.as_str().unwrap().to_uppercase(),
-                None => "GET".to_string()
-            };
-            let body_mode = match api.get("body_mode") {
-                Some(body_mode) => body_mode.as_str().unwrap().to_lowercase(),
-                None => "json".to_string()
-            };
-            let body = match api.get("body") {
-                Some(body) => body.clone(),
-                None => Value::Null
-            };
+                let desc = match api.get("desc") {
+                    Some(d) => d.as_str().unwrap().to_string(),
+                    None => "".to_string()
+                };
 
-            let response = match api.get("response") {
-                Some(response) => {
-                    response.clone()
+                let url = match api.get("url") {
+                    Some(d) => d.as_str().unwrap().to_string(),
+                    None => "".to_string()
+                };
+
+
+
+                let method = match api.get("method") {
+                    Some(method) => method.as_str().unwrap().to_uppercase(),
+                    None => "GET".to_string()
+                };
+
+                let body_mode = match api.get("body_mode") {
+                    Some(body_mode) => body_mode.as_str().unwrap().to_lowercase(),
+                    None => "json".to_string()
+                };
+                let body = match api.get("body") {
+                    Some(body) => body.clone(),
+                    None => Value::Null
+                };
+
+                let response = match api.get("response") {
+                    Some(response) => {
+                        response.clone()
+                    }
+                    None => Value::Null
+                };
+
+                let test_data = match api.get("test_data") {
+                    Some(test_data) => {
+//                        let a = match test_data.as_array().expect(&format!("json file {} test_data is not a array", doc_file));
+                        test_data.clone()
+                    }
+                    None => Value::Null
+                };
+
+
+                let a_api_data = Arc::new(Mutex::new(ApiData { name, desc, body_mode, body, response, test_data, url: url.clone(), method: method.clone() }));
+                // 形成 { url: {method:api} }
+                match api_data.get_mut(&url) {
+                    Some(mut data) => {
+                        data.insert(method.clone(), a_api_data.clone());
+                    }
+                    None => {
+                        let mut x = HashMap::new();
+                        x.insert(method.clone(), a_api_data.clone());
+                        api_data.insert(url.clone(), x);
+                    }
                 }
-                None => Value::Null
-            };
-
-            let test_data = match api.get("test_data") {
-                Some(test_data) => {
-                    let a = test_data.as_array().expect(&format!("json file {} test_data is not a array", doc_file));
-                    test_data.clone()
-                }
-                None => Value::Null
-            };
-
-
-            let a_api_data = Arc::new(Mutex::new(ApiData { name, desc, body_mode, body, response, test_data, url: url.clone(), method: method.clone() }));
-            // 形成 { url: {method:api} }
-            match api_data.get_mut(&url) {
-                Some(mut data) => {
-                    data.insert(method.clone(), a_api_data.clone());
-                }
-                None => {
-                    let mut x = HashMap::new();
-                    x.insert(method.clone(), a_api_data.clone());
-                    api_data.insert(url.clone(), x);
-                }
-            }
 //                    api_data.insert(url.clone(), api.clone());
-            api_vec.push(a_api_data.clone());
+                api_vec.push(a_api_data.clone());
+            }
         }
 
 

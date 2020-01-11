@@ -94,7 +94,6 @@ pub fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDocDataR
 }
 
 
-
 /// 处理get请求
 pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let req_get = match req_get {
@@ -142,11 +141,43 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
             let a_api_data = a_api_data.lock().unwrap();
 
             let test_data = &a_api_data.test_data;
+            println!("test_data {:?}", test_data);
+            if test_data.is_null() {
+                return HttpResponse::Ok().json(json!({
+                        "code": -1,
+                        "msg": format!("this api {} with defined method {} have not test_data", req_path, req_method)
+                     }));
+            }
+
+            if !test_data.is_array() {
+                return HttpResponse::Ok().json(json!({
+                        "code": -1,
+                        "msg": format!("this api {} with defined method {} test_data is not a array", req_path, req_method)
+                     }));
+            }
+
 //            let response_model = &a_api_data.response;
             let x = create_mock_response(&a_api_data.response);
             let test_data = test_data.as_array().unwrap();
+
+            if test_data.is_empty() {
+                return HttpResponse::Ok().json(json!({
+                        "code": -1,
+                        "msg": format!("this api {} with defined method {} test_data is empty", req_path, req_method)
+                     }));
+            }
+
             'a_loop: for test_case_data in test_data {
-                let case_response = test_case_data.get("response").unwrap();
+                let case_response = match test_case_data.get("response"){
+                    Some(v) => v,
+                    None => {
+                        return HttpResponse::Ok().json(json!({
+                        "code": -1,
+                        "msg": format!("this api {} with defined method {} test_data with no response field", req_path, req_method)
+                     }));
+                    }
+                };
+
                 let test_request_data = match test_case_data.get("request") {
                     Some(v) => v,
                     None => &Value::Null
