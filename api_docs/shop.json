@@ -36,6 +36,35 @@
                     }
                 }
             ]
+        },
+        {
+            "name":"上传处方",
+            "url":"/shop/chufangdan/add/",
+            "method":"POST",
+            "body_mode":"json",
+            "body": {
+                "name":"处方单数据",
+                "$ref":"./_data/models.json:Chufangdan",
+                "$exclude":["id", "repeat_buy_count", "created", "pharmacist_verify_status", "pharmacist_verify_time", "pharmacist", "pharmacist_name"]
+            }
+        },
+        {
+            "name":"处方单查看",
+            "url":"/shop/chufangdan/",
+            "method":"POST",
+            "body_method":"json",
+            "body": {
+                "id":{"name":"处方单id", "type":"number"}
+            },
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "result":{
+                    "name":"处方单数据",
+                    "$ref":"./_data/models.json:Chufangdan"
+                }
+            }
+
         }
     ]
 }
