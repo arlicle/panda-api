@@ -26,7 +26,14 @@
             "test_data":[
                 {
                     "request":{"file":"aaa.jpg", "file_type":"id_no"},
-                    "response":{}
+                    "response":{
+                        "code": 1,
+                        "msg": "",
+                        "result": {
+                            "upload_id": 1,
+                            "ocr":{"id_no":"533025199002160013", "name":"张三", "gender":"男", "age":"29"}
+                        }
+                    }
                 }
             ]
         }
