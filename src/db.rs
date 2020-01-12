@@ -155,43 +155,57 @@ impl Database {
 
         let mut api_vec = Vec::new();
         if let Some(api_array) = apis.as_array() {
+            let mut ref_data;
             for api in api_array {
+                ref_data = Value::Null;
+                match api.get("$ref") {
+                    // 处理api数据引用
+                    Some(v) => {
+                        let v = v.as_str().unwrap();
+                        if let Some(value) = load_ref_file_data(v) {
+                            ref_data = value;
+                        }
+                    }
+                    None => ()
+                }
+
                 let name = match api.get("name") {
                     Some(name) => name.as_str().unwrap().to_string(),
-                    None => continue
+                    None => {
+                        match ref_data.get("name") {
+                            Some(v) => v.as_str().unwrap().to_string(),
+                            None => continue
+                        }
+                    }
                 };
 
-                let desc = match api.get("desc") {
-                    Some(d) => d.as_str().unwrap().to_string(),
-                    None => "".to_string()
-                };
-
-                let url = match api.get("url") {
-                    Some(d) => d.as_str().unwrap().to_string(),
-                    None => "".to_string()
-                };
+                let desc = get_api_value("desc", "".to_string(), api, &ref_data);
+                let url = get_api_value("url", "".to_string(), api, &ref_data);
+                let method = get_api_value("method", "GET".to_string(), api, &ref_data);
+                let body_mode = get_api_value("body_mode", "json".to_string(), api, &ref_data);
+//                let body = get_api_value("body", "json".to_string(), api, &ref_data);
 
 
-
-                let method = match api.get("method") {
-                    Some(method) => method.as_str().unwrap().to_uppercase(),
-                    None => "GET".to_string()
-                };
-
-                let body_mode = match api.get("body_mode") {
-                    Some(body_mode) => body_mode.as_str().unwrap().to_lowercase(),
-                    None => "json".to_string()
-                };
                 let body = match api.get("body") {
                     Some(body) => body.clone(),
-                    None => Value::Null
+                    None => {
+                        match ref_data.get("body") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
                 };
 
                 let response = match api.get("response") {
                     Some(response) => {
                         response.clone()
                     }
-                    None => Value::Null
+                    None => {
+                        match ref_data.get("response") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
                 };
 
                 let test_data = match api.get("test_data") {
@@ -199,7 +213,12 @@ impl Database {
 //                        let a = match test_data.as_array().expect(&format!("json file {} test_data is not a array", doc_file));
                         test_data.clone()
                     }
-                    None => Value::Null
+                    None => {
+                        match ref_data.get("test_data") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
                 };
 
 
@@ -225,5 +244,46 @@ impl Database {
 
 
         api_docs.insert(doc_file.to_string(), api_doc);
+    }
+}
+
+
+fn load_ref_file_data(ref_file: &str) -> Option<Value> {
+    let ref_info: Vec<&str> = ref_file.split(":").collect();
+    match ref_info.get(0) {
+        Some(filename) => {
+            // 加载数据文件
+            if let Ok(d) = fs::read_to_string(format!("api_docs/{}", filename.trim_start_matches("./"))) {
+                let d = fix_json(d);
+                let mut data: Value = match serde_json::from_str(&d) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("Parse json file {} error : {:?}", filename, e);
+                        return None;
+                    }
+                };
+
+                if let Some(key) = ref_info.get(1) {
+                    if let Some(v) = data.get(key) {
+                        return Some(v.clone());
+                    }
+                }
+            }
+        }
+        None => ()
+    };
+    None
+}
+
+fn get_api_value(key: &str, default_value: String, api: &Value, ref_data: &Value) -> String {
+    match api.get("desc") {
+        Some(d) => d.as_str().unwrap().to_string(),
+        None => {
+            if let Some(v) = ref_data.get(key) {
+                v.as_str().unwrap().to_string()
+            } else {
+                default_value
+            }
+        }
     }
 }
