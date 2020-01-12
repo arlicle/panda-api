@@ -1,5 +1,5 @@
 use log::debug;
-use serde_json::{json, Value};
+use serde_json::{json, Value, Map};
 use serde::{Deserialize, Serialize};
 
 use std::fs;
@@ -130,25 +130,25 @@ impl Database {
             }
         };
 
-        let obj = v.as_object().unwrap();
-        let doc_name = match obj.get("name") {
+        let doc_file_obj = v.as_object().unwrap();
+        let doc_name = match doc_file_obj.get("name") {
             Some(name) => name.as_str().unwrap(),
             None => doc_file
         };
         let doc_name = doc_name.to_string();
 
-        let doc_desc = match obj.get("desc") {
+        let doc_desc = match doc_file_obj.get("desc") {
             Some(desc) => desc.as_str().unwrap(),
             None => ""
         };
         let doc_desc = doc_desc.to_string();
 
-        let doc_order: i64 = match obj.get("order") {
+        let doc_order: i64 = match doc_file_obj.get("order") {
             Some(order) => order.as_i64().expect("order is not number"),
             None => 0
         };
 
-        let apis = match obj.get("api") {
+        let apis = match doc_file_obj.get("api") {
             Some(api) => api,
             None => { return; }
         };
@@ -207,6 +207,10 @@ impl Database {
                         }
                     }
                 };
+
+                // 处理response中的$ref
+                let response = parse_attribute_ref_value(response, doc_file_obj);
+
 
                 let test_data = match api.get("test_data") {
                     Some(test_data) => {
@@ -289,4 +293,39 @@ fn get_api_field_value(key: &str, default_value: String, api: &Value, ref_data: 
             }
         }
     }
+}
+
+
+/// parse $ref引用数据
+fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) -> Value {
+    if value.is_null() {
+        return value;
+    }
+
+    if value.is_object() {
+        for (k, v) in value.as_object().unwrap() {
+            if k == "$ref" {
+                let mut v_str = v.as_str().unwrap();
+                if v_str.contains("$") {
+                    match doc_file_obj.get("define") {
+                        Some(v2) => {
+                            match v2.get(v_str.trim_start_matches("$")) {
+                                Some(v3) => {
+                                    v_str = v3.as_str().unwrap();
+                                },
+                                None => ()
+                            }
+                        },
+                        None => ()
+                    }
+                }
+                match load_ref_file_data(v_str) {
+                    Some(vv) => return vv,
+                    None => ()
+                }
+            }
+        }
+    }
+
+    value
 }
