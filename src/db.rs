@@ -276,7 +276,7 @@ fn load_ref_file_data(ref_file: &str) -> Option<Value> {
 }
 
 fn get_api_value(key: &str, default_value: String, api: &Value, ref_data: &Value) -> String {
-    match api.get("desc") {
+    match api.get(key) {
         Some(d) => d.as_str().unwrap().to_string(),
         None => {
             if let Some(v) = ref_data.get(key) {
