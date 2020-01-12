@@ -16,7 +16,17 @@
                 "ocr":{"name":"OCR识别数据", "desc":"上传文件系统自动识别OCR返回的结果,目前只有部分处方单和身份证有这个数据", "required":false}
             }
         },
-        "test_data":{}
+        "test_data":[                {
+            "request":{"file":"aaa.jpg", "file_type":"id_no"},
+            "response":{
+                "code": 1,
+                "msg": "",
+                "result": {
+                    "upload_id": 1,
+                    "ocr":{"id_no":"533025199002160013", "name":"张三", "gender":"男", "age":"29"}
+                }
+            }
+        }]
     }
 }
 
