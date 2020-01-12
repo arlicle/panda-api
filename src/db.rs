@@ -4,17 +4,19 @@ use serde::{Deserialize, Serialize};
 
 use std::fs;
 use std::sync::{Mutex, Arc};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use walkdir::WalkDir;
-
+use std::path::Path;
 
 #[derive(Debug)]
 pub struct Database {
     pub basic_data: BasicData,
     pub api_docs: HashMap<String, ApiDoc>,
     // filename => apidoc
-    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, // url => api data request
+    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>,
+    // url => api data request
+    pub fileindex_data: HashMap<String, HashSet<String>>,
 }
 
 
@@ -99,24 +101,21 @@ impl Database {
 
         let mut api_docs = HashMap::new();
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
-        let mut fileindex_data: HashMap<String, Vec<String>> = HashMap::new();
+        let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
         for entry in WalkDir::new("api_docs") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap();
-
             Self::load_a_api_json_file(doc_file, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
 
-//        let api_data = Mutex::new(api_data);
-//        let docs_data = Mutex::new(docs_data);
-        Database { basic_data, api_data, api_docs }
+        Database { basic_data, api_data, api_docs, fileindex_data }
     }
 
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data:&mut HashMap<String, Vec<String>>) {
+    pub fn load_a_api_json_file(doc_file: &str, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
         if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("/_data/") {
             return;
         }
@@ -163,7 +162,23 @@ impl Database {
                     // 处理api数据引用
                     Some(v) => {
                         let v = v.as_str().unwrap();
-                        if let Some(value) = load_ref_file_data(v) {
+                        let (mut ref_file, ref_data2) = load_ref_file_data(v, doc_file);
+                        if ref_file != "" {
+
+                            match fileindex_data.get_mut(&ref_file) {
+                                Some(x) => {
+                                    x.insert(doc_file.to_string());
+                                }
+                                None => {
+                                    let mut b = HashSet::new();
+                                    b.insert(doc_file.to_string());
+                                    fileindex_data.insert(ref_file, b);
+                                }
+                            }
+                        }
+
+
+                        if let Some(value) = ref_data2 {
                             ref_data = value;
                         }
                     }
@@ -196,7 +211,7 @@ impl Database {
                         }
                     }
                 };
-                let body = parse_attribute_ref_value(body, doc_file_obj);
+                let (mut ref_files, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
 
 
                 let response = match api.get("response") {
@@ -212,7 +227,22 @@ impl Database {
                 };
 
                 // 处理response中的$ref
-                let response = parse_attribute_ref_value(response, doc_file_obj);
+                let (mut ref_files2, response) = parse_attribute_ref_value(response, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
+                for ref_file in ref_files {
+                    if &ref_file != "" {
+                        match fileindex_data.get_mut(&ref_file) {
+                            Some(x) => {
+                                x.insert(doc_file.to_string());
+                            }
+                            None => {
+                                let mut b = HashSet::new();
+                                b.insert(doc_file.to_string());
+                                fileindex_data.insert(ref_file, b);
+                            }
+                        }
+                    }
+                }
 
 
                 let test_data = match api.get("test_data") {
@@ -255,31 +285,42 @@ impl Database {
 }
 
 
-fn load_ref_file_data(ref_file: &str) -> Option<Value> {
+fn load_ref_file_data(ref_file: &str, doc_file:&str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
+    let mut file_path= "".to_string();
+
     match ref_info.get(0) {
         Some(filename) => {
+            if filename.starts_with("./_data") {
+                let path = Path::new(doc_file).parent().unwrap();
+                file_path = format!("{}/{}", path.to_str().unwrap(), filename.trim_start_matches("./"));
+            } else if filename.starts_with("/_data") {
+                file_path = format!("api_docs{}", filename);
+            } else {
+                file_path = filename.to_string();
+            }
+
             // 加载数据文件
-            if let Ok(d) = fs::read_to_string(format!("api_docs/{}", filename.trim_start_matches("./"))) {
+            if let Ok(d) = fs::read_to_string(&file_path) {
                 let d = fix_json(d);
                 let mut data: Value = match serde_json::from_str(&d) {
                     Ok(v) => v,
                     Err(e) => {
                         println!("Parse json file {} error : {:?}", filename, e);
-                        return None;
+                        return ("".to_string(), None);
                     }
                 };
 
                 if let Some(key) = ref_info.get(1) {
                     if let Some(v) = data.pointer(&format!("/{}", &key.replace(".", "/"))) {
-                        return Some(v.clone());
+                        return (file_path, Some(v.clone()));
                     }
                 }
             }
         }
         None => ()
     };
-    None
+    ("".to_string(), None)
 }
 
 
@@ -300,9 +341,10 @@ fn get_api_field_value(key: &str, default_value: String, api: &Value, ref_data: 
 
 
 /// parse $ref引用数据
-fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) -> Value {
+fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, doc_file: &str) -> (Vec<String>, Value) {
+    let mut ref_files: Vec<String> = Vec::new();
     if value.is_null() {
-        return value;
+        return (ref_files, value);
     }
 
     if value.is_object() {
@@ -326,7 +368,9 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
                         None => ()
                     }
                 }
-                match load_ref_file_data(v_str) {
+                let (ref_file, ref_data) = load_ref_file_data(v_str, doc_file);
+                ref_files.push(ref_file);
+                match ref_data {
                     Some(vv) => {
                         new_value = vv.as_object().unwrap().clone();
                     }
@@ -339,7 +383,6 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
                             let key_str = v2.as_str().unwrap();
                             if key_str.contains(".") {
                                 // 如果exclude中含有.点，表示要嵌套的去移除字段
-
                             } else {
                                 new_value.remove(key_str);
                             }
@@ -355,19 +398,19 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
 //            if k == "$ref" || k == "$exclude" {
 //                continue;
 //            } else {
-            new_value.insert(k.to_string(), parse_attribute_ref_value(v.clone(), doc_file_obj));
+            let (mut ref_files2, field_value) = parse_attribute_ref_value(v.clone(), doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+            new_value.insert(k.to_string(), field_value);
 //            }
         }
 
 //        if new_value
 //        if new_value.get
-        return Value::Object(new_value);
+        return (ref_files, Value::Object(new_value));
     }
 
-    value
+    (ref_files, value)
 }
 
 /// 可以嵌套的删除Value里面的某一个字段数据
-fn remove_value_attribute_field(key_str:&str, value:Value) {
-
-}
+fn remove_value_attribute_field(key_str: &str, value: Value) {}
