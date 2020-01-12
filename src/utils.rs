@@ -68,6 +68,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Database>>) {
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
     let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<db::ApiData>>>> = HashMap::new();
+    let mut fileindex_data: HashMap<String, Vec<String>> = HashMap::new();
 
     let mut data = data.lock().unwrap();
     for file_path in e.paths.iter() {
@@ -77,7 +78,7 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
 
             data.basic_data = basic_data;
         } else {
-            db::Database::load_a_api_json_file(filename, &mut api_data, &mut api_docs);
+            db::Database::load_a_api_json_file(filename, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
     }
 
