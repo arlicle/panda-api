@@ -99,12 +99,13 @@ impl Database {
 
         let mut api_docs = HashMap::new();
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
+        let mut fileindex_data: HashMap<String, Vec<String>> = HashMap::new();
 
         for entry in WalkDir::new("api_docs") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap();
 
-            Self::load_a_api_json_file(doc_file, &mut api_data, &mut api_docs);
+            Self::load_a_api_json_file(doc_file, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
 
 //        let api_data = Mutex::new(api_data);
@@ -115,7 +116,7 @@ impl Database {
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>) {
+    pub fn load_a_api_json_file(doc_file: &str, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data:&mut HashMap<String, Vec<String>>) {
         if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("/_data/") {
             return;
         }
