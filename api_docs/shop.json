@@ -14,7 +14,7 @@
             "body": {
                 "name":"处方单数据",
                 "$ref":"./_data/models.json:Chufangdan",
-                "$exclude":["id", "repeat_buy_count", "created", "pharmacist_verify_status", "pharmacist_verify_time", "pharmacist", "pharmacist_name"]
+                "$exclude":["id", "repeat_buy_count", "created", "pharmacist_verify_status", "pharmacist_verify_time", "pharmacist", "pharmacist_name", "items.name"]
             }
         },
         {

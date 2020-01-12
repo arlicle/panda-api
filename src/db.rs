@@ -335,7 +335,13 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
                 match value_obj.get("$exclude") {
                     Some(e) => {
                         for v2 in e.as_array().unwrap() {
-                            new_value.remove(v2.as_str().unwrap());
+                            let key_str = v2.as_str().unwrap();
+                            if key_str.contains(".") {
+                                // 如果exclude中含有.点，表示要嵌套的去移除字段
+
+                            } else {
+                                new_value.remove(key_str);
+                            }
                         }
                     }
                     None => ()
@@ -348,11 +354,19 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
 //            if k == "$ref" || k == "$exclude" {
 //                continue;
 //            } else {
-                new_value.insert(k.to_string(), parse_attribute_ref_value(v.clone(), doc_file_obj));
+            new_value.insert(k.to_string(), parse_attribute_ref_value(v.clone(), doc_file_obj));
 //            }
         }
+
+//        if new_value
+//        if new_value.get
         return Value::Object(new_value);
     }
 
     value
+}
+
+/// 可以嵌套的删除Value里面的某一个字段数据
+fn remove_value_attribute_field(key_str:&str, value:Value) {
+
 }

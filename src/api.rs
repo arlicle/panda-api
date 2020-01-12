@@ -24,7 +24,10 @@ pub struct ApiDocDataRequest {
 }
 
 
-pub fn server_info() -> HttpResponse {
+
+
+
+pub async fn server_info() -> HttpResponse {
     HttpResponse::Ok().json(json!({
       "name": "mockrs",
       "author": "PrivateRookie"
@@ -33,7 +36,7 @@ pub fn server_info() -> HttpResponse {
 
 
 /// 根据接口文件路径获取接口文档详情
-pub fn get_api_doc_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn get_api_doc_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let mut data = data.lock().unwrap();
     let mut api_docs = &data.api_docs;
 
@@ -64,7 +67,7 @@ pub fn get_api_doc_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>
 /// 获取项目接口的基本信息
 /// 返回项目名称，介绍，项目接口简要列表
 /// 前端需要自己根据 api_doc 的order进行排序
-pub fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let mut data = data.lock().unwrap();
     let mut basic_data = &data.basic_data;
     let mut api_docs = &data.api_docs;
@@ -84,7 +87,7 @@ pub fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>)
 
 
 /// 获取_data目录中的数据, models数据 或者其它加载数据
-pub fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
+pub async fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
     let read_me = match fs::read_to_string(&req_get.filename) {
         Ok(x) => x,
         Err(_) => "no data file".to_string()
@@ -94,12 +97,28 @@ pub fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDocDataR
 }
 
 
+
+
+
+
 /// 处理get请求
-pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let req_get = match req_get {
         Some(x) => Some(x.into_inner()),
         None => None
     };
+
+    if req.path() == "/" {
+        let read_me = match fs::read_to_string("theme/index.html") {
+            Ok(x) => x,
+            Err(_) => "no data file".to_string()
+        };
+
+        return HttpResponse::Ok().content_type("text/html").body(read_me)
+//        return HttpResponse::build(StatusCode::OK)
+//            .content_type("text/html; charset=utf-8")
+//            .body(include_str!("theme/index.html"));
+    }
 
     find_response_data(&req, req_get, db_data)
 }
@@ -107,7 +126,7 @@ pub fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web
 
 /// 处理post、put、delete 请求
 ///
-pub fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let request_data = match request_data {
         Some(x) => Some(x.into_inner()),
         None => None
