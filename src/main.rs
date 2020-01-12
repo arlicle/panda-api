@@ -1,4 +1,6 @@
 use actix_web::{middleware, web, App, HttpServer};
+use actix_files::Files;
+
 use structopt::StructOpt;
 use dotenv::dotenv;
 use std::sync::{Mutex, Arc};
@@ -54,6 +56,8 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/").route(web::get().to(api::get_api_doc_basic)))
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
+            .service(Files::new("/js", "theme/js"))
+            .service(Files::new("/css", "theme/css"))
             .service(
                 web::resource("/*")
                     .route(web::get().to(api::do_get))
