@@ -97,6 +97,22 @@
                     }
                 }
             }
+        },
+        {
+            "name":"慢性病处方单查询",
+            "url":"/shop/chronic_disease/search/",
+            "method":"POST",
+            "body_mode":"json",
+            "body":{
+                "keyword":{"name":"查询关键字", "desc":"病人的手机号或身份证号"}
+            },
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "result":{
+                    "$ref":"./_data/models.json:Chufangdan"
+                }
+            }
         }
     ]
 }
