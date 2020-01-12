@@ -179,10 +179,10 @@ impl Database {
                     }
                 };
 
-                let desc = get_api_value("desc", "".to_string(), api, &ref_data);
-                let url = get_api_value("url", "".to_string(), api, &ref_data);
-                let method = get_api_value("method", "GET".to_string(), api, &ref_data);
-                let body_mode = get_api_value("body_mode", "json".to_string(), api, &ref_data);
+                let desc = get_api_field_value("desc", "".to_string(), api, &ref_data);
+                let url = get_api_field_value("url", "".to_string(), api, &ref_data);
+                let method = get_api_field_value("method", "GET".to_string(), api, &ref_data);
+                let body_mode = get_api_field_value("body_mode", "json".to_string(), api, &ref_data);
 //                let body = get_api_value("body", "json".to_string(), api, &ref_data);
 
 
@@ -275,7 +275,10 @@ fn load_ref_file_data(ref_file: &str) -> Option<Value> {
     None
 }
 
-fn get_api_value(key: &str, default_value: String, api: &Value, ref_data: &Value) -> String {
+
+/// 获取api里面字段的数据
+/// 如 url, name, method等
+fn get_api_field_value(key: &str, default_value: String, api: &Value, ref_data: &Value) -> String {
     match api.get(key) {
         Some(d) => d.as_str().unwrap().to_string(),
         None => {
