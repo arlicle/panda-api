@@ -3,7 +3,7 @@
         "name":"上传照片",
         "desc":"这个接口既可以上传处方单扫描件、本地处方单照片，还可以上传身份证扫描件和本地身份证照片",
         "url":"/common/photo/upload/",
-        "method":"get",
+        "method":"POST",
         "body_method":"formdata",
         "body": {
             "file": {"name":"要上传的文件", "desc":"如果是扫描件要转变为扫描好的本地文件"},
