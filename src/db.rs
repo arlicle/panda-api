@@ -195,6 +195,8 @@ impl Database {
                         }
                     }
                 };
+                let body = parse_attribute_ref_value(body, doc_file_obj);
+
 
                 let response = match api.get("response") {
                     Some(response) => {
@@ -268,7 +270,9 @@ fn load_ref_file_data(ref_file: &str) -> Option<Value> {
                 };
 
                 if let Some(key) = ref_info.get(1) {
-                    if let Some(v) = data.get(key) {
+                    println!("key is {}", key);
+                    println!("key2 is {}", &key.replace(".", "/"));
+                    if let Some(v) = data.pointer(&format!("/{}", &key.replace(".", "/"))) {
                         return Some(v.clone());
                     }
                 }
@@ -302,10 +306,19 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
         return value;
     }
 
+
     if value.is_object() {
-        for (k, v) in value.as_object().unwrap() {
-            if k == "$ref" {
-                let mut v_str = v.as_str().unwrap();
+        let mut result: Map<String, Value> = Map::new();
+//        result.insert("Hello".to_string(), Value::from("dddd"));
+//        result.insert("bbb".to_string(), Value::from(10));
+        let value_obj = value.as_object().unwrap();
+        let mut new_value = value_obj.clone();
+
+
+        match value_obj.get("$ref") {
+            Some(ref_val) => {
+                let mut v_str = ref_val.as_str().unwrap();
+                println!("ref file is {}", v_str);
                 if v_str.contains("$") {
                     match doc_file_obj.get("define") {
                         Some(v2) => {
@@ -319,12 +332,26 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
                         None => ()
                     }
                 }
+                println!("ref2 file is {}", v_str);
                 match load_ref_file_data(v_str) {
-                    Some(vv) => return vv,
+                    Some(vv) => {
+                        new_value=vv.as_object().unwrap().clone();
+                        println!("new value is {:?}", new_value);
+                    },
                     None => ()
                 }
+            },
+            None => ()
+        }
+        for (k, v) in value_obj {
+            if k == "$ref" {
+                continue
+            } else {
+//                println!("value is {:?}", v);
+                new_value.insert(k.to_string(), parse_attribute_ref_value(v.clone(), doc_file_obj));
             }
         }
+        return Value::Object(new_value)
     }
 
     value
