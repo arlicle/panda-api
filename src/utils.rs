@@ -1,6 +1,6 @@
 use std::sync::{Mutex, Arc};
 use std::thread;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use notify::{RecommendedWatcher, RecursiveMode, Result as Notify_Result, Watcher, watcher, Config};
 use notify::event::{EventKind, ModifyKind, Event};
@@ -68,15 +68,25 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Database>>) {
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
     let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<db::ApiData>>>> = HashMap::new();
-    let mut fileindex_data: HashMap<String, Vec<String>> = HashMap::new();
+    let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
     let mut data = data.lock().unwrap();
     for file_path in e.paths.iter() {
         let filename = file_path.to_str().unwrap().trim_start_matches(&format!("{}/", current_dir));
         if filename == "api_docs/README.md" || filename == "api_docs/_settings.json" {
             let basic_data = db::load_basic_data();
-
             data.basic_data = basic_data;
+        } else if filename.contains("/_data/") {
+            // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
+            match data.fileindex_data.get(filename) {
+                Some(ref_files) => {
+                    // 把找到的文件全部重新load一遍
+                    for ref_file in ref_files {
+                        db::Database::load_a_api_json_file(ref_file, &mut api_data, &mut api_docs, &mut fileindex_data);
+                    }
+                },
+                None => ()
+            }
         } else {
             db::Database::load_a_api_json_file(filename, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
@@ -89,6 +99,22 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
     for (k, v) in api_docs {
         data.api_docs.insert(k, v);
     }
+
+    for (ref_file, doc_files) in fileindex_data {
+        if &ref_file != "" {
+            match data.fileindex_data.get_mut(&ref_file) {
+                Some(x) => {
+                    for f in doc_files{
+                        x.insert(f);
+                    }
+                }
+                None => {
+                    data.fileindex_data.insert(ref_file, doc_files);
+                }
+            }
+        }
+    }
+
 }
 
 
