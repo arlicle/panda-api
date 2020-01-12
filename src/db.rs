@@ -345,11 +345,11 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>) ->
         }
 
         for (k, v) in value_obj {
-            if k == "$ref" || k == "$exclude" {
-                continue;
-            } else {
+//            if k == "$ref" || k == "$exclude" {
+//                continue;
+//            } else {
                 new_value.insert(k.to_string(), parse_attribute_ref_value(v.clone(), doc_file_obj));
-            }
+//            }
         }
         return Value::Object(new_value);
     }
