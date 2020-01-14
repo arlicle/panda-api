@@ -25,7 +25,7 @@ pub struct BasicData {
     pub read_me: String,
     pub project_name: String,
     pub project_desc: String,
-
+    pub global_value: Value,
 }
 
 #[derive(Debug)]
@@ -44,8 +44,10 @@ pub struct ApiData {
     pub desc: String,
     pub url: String,
     pub method: String,
+    pub auth: bool,
     pub body_mode: String,
     pub body: Value,
+    pub query: Value,
     pub response: Value,
     pub test_data: Value,
 }
@@ -74,7 +76,14 @@ pub fn load_basic_data() -> BasicData {
     let f = "api_docs/_settings.json";
     let d = fs::read_to_string(f).expect(&format!("Unable to read file: {}", f));
     let d = fix_json(d);
-    let mut v: Value = serde_json::from_str(&d).expect(&format!("Parse json file {} error", f));
+    let mut v: Value = match serde_json::from_str(&d) {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Parse json file {} error", f);
+            json!({})
+        }
+    };
+
 
     let obj = v.as_object().unwrap();
 
@@ -90,7 +99,12 @@ pub fn load_basic_data() -> BasicData {
     };
     let project_desc = project_desc.to_string();
 
-    BasicData { read_me, project_name, project_desc }
+    let global_value = match obj.get("global") {
+        Some(v) => v.clone(),
+        None => Value::Null
+    };
+
+    BasicData { read_me, project_name, project_desc, global_value }
 }
 
 
@@ -106,7 +120,7 @@ impl Database {
         for entry in WalkDir::new("api_docs") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap();
-            Self::load_a_api_json_file(doc_file, &mut api_data, &mut api_docs, &mut fileindex_data);
+            Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
 
         Database { basic_data, api_data, api_docs, fileindex_data }
@@ -115,7 +129,7 @@ impl Database {
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
+    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
         if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("/_data/") {
             return;
         }
@@ -132,10 +146,14 @@ impl Database {
 
         let doc_file_obj = v.as_object().unwrap();
         let doc_name = match doc_file_obj.get("name") {
-            Some(name) => name.as_str().unwrap(),
-            None => doc_file
+            Some(name) => {
+                match name.as_str() {
+                    Some(v) => v.to_string(),
+                    None => format!("{}", name)
+                }
+            }
+            None => doc_file.to_string()
         };
-        let doc_name = doc_name.to_string();
 
         let doc_desc = match doc_file_obj.get("desc") {
             Some(desc) => desc.as_str().unwrap(),
@@ -158,13 +176,13 @@ impl Database {
             let mut ref_data;
             for api in api_array {
                 ref_data = Value::Null;
+
                 match api.get("$ref") {
                     // 处理api数据引用
                     Some(v) => {
                         let v = v.as_str().unwrap();
                         let (mut ref_file, ref_data2) = load_ref_file_data(v, doc_file);
                         if ref_file != "" {
-
                             match fileindex_data.get_mut(&ref_file) {
                                 Some(x) => {
                                     x.insert(doc_file.to_string());
@@ -177,7 +195,6 @@ impl Database {
                             }
                         }
 
-
                         if let Some(value) = ref_data2 {
                             ref_data = value;
                         }
@@ -185,20 +202,12 @@ impl Database {
                     None => ()
                 }
 
-                let name = match api.get("name") {
-                    Some(name) => name.as_str().unwrap().to_string(),
-                    None => {
-                        match ref_data.get("name") {
-                            Some(v) => v.as_str().unwrap().to_string(),
-                            None => continue
-                        }
-                    }
-                };
-
-                let desc = get_api_field_value("desc", "".to_string(), api, &ref_data);
-                let url = get_api_field_value("url", "".to_string(), api, &ref_data);
-                let method = get_api_field_value("method", "GET".to_string(), api, &ref_data);
-                let body_mode = get_api_field_value("body_mode", "json".to_string(), api, &ref_data);
+                let name = get_api_field_string_value("name", doc_file.to_string(), api, &ref_data, &basic_data.global_value);
+                let desc = get_api_field_string_value("desc", "".to_string(), api, &ref_data, &basic_data.global_value);
+                let url = get_api_field_string_value("url", "".to_string(), api, &ref_data, &basic_data.global_value);
+                let method = get_api_field_string_value("method", "GET".to_string(), api, &ref_data, &basic_data.global_value);
+                let body_mode = get_api_field_string_value("body_mode", "json".to_string(), api, &ref_data, &basic_data.global_value);
+                let auth = get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
 //                let body = get_api_value("body", "json".to_string(), api, &ref_data);
 
 
@@ -214,6 +223,18 @@ impl Database {
                 let (mut ref_files, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
 
 
+                let query = match api.get("query") {
+                    Some(query) => query.clone(),
+                    None => {
+                        match ref_data.get("query") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
+                };
+                let (mut ref_files, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
+
+
                 let response = match api.get("response") {
                     Some(response) => {
                         response.clone()
@@ -225,6 +246,7 @@ impl Database {
                         }
                     }
                 };
+
 
                 // 处理response中的$ref
                 let (mut ref_files2, response) = parse_attribute_ref_value(response, doc_file_obj, doc_file);
@@ -259,7 +281,7 @@ impl Database {
                 };
 
 
-                let a_api_data = Arc::new(Mutex::new(ApiData { name, desc, body_mode, body, response, test_data, url: url.clone(), method: method.clone() }));
+                let a_api_data = Arc::new(Mutex::new(ApiData { name, desc, body_mode, body, query, response, test_data, auth: auth, url: url.clone(), method: method.clone() }));
                 // 形成 { url: {method:api} }
                 match api_data.get_mut(&url) {
                     Some(mut data) => {
@@ -285,9 +307,9 @@ impl Database {
 }
 
 
-fn load_ref_file_data(ref_file: &str, doc_file:&str) -> (String, Option<Value>) {
+fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
-    let mut file_path= "".to_string();
+    let mut file_path = "".to_string();
 
     match ref_info.get(0) {
         Some(filename) => {
@@ -326,19 +348,83 @@ fn load_ref_file_data(ref_file: &str, doc_file:&str) -> (String, Option<Value>) 
 
 /// 获取api里面字段的数据
 /// 如 url, name, method等
-fn get_api_field_value(key: &str, default_value: String, api: &Value, ref_data: &Value) -> String {
+fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref_data: &Value, global_data: &Value) -> String {
     match api.get(key) {
-        Some(d) => d.as_str().unwrap().to_string(),
-        None => {
-            if let Some(v) = ref_data.get(key) {
-                v.as_str().unwrap().to_string()
+        Some(d) => {
+            if let Some(v) = d.as_str() {
+                return v.to_owned();
             } else {
-                default_value
+                return format!("{}", d);
             }
         }
+        None => ()
     }
+    if let Some(d) = ref_data.get(key) {
+        if let Some(v) = d.as_str() {
+            return v.to_owned();
+        } else {
+            return format!("{}", d);
+        }
+    }
+
+    // 最后查询global_value
+    match global_data.get("api") {
+        Some(v) => {
+            match v.get(key) {
+                Some(v2) => {
+                    if let Some(d) = v2.as_str() {
+                        return d.to_owned();
+                    } else {
+                        return format!("{}", v2);
+                    }
+                }
+                None => ()
+            }
+        }
+        None => ()
+    }
+    default_value
 }
 
+
+fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_data: &Value, global_data: &Value) -> bool {
+    match api.get(key) {
+        Some(d) => {
+            if let Some(v) = d.as_bool() {
+                return v;
+            } else {
+                println!("{} value is not a bool", key)
+            }
+        }
+        None => ()
+    }
+
+    if let Some(d) = ref_data.get(key) {
+        if let Some(v) = d.as_bool() {
+            return v;
+        } else {
+            println!("{} value is not a bool", key)
+        }
+    }
+
+    match global_data.get("api") {
+        Some(v) => {
+            match v.get(key) {
+                Some(d) => {
+                    if let Some(v2) = d.as_bool() {
+                        return v2;
+                    } else {
+                        println!("{} value is not a bool", key)
+                    }
+                }
+                None => ()
+            }
+        }
+        None => ()
+    }
+
+    default_value
+}
 
 /// parse $ref引用数据
 fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, doc_file: &str) -> (Vec<String>, Value) {

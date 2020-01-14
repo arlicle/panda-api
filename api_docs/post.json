@@ -18,12 +18,12 @@
         "method": "POST",
         "body_mode": "json",
         "body":{
-            "title":{"name":"文章标题", "desc":"", "type":"string", "max_length":120},
+            "title":{"name":"文章标题", "desc":"", "type":"string", "max_length":120, "required":false},
             "content":{"name":"文章内容", "desc":"", "type":"string"},
             "category_id":{"name":"文章分类id", "desc":"", "type":"int"}
         },
         "response":{
-            "code":{"name":"返回结果的代码", "type":"int", "desc":"登录成功只返回1"},
+            "code":{"name":"返回结果的代码", "type":"int", "desc":"登录成功只返回1", "enum":[[1, "成功"], [-1, "失败"]]},
             "msg":{"name":"登录成功返回消息", "type":"string", "desc":"通常返回都是空"},
             "token":{"name":"登录成功返回的用户token", "type":"string", "length":"43"}
         },
@@ -59,13 +59,17 @@
         "desc":"",
         "url":"/post/{id:\\d+}/",
         "method":"GET",
+        "query": {
+            "id":{"name":"", "desc":""}
+        },
         "response":{
             "code":{"name":"返回结果的代码", "type":"int", "desc":"退出成功只返回1"},
             "msg":{"name":"退出操作返回消息", "type":"string", "desc":"通常返回都是空"}
         },
         "test_data":[
             {
-                "request":null,
+                "query":{"id":1},
+                "body":{"id":1},
                 "response":{"code":1, "msg":"文章详情数据"}
             }
         ]

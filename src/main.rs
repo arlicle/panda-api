@@ -25,11 +25,11 @@ struct Config {
     folder: String,
 
     /// Listen ip
-    #[structopt(long, default_value = "127.0.0.1", env = "MOCKRS_HOST")]
+    #[structopt(long, default_value = "127.0.0.1", env = "PANDA_API_HOST")]
     host: String,
 
     /// Listen port
-    #[structopt(long, default_value = "9000", env = "MOCKRS_PORT")]
+    #[structopt(long, default_value = "9000", env = "PANDA_API_PORT")]
     port: usize,
 }
 

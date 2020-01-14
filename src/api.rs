@@ -24,9 +24,6 @@ pub struct ApiDocDataRequest {
 }
 
 
-
-
-
 pub async fn server_info() -> HttpResponse {
     HttpResponse::Ok().json(json!({
       "name": "mockrs",
@@ -97,15 +94,11 @@ pub async fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDo
 }
 
 
-
-
-
-
 /// 处理get请求
-pub async fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let req_get = match req_get {
-        Some(x) => Some(x.into_inner()),
-        None => None
+pub async fn do_get(req: HttpRequest, request_query: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+    let request_query = match request_query {
+        Some(x) => x.into_inner(),
+        None => Value::Null
     };
 
     if req.path() == "/" {
@@ -114,31 +107,34 @@ pub async fn do_get(req: HttpRequest, req_get: Option<web::Query<Value>>, db_dat
             Err(_) => "no data file".to_string()
         };
 
-        return HttpResponse::Ok().content_type("text/html").body(read_me)
-//        return HttpResponse::build(StatusCode::OK)
-//            .content_type("text/html; charset=utf-8")
-//            .body(include_str!("theme/index.html"));
+        return HttpResponse::Ok().content_type("text/html").body(read_me);
     }
 
-    find_response_data(&req, req_get, db_data)
+    find_response_data(&req, Value::Null, request_query, db_data)
 }
 
 
 /// 处理post、put、delete 请求
 ///
-pub async fn do_post(req: HttpRequest, request_data: Option<web::Json<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let request_data = match request_data {
-        Some(x) => Some(x.into_inner()),
-        None => None
+pub async fn do_post(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+    let request_body = match request_body {
+        Some(x) => x.into_inner(),
+        None => Value::Null
     };
 
-    find_response_data(&req, request_data, db_data)
+    println!("request_query {:?}\n\n", request_query);
+    let request_query = match request_query {
+        Some(x) => x.into_inner(),
+        None => Value::Null
+    };
+
+    find_response_data(&req, request_body, request_query, db_data)
 }
 
 
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
     let api_data = &db_data.api_data;
     let req_path = req.path();
@@ -160,6 +156,7 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
             let a_api_data = a_api_data.lock().unwrap();
 
             let test_data = &a_api_data.test_data;
+
             if test_data.is_null() {
                 return HttpResponse::Ok().json(json!({
                         "code": -1,
@@ -174,82 +171,25 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
                      }));
             }
 
-//            let response_model = &a_api_data.response;
             let x = create_mock_response(&a_api_data.response);
             let test_data = test_data.as_array().unwrap();
 
-            if test_data.is_empty() {
-                return HttpResponse::Ok().json(json!({
-                        "code": -1,
-                        "msg": format!("this api {} with defined method {} test_data is empty", req_path, req_method)
-                     }));
-            }
-
             'a_loop: for test_case_data in test_data {
-                let case_response = match test_case_data.get("response"){
+                let case_body = match test_case_data.get("body") {
                     Some(v) => v,
-                    None => {
-                        return HttpResponse::Ok().json(json!({
-                        "code": -1,
-                        "msg": format!("this api {} with defined method {} test_data with no response field", req_path, req_method)
-                     }));
-                    }
+                    None => &Value::Null
                 };
-
-                let test_request_data = match test_case_data.get("request") {
+                let case_query = match test_case_data.get("query") {
+                    Some(v) => v,
+                    None => &Value::Null
+                };
+                let case_response = match test_case_data.get("response") {
                     Some(v) => v,
                     None => &Value::Null
                 };
 
-                match request_data {
-                    Some(ref request_data_map) => {
-                        let request_data_map = request_data_map.as_object().unwrap();
-                        match test_request_data.as_object() {
-                            Some(test_request_data_obj) => {
-                                if request_data_map.is_empty() && test_request_data_obj.is_empty() {
-                                    return HttpResponse::Ok().json(case_response);
-                                }
-                                for (k, v) in test_request_data_obj.iter() {
-                                    match request_data_map.get(k) {
-                                        // 判断请求数据 与测试数据集的每个字段的值是否相等
-                                        Some(v2) => {
-                                            if v2 != v {
-                                                continue 'a_loop;
-                                            }
-                                        }
-                                        None => {
-                                            continue 'a_loop;
-                                        }
-                                    }
-                                }
-
-                                return HttpResponse::Ok().json(case_response);
-                            }
-                            None => {
-                                if request_data_map.is_empty() {
-                                    return HttpResponse::Ok().json(case_response);
-                                } else {
-                                    // 如果请求的数据不为空，test_data的数据为空，那么就继续下一次循环
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                    None => {
-                        if test_request_data.is_null() {
-                            return HttpResponse::Ok().json(case_response);
-                        }
-                        match test_request_data.as_object() {
-                            Some(t) => {
-                                if t.is_empty() {
-                                    return HttpResponse::Ok().json(case_response);
-                                }
-                            }
-                            None => {
-                                return HttpResponse::Ok().json(case_response);
-                            }
-                        }
-                    }
+                if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) {
+                    return HttpResponse::Ok().json(case_response);
                 }
             }
         }
@@ -260,6 +200,68 @@ fn find_response_data(req: &HttpRequest, request_data: Option<Value>, db_data: w
       "msg": format!("this api address {} no test_data match", req_path)
     }))
 }
+
+
+
+/// 判断两个serde value的值是否相等
+/// 只要value2中要求的每个字段，value1中都有，就表示相等, 也就是说value1的字段可能会比value2多
+fn is_value_equal(value1: &Value, value2: &Value) -> bool {
+    if value1.is_null() && value2.is_null() {
+        return true
+    }
+    match value1 {
+        Value::Object(value1_a) => {
+            match value2.as_object() {
+                Some(value2_a) => {
+                    if value1_a.is_empty() && value2_a.is_empty() {
+                        return true;
+                    }
+                    for (k, v) in value2_a {
+                        match value1_a.get(k) {
+                            // 判断请求数据 与测试数据集的每个字段的值是否相等
+                            Some(v2) => {
+                                if v2 != v {
+                                    return false;
+                                }
+                            }
+                            None => {
+                                return false;
+                            }
+                        }
+                    }
+
+                    return true;
+                },
+                None => {
+                    if value1_a.is_empty() && value2.is_null() {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        },
+        Value::Array(a) => (),
+        Value::Null => {
+            // 让null 和 empty一样的相等
+            println!("value1 is null\n");
+            match value2.as_object() {
+                Some(value2_a) => {
+                    if value2_a.is_empty() {
+                        return true;
+                    }
+                },
+                None => {
+                    return false;
+                }
+            }
+        },
+        _ => {
+            println!("Invalid Json Struct {:?}", value1);
+        }
+    }
+    false
+}
+
 
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {

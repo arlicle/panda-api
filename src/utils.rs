@@ -73,22 +73,26 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
     let mut data = data.lock().unwrap();
     for file_path in e.paths.iter() {
         let filename = file_path.to_str().unwrap().trim_start_matches(&format!("{}/", current_dir));
-        if filename == "api_docs/README.md" || filename == "api_docs/_settings.json" {
+        if filename == "api_docs/README.md" {
             let basic_data = db::load_basic_data();
             data.basic_data = basic_data;
+        } else if  filename == "api_docs/_settings.json" {
+            // 全局重新加载
+            *data = db::Database::load();
+           return;
         } else if filename.contains("/_data/") {
             // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
             match data.fileindex_data.get(filename) {
                 Some(ref_files) => {
                     // 把找到的文件全部重新load一遍
                     for ref_file in ref_files {
-                        db::Database::load_a_api_json_file(ref_file, &mut api_data, &mut api_docs, &mut fileindex_data);
+                        db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, &mut fileindex_data);
                     }
-                },
+                }
                 None => ()
             }
         } else {
-            db::Database::load_a_api_json_file(filename, &mut api_data, &mut api_docs, &mut fileindex_data);
+            db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
     }
 
@@ -104,7 +108,7 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
         if &ref_file != "" {
             match data.fileindex_data.get_mut(&ref_file) {
                 Some(x) => {
-                    for f in doc_files{
+                    for f in doc_files {
                         x.insert(f);
                     }
                 }
@@ -114,7 +118,6 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
             }
         }
     }
-
 }
 
 
@@ -129,7 +132,7 @@ pub fn get_random_chinese_chars(mut length: u32) -> String {
             Some(c) => {
                 s.push(c);
                 length -= 1;
-            },
+            }
             None => continue
         }
     }
