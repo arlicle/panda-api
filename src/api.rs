@@ -1,5 +1,7 @@
 use actix_web::{http, web, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
+use actix_multipart::Multipart;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value, Map};
 use std::collections::HashMap;
@@ -94,13 +96,16 @@ pub async fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDo
 }
 
 
-/// 处理get请求
-pub async fn do_get(req: HttpRequest, request_query: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let request_query = match request_query {
-        Some(x) => x.into_inner(),
-        None => Value::Null
-    };
+#[derive(Deserialize, Debug)]
+pub struct FormData {
+    username: String,
+}
 
+/// 处理post、put、delete 请求
+///
+pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+
+    // for api documents homepage
     if req.path() == "/" {
         let read_me = match fs::read_to_string("theme/index.html") {
             Ok(x) => x,
@@ -110,19 +115,11 @@ pub async fn do_get(req: HttpRequest, request_query: Option<web::Query<Value>>, 
         return HttpResponse::Ok().content_type("text/html").body(read_me);
     }
 
-    find_response_data(&req, Value::Null, request_query, db_data)
-}
-
-
-/// 处理post、put、delete 请求
-///
-pub async fn do_post(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let request_body = match request_body {
         Some(x) => x.into_inner(),
         None => Value::Null
     };
 
-    println!("request_query {:?}\n\n", request_query);
     let request_query = match request_query {
         Some(x) => x.into_inner(),
         None => Value::Null
@@ -141,16 +138,16 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
     let req_method = req.method().as_str();
 
     for (k, a_api_data) in api_data {
-        // 匹配
+// 匹配
         let res = ResourceDef::new(k);
         if res.is_match(req_path) {
             let a_api_data = match a_api_data.get(req_method) {
                 Some(v) => v,
                 None => {
                     return HttpResponse::Ok().json(json!({
-                        "code": -1,
-                        "msg": format!("this api address {} not defined method {}", req_path, req_method)
-                     }));
+                        "code": - 1,
+                        "msg": format ! ("this api address {} not defined method {}", req_path, req_method)
+                    }));
                 }
             };
             let a_api_data = a_api_data.lock().unwrap();
@@ -159,16 +156,16 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
 
             if test_data.is_null() {
                 return HttpResponse::Ok().json(json!({
-                        "code": -1,
-                        "msg": format!("this api {} with defined method {} have not test_data", req_path, req_method)
-                     }));
+"code": - 1,
+"msg": format ! ("this api {} with defined method {} have not test_data", req_path, req_method)
+}));
             }
 
             if !test_data.is_array() {
                 return HttpResponse::Ok().json(json!({
-                        "code": -1,
-                        "msg": format!("this api {} with defined method {} test_data is not a array", req_path, req_method)
-                     }));
+"code": - 1,
+"msg": format ! ("this api {} with defined method {} test_data is not a array", req_path, req_method)
+}));
             }
 
             let x = create_mock_response(&a_api_data.response);
@@ -196,29 +193,28 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
     };
 
     HttpResponse::Ok().json(json!({
-      "code": -1,
-      "msg": format!("this api address {} no test_data match", req_path)
-    }))
+"code": - 1,
+"msg": format ! ("this api address {} no test_data match", req_path)
+}))
 }
-
 
 
 /// 判断两个serde value的值是否相等
 /// 只要value2中要求的每个字段，value1中都有，就表示相等, 也就是说value1的字段可能会比value2多
 fn is_value_equal(value1: &Value, value2: &Value) -> bool {
-    if value1.is_null() && value2.is_null() {
-        return true
+    if value1.is_null() & &value2.is_null() {
+        return true;
     }
     match value1 {
         Value::Object(value1_a) => {
             match value2.as_object() {
                 Some(value2_a) => {
-                    if value1_a.is_empty() && value2_a.is_empty() {
+                    if value1_a.is_empty() & &value2_a.is_empty() {
                         return true;
                     }
                     for (k, v) in value2_a {
                         match value1_a.get(k) {
-                            // 判断请求数据 与测试数据集的每个字段的值是否相等
+// 判断请求数据 与测试数据集的每个字段的值是否相等
                             Some(v2) => {
                                 if v2 != v {
                                     return false;
@@ -231,37 +227,35 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                     }
 
                     return true;
-                },
+                }
                 None => {
-                    if value1_a.is_empty() && value2.is_null() {
+                    if value1_a.is_empty() & &value2.is_null() {
                         return true;
                     }
                     return false;
                 }
             }
-        },
+        }
         Value::Array(a) => (),
         Value::Null => {
-            // 让null 和 empty一样的相等
-            println!("value1 is null\n");
+// 让null 和 empty一样的相等
             match value2.as_object() {
                 Some(value2_a) => {
                     if value2_a.is_empty() {
                         return true;
                     }
-                },
+                }
                 None => {
                     return false;
                 }
             }
-        },
+        }
         _ => {
             println!("Invalid Json Struct {:?}", value1);
         }
     }
     false
 }
-
 
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {

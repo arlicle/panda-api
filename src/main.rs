@@ -1,13 +1,9 @@
 use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
 
-use structopt::StructOpt;
 use dotenv::dotenv;
 use std::sync::{Mutex, Arc};
-use std::thread;
-//use panda_api::watch_api_docs_change;
 use actix_web::dev::ResourceDef;
-use std::char;
 
 mod db;
 mod api;
@@ -15,13 +11,15 @@ mod utils;
 
 use regex::Regex;
 use rand::{thread_rng, Rng};
+use structopt::StructOpt;
+
 
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
-struct Config {
+pub struct Config {
     /// data folder
-    #[structopt(short, long, default_value = "data")]
+    #[structopt(short, long, default_value = "./")]
     folder: String,
 
     /// Listen ip
@@ -34,11 +32,12 @@ struct Config {
 }
 
 
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     pretty_env_logger::init();
-    let conf: Config = Config::from_args();
+    let conf = Config::from_args();
 
     let db = db::Database::load();
 
@@ -60,8 +59,10 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/css", "theme/css"))
             .service(
                 web::resource("/*")
-                    .route(web::get().to(api::do_get))
-                    .route(web::post().to(api::do_post)),
+                    .route(web::get().to(api::action_handle))
+                    .route(web::post().to(api::action_handle))
+                    .route(web::put().to(api::action_handle))
+                    .route(web::delete().to(api::action_handle))
             )
     })
         .bind(format!("{}:{}", conf.host, conf.port))?
