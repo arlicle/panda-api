@@ -9,8 +9,6 @@ mod db;
 mod api;
 mod utils;
 
-use regex::Regex;
-use rand::{thread_rng, Rng};
 use structopt::StructOpt;
 
 

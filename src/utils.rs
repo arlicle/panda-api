@@ -80,7 +80,7 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
             // 全局重新加载
             *data = db::Database::load();
            return;
-        } else if filename.contains("/_data/") {
+        } else if filename.contains("_data/") {
             // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
             match data.fileindex_data.get(filename) {
                 Some(ref_files) => {

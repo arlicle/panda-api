@@ -28,12 +28,12 @@
         "created": {"name":"处方单创建时间", "desc":"是一个处方单的时间戳", "type":"number"},
         "pharmacist_verify_status": {"name":"处方单审核状态", "desc":"", "type":"number"},
         "pharmacist_verify_time": {"name":"处方单审核时间", "desc":"是一个时间戳", "type":"number"},
-        "pharmacist": 0,
-        "pharmacist_name": "",
-        "items":{
-            "name":"药品列表",
-            "type":"array",
-            "item": {
+        "pharmacist_id": {"name":"药剂师id"},
+        "pharmacist_name": {"name":"药剂师姓名"},
+        "items":
+            [{
+                "-name":"药品列表",
+                "-desc":"药品描述",
                 "drug_code": {"name": "药品编码"},
                 "drug_name": {"name": "药品名称"},
                 "drug_spec": {"name": "药品规格"},
@@ -46,7 +46,6 @@
                 "drug_num": {"name": "药品数量", "type":"number"},
                 "sort_order": {"name": "显示顺序", "type":"number"},
                 "drug_pici": {"name": "药品批次", "required":false}
-            }
-        }
+            }]
     }
 }
