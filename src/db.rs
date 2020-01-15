@@ -8,14 +8,13 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use walkdir::WalkDir;
 use std::path::Path;
+use std::env;
 
 #[derive(Debug)]
 pub struct Database {
     pub basic_data: BasicData,
     pub api_docs: HashMap<String, ApiDoc>,
-    // filename => apidoc
     pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>,
-    // url => api data request
     pub fileindex_data: HashMap<String, HashSet<String>>,
 }
 
@@ -68,24 +67,32 @@ fn fix_json(org_string: String) -> String {
 
 
 pub fn load_basic_data() -> BasicData {
-    let read_me = match fs::read_to_string("api_docs/README.md") {
+    let read_me = match fs::read_to_string("README.md") {
         Ok(x) => x,
         Err(_) => "Panda api docs".to_string()
     };
 
-    let f = "api_docs/_settings.json";
-    let d = fs::read_to_string(f).expect(&format!("Unable to read file: {}", f));
-    let d = fix_json(d);
-    let mut v: Value = match serde_json::from_str(&d) {
-        Ok(v) => v,
-        Err(e) => {
-            println!("Parse json file {} error", f);
-            json!({})
-        }
-    };
+    let settings_file = "_settings.json";
 
+    let setting_value =
+        match fs::read_to_string(settings_file) {
+            Ok(v) => {
+                let v = fix_json(v);
+                match serde_json::from_str(&v) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        println!("Parse json file {} error", settings_file);
+                        json!({})
+                    }
+                }
+            }
+            Err(_) => {
+                println!("warning: no '{}' file", settings_file);
+                json!({})
+            }
+        };
 
-    let obj = v.as_object().unwrap();
+    let obj = setting_value.as_object().unwrap();
 
     let project_name = match obj.get("project_name") {
         Some(name) => name.as_str().unwrap(),
@@ -117,9 +124,12 @@ impl Database {
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
-        for entry in WalkDir::new("api_docs") {
+        let current_dir = env::current_dir().expect("Failed to determine current directory");
+        let current_dir = current_dir.to_str().unwrap().to_string();
+
+        for entry in WalkDir::new("./") {
             let e = entry.unwrap();
-            let doc_file = e.path().to_str().unwrap();
+            let doc_file = e.path().to_str().unwrap().trim_start_matches("./");
             Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, &mut fileindex_data);
         }
 
@@ -130,7 +140,7 @@ impl Database {
     /// 只加载一个api_doc文件的数据
     ///
     pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
-        if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("/_data/") {
+        if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("_data/") {
             return;
         }
 
@@ -167,8 +177,8 @@ impl Database {
         };
 
         let apis = match doc_file_obj.get("api") {
-            Some(api) => api,
-            None => { return; }
+            Some(api) => api.clone(),
+            None => { json!([]) }
         };
 
         let mut api_vec = Vec::new();
@@ -317,10 +327,11 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
                 let path = Path::new(doc_file).parent().unwrap();
                 file_path = format!("{}/{}", path.to_str().unwrap(), filename.trim_start_matches("./"));
             } else if filename.starts_with("/_data") {
-                file_path = format!("api_docs{}", filename);
+                file_path = filename.trim_start_matches("/").to_string();
             } else {
                 file_path = filename.to_string();
             }
+            file_path = file_path.trim_start_matches("/").to_string();
 
             // 加载数据文件
             if let Ok(d) = fs::read_to_string(&file_path) {
@@ -481,13 +492,13 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
         }
 
         for (k, v) in value_obj {
-//            if k == "$ref" || k == "$exclude" {
-//                continue;
-//            } else {
-            let (mut ref_files2, field_value) = parse_attribute_ref_value(v.clone(), doc_file_obj, doc_file);
-            ref_files.append(&mut ref_files2);
-            new_value.insert(k.to_string(), field_value);
-//            }
+            if k == "$ref" || k == "$exclude" {
+                continue;
+            } else {
+                let (mut ref_files2, field_value) = parse_attribute_ref_value(v.clone(), doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
+                new_value.insert(k.to_string(), field_value);
+            }
         }
 
 //        if new_value

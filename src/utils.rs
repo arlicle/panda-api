@@ -2,7 +2,7 @@ use std::sync::{Mutex, Arc};
 use std::thread;
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
-use notify::{RecommendedWatcher, RecursiveMode, Result as Notify_Result, Watcher, watcher, Config};
+use notify::{RecommendedWatcher, RecursiveMode, Result as Notify_Result, Watcher, watcher};
 use notify::event::{EventKind, ModifyKind, Event};
 use crossbeam_channel::unbounded;
 use actix_web::{http, web, HttpRequest, HttpResponse};
@@ -14,17 +14,16 @@ use std::char;
 use rand::{thread_rng, Rng};
 
 
+
 /// 建立异步线程，监控文件改动，当改动的时候，就重新生成文件
 pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
     let current_dir = env::current_dir().expect("Failed to determine current directory");
     let current_dir = current_dir.to_str().unwrap().to_string();
-
-
     thread::spawn(move || {
         let (sender, receiver) = unbounded();
 
         let mut watcher = watcher(sender, Duration::from_secs(1)).unwrap();
-        watcher.watch("api_docs", RecursiveMode::Recursive).unwrap();
+        watcher.watch(&current_dir, RecursiveMode::Recursive).unwrap();
 
         loop {
             match receiver.recv() {
@@ -73,10 +72,11 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
     let mut data = data.lock().unwrap();
     for file_path in e.paths.iter() {
         let filename = file_path.to_str().unwrap().trim_start_matches(&format!("{}/", current_dir));
-        if filename == "api_docs/README.md" {
+
+        if filename == "README.md" {
             let basic_data = db::load_basic_data();
             data.basic_data = basic_data;
-        } else if  filename == "api_docs/_settings.json" {
+        } else if  filename == "_settings.json" {
             // 全局重新加载
             *data = db::Database::load();
            return;
@@ -102,6 +102,7 @@ fn update_api_data(e: Event, current_dir: &str, data: web::Data<Mutex<db::Databa
 
     for (k, v) in api_docs {
         data.api_docs.insert(k, v);
+
     }
 
     for (ref_file, doc_files) in fileindex_data {
@@ -127,7 +128,6 @@ pub fn get_random_chinese_chars(mut length: u32) -> String {
     while length > 0 {
         let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
         let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
-        println!("n is {} {:?}", n, char::from_u32(n));
         match char::from_u32(n) {
             Some(c) => {
                 s.push(c);

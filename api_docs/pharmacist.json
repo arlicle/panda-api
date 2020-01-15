@@ -1,0 +1,67 @@
+{
+    "name":"药剂师操作",
+    "order":5,
+    "api":[
+        {
+            "name":"获取要审核的单子",
+            "method":"POST",
+            "url":"/pharmacist/chufangdan/audit/",
+            "response":{
+                "$ref":"./_data/models.json:Response",
+                "result":{
+                    "name":"处方单详情",
+                    "type":"object",
+                    "object":{
+                        "$ref":"./_data/models.json:Chufangdan",
+                        "$exclude":["pharmacist", "pharmacist_name", "pharmacist_verify_status", "pharmacist_verify_time"]
+                    }
+                }
+            }
+        },
+        {
+            "name":"提交审核结果",
+            "method":"POST",
+            "url": "/pharmacist/chufangdan/audit/add/",
+            "body":{
+                "type":"object",
+                "object":{
+                    "id": {"name":"处方单id", "type":"number"},
+                    "status":{"name":"审核状态", "type":"number", "enum":[[-10, "审核失败"], [10, "审核通过"]]},
+                    "remarks":{"name":"审核备注说明", "type":"string"},
+                    "pharmacist_doing_time":{"name":"审核所花时间", "desc":"花了多少秒钟"}
+                }
+            },
+            "response": {
+
+            }
+        },
+        {
+            "name":"获取当前药剂师已审核列表",
+            "method":"POST",
+            "url":"/pharmacist/chufangdan/audited/list/",
+            "body":{
+                "page":{"name":"分页", "type":"number"}
+            },
+            "response":{
+                "$ref":"./_data/models.json:Response",
+                "total_page": {"name":"总页数", "type":"number"},
+                "total_count": {"name":"总记录数", "type":"number"},
+                "current_page": {"name":"当前页码", "type":"number"},
+                "result": [
+                    {
+                        "id": 24,
+                        "created": 1573530007,
+                        "chufangdan_code": "",
+                        "drug_type": 1,
+                        "patient_name": "123",
+                        "patient_tell": "123",
+                        "pharmacist_verify_status": 10,
+                        "pharmacist": "aaa",
+                        "pharmacist_verify_time": 1573556249,
+                        "is_video_call": 0
+                    }
+                ]
+            }
+        }
+    ]
+}
