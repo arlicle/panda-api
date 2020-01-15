@@ -256,10 +256,9 @@ impl Database {
                         }
                     }
                 };
-
-
                 // 处理response中的$ref
                 let (mut ref_files2, response) = parse_attribute_ref_value(response, doc_file_obj, doc_file);
+
                 ref_files.append(&mut ref_files2);
                 for ref_file in ref_files {
                     if &ref_file != "" {
@@ -449,47 +448,65 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
         let value_obj = value.as_object().unwrap();
         let mut new_value = value_obj.clone();
 
-        match value_obj.get("$ref") {
-            Some(ref_val) => {
-                let mut v_str = ref_val.as_str().unwrap();
-                if v_str.contains("$") {
-                    match doc_file_obj.get("define") {
-                        Some(v2) => {
-                            match v2.get(v_str.trim_start_matches("$")) {
-                                Some(v3) => {
-                                    v_str = v3.as_str().unwrap();
+        if let Some(ref_val) = value_obj.get("$ref") {
+            let mut v_str = ref_val.as_str().unwrap();
+            let mut new_v_str = "".to_string();
+            if v_str.contains("$") {
+                match doc_file_obj.get("define") {
+                    Some(defined) => {
+                        let re = Regex::new(r"\$\w+").unwrap();
+                        let mat = match re.find(v_str) {
+                            Some(m) => {
+                                let m_str = &v_str[m.start() + 1..m.end()];
+                                match defined.get(m_str) {
+                                    Some(v3) => {
+                                        new_v_str = format!("{}{}", v3.as_str().unwrap(), &v_str[m.end()..]);
+                                    }
+                                    None => ()
                                 }
-                                None => ()
                             }
-                        }
-                        None => ()
-                    }
-                }
-                let (ref_file, ref_data) = load_ref_file_data(v_str, doc_file);
-                ref_files.push(ref_file);
-                match ref_data {
-                    Some(vv) => {
-                        new_value = vv.as_object().unwrap().clone();
-                    }
-                    None => ()
-                }
-                // 移除exclude中的字段
-                match value_obj.get("$exclude") {
-                    Some(e) => {
-                        for v2 in e.as_array().unwrap() {
-                            let key_str = v2.as_str().unwrap();
-                            if key_str.contains(".") {
-                                // 如果exclude中含有.点，表示要嵌套的去移除字段
-                            } else {
-                                new_value.remove(key_str);
-                            }
-                        }
+                            None => ()
+                        };
                     }
                     None => ()
                 }
             }
-            None => ()
+            if new_v_str != "".to_string() {
+                v_str = new_v_str.as_str();
+            }
+            let (ref_file, ref_data) = load_ref_file_data(v_str, doc_file);
+            ref_files.push(ref_file);
+            match ref_data {
+                Some(vv) => {
+                    new_value = match vv.as_object() {
+                        Some(v) => v.clone(),
+                        None => {
+                            println!(" file value error '{}' got {:?}", v_str, vv);
+                            json!({}).as_object().unwrap().clone()
+                        }
+                    }
+
+//                        .unwrap().clone();
+                }
+                None => ()
+            }
+
+            // 移除exclude中的字段
+            match value_obj.get("$exclude") {
+                Some(e) => {
+                    for v2 in e.as_array().unwrap() {
+                        let key_str = v2.as_str().unwrap();
+                        if key_str.contains(".") {
+                            // 如果exclude中含有.点，表示要嵌套的去移除字段
+                        } else {
+                            new_value.remove(key_str);
+                        }
+                    }
+                }
+                None => ()
+            }
         }
+
 
         for (k, v) in value_obj {
             if k == "$ref" || k == "$exclude" {
@@ -501,9 +518,17 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
             }
         }
 
-//        if new_value
-//        if new_value.get
         return (ref_files, Value::Object(new_value));
+    } else if value.is_array() {
+        // 处理array
+        if let Some(value_array) = value.as_array() {
+            if let Some(value_array_one) = value_array.get(0) {
+                let (mut ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
+                return (ref_files, Value::Array(vec![array_item_value]));
+            } else {
+                println!(" file array value empty '{}' got {:?}", doc_file, value);
+            }
+        }
     }
 
     (ref_files, value)
