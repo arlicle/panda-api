@@ -12,7 +12,6 @@ mod utils;
 use structopt::StructOpt;
 
 
-
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
 pub struct Config {
@@ -30,23 +29,23 @@ pub struct Config {
 }
 
 
-
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
     let conf = Config::from_args();
-
     let db = db::Database::load();
-
     let web_db = web::Data::new(Mutex::new(db));
 
     utils::watch_api_docs_change(web_db.clone());
 
+    println!("Starting service on http://{}:{}", conf.host, conf.port);
     HttpServer::new(move || {
         App::new()
             .app_data(web_db.clone())
             .wrap(middleware::Logger::default())
+            .wrap(middleware::Logger::new("%a %{User-Agent}i"))
             .wrap(middleware::DefaultHeaders::new().header("X-Version", "0.2").header("Access-Control-Allow-Origin", "*"))
 
             .service(web::resource("/index").route(web::get().to(api::server_info)))
@@ -55,6 +54,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
             .service(Files::new("/js", "theme/js"))
             .service(Files::new("/css", "theme/css"))
+            .service(Files::new("/_upload", "_data/_upload"))
             .service(
                 web::resource("/*")
                     .route(web::get().to(api::action_handle))
