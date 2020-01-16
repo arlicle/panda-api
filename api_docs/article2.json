@@ -1,9 +1,12 @@
 {
-    "name":"文章接口",
+    "name":"文章接口", /*爱就爱假按揭啊 ddd*/
     "api":[
         {
-            "name":"文章添加/编辑",
+            "name":"文章/添加/编辑", /* ddddd */
             "url":"/post/add/",
+
+
+
             "body":{
                 "$ref": "./_data/models2.json:Article",
                 "$exclude":["category_name", "read_count", "created", "create_username"],
