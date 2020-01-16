@@ -2,6 +2,11 @@
     "name":"文章接口", /*爱就爱假按揭啊 ddd*/
     "api":[
         {
+            "name":"照片上传",
+            "$ref": "./_data/common_api.json:photo_upload",
+            "url":"/upload/"
+        },
+        {
             "name":"文章/添加/编辑", /* ddddd */
             "url":"/post/add/",
             "body":{

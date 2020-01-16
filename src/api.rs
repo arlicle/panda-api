@@ -176,7 +176,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 
                             if let Ok(x) = f.write_all(&data) {
                                 form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
-                                form_data.insert("___upload___".to_string(), Value::String(format!("/_upload/{}", filename.to_string())));
+                                form_data.insert(format!("__{}", field_name), Value::String(format!("/_upload/{}", filename)));
                                 is_request_form_data_body = true;
                             } else {
                                 println!("create file error {}", filepath2);
@@ -191,7 +191,9 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                             form_data.insert(field_name.to_string(), Value::String(v.to_string()));
                             is_request_form_data_body = true;
                         }
+
                     }
+                    continue;
                 }
                 break;
             }
