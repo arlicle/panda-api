@@ -23,6 +23,7 @@ rand = "0.7.2"
 
 actix-files = "0.2.1"
 actix-multipart = "0.2.0"
+futures = "0.3.1"
 
 
 

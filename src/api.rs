@@ -1,11 +1,16 @@
 use actix_web::{http, web, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
+use actix_files;
+
 use actix_multipart::Multipart;
+use futures::StreamExt;
+use regex::Regex;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value, Map};
 use std::collections::HashMap;
 use std::fs;
+use std::io::prelude::*;
 use std::sync::Mutex;
 use log::debug;
 use crate::db::{self, ApiDoc};
@@ -103,29 +108,108 @@ pub struct FormData {
 
 /// 处理post、put、delete 请求
 ///
-pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
 
     // for api documents homepage
-    if req.path() == "/" {
-        let read_me = match fs::read_to_string("theme/index.html") {
+    let req_path = req.path();
+
+    if req_path == "/" {
+        let d = match fs::read_to_string("theme/index.html") {
             Ok(x) => x,
             Err(_) => "no data file".to_string()
         };
-
-        return HttpResponse::Ok().content_type("text/html").body(read_me);
+        return HttpResponse::Ok().content_type("text/html").body(d);
     }
 
-    let request_body = match request_body {
-        Some(x) => x.into_inner(),
+
+    let mut form_data: Map<String, Value> = Map::new();
+    let mut is_request_body = false;
+    let mut is_request_form_data_body = false;
+
+    let mut new_request_body = match request_body {
+        Some(x) => {
+            is_request_body = true;
+            x.into_inner()
+        }
         None => Value::Null
     };
+
+
+    if !is_request_body {
+        // 没有request_body，有可能是文件上传
+        // 进行文件上传处理
+        if let Some(mut payload) = request_form_data {
+            // 如果是文件上传
+            while let Some(item) = payload.next().await {
+                if let Ok(mut field) = item {
+                    let content_type = match field.content_disposition() {
+                        Some(v) => v,
+                        None => {
+                            break;
+                        }
+                    };
+                    let x = field.headers().clone();
+                    let x = x.get("content-disposition").unwrap().to_str().unwrap();
+                    let re = Regex::new(r#"form-data; name="\w+""#).unwrap();
+
+                    let mut field_name = "";
+                    if let Some(m) = re.find(x) {
+                        field_name = &x[m.start() + 17..m.end() - 1];
+                    };
+
+                    let mut filename = "";
+                    if let Some(f) = content_type.get_filename() {
+                        filename = f;
+                    }
+
+                    match std::fs::create_dir_all("./_data/_upload") {
+                        Ok(i) => (),
+                        Err(e) => ()
+                    }
+
+                    let filepath = format!("./_data/_upload/{}", filename);
+                    let filepath2 = &format!("./_data/_upload/{}", filename);
+
+                    if let Ok(mut f) = web::block(|| std::fs::File::create(filepath)).await {
+                        while let Some(chunk) = field.next().await {
+                            let data = chunk.unwrap();
+
+                            if let Ok(x) = f.write_all(&data) {
+                                form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
+                                form_data.insert("___upload___".to_string(), Value::String(format!("/_upload/{}", filename.to_string())));
+                                is_request_form_data_body = true;
+                            } else {
+                                println!("create file error {}", filepath2);
+                            }
+                        }
+                    } else {
+                        let x = field.next();
+                        while let Some(chunk) = field.next().await {
+                            let data = chunk.unwrap();
+                            let x = data.to_vec();
+                            let v = std::str::from_utf8(&x).unwrap();
+                            form_data.insert(field_name.to_string(), Value::String(v.to_string()));
+                            is_request_form_data_body = true;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+
+    if is_request_form_data_body {
+        new_request_body = Value::Object(form_data);
+    }
 
     let request_query = match request_query {
         Some(x) => x.into_inner(),
         None => Value::Null
     };
 
-    find_response_data(&req, request_body, request_query, db_data)
+
+    find_response_data(&req, new_request_body, request_query, db_data)
 }
 
 
@@ -138,7 +222,7 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
     let req_method = req.method().as_str();
 
     for (k, a_api_data) in api_data {
-// 匹配
+        // 匹配
         let res = ResourceDef::new(k);
         if res.is_match(req_path) {
             let a_api_data = match a_api_data.get(req_method) {
@@ -156,16 +240,16 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
 
             if test_data.is_null() {
                 return HttpResponse::Ok().json(json!({
-"code": - 1,
-"msg": format ! ("this api {} with defined method {} have not test_data", req_path, req_method)
-}));
+                    "code": - 1,
+                    "msg": format ! ("this api {} with defined method {} have not test_data", req_path, req_method)
+                }));
             }
 
             if !test_data.is_array() {
                 return HttpResponse::Ok().json(json!({
-"code": - 1,
-"msg": format ! ("this api {} with defined method {} test_data is not a array", req_path, req_method)
-}));
+                    "code": - 1,
+                    "msg": format ! ("this api {} with defined method {} test_data is not a array", req_path, req_method)
+                }));
             }
 
             let x = create_mock_response(&a_api_data.response);
@@ -193,9 +277,9 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
     };
 
     HttpResponse::Ok().json(json!({
-"code": - 1,
-"msg": format ! ("this api address {} no test_data match", req_path)
-}))
+        "code": - 1,
+        "msg": format ! ("this api address {} no test_data match", req_path)
+    }))
 }
 
 
@@ -214,7 +298,7 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                     }
                     for (k, v) in value2_a {
                         match value1_a.get(k) {
-// 判断请求数据 与测试数据集的每个字段的值是否相等
+                            // 判断请求数据 与测试数据集的每个字段的值是否相等
                             Some(v2) => {
                                 if v2 != v {
                                     return false;
@@ -238,7 +322,7 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
         }
         Value::Array(a) => (),
         Value::Null => {
-// 让null 和 empty一样的相等
+            // 让null 和 empty一样的相等
             match value2.as_object() {
                 Some(value2_a) => {
                     if value2_a.is_empty() {
@@ -260,8 +344,6 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
-    result.insert("Hello".to_string(), Value::from("dddd"));
-    result.insert("bbb".to_string(), Value::from(10));
     if response_model.is_object() {
         let response_model = response_model.as_object().unwrap();
         for (key, value) in response_model {

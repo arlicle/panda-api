@@ -1,17 +1,14 @@
 {
-    "name":"文章接口", /*爱就爱假按揭啊 ddd*/
+    "name":"文章接口",
+    "define":{
+        "model": "./_data/models.json",
+        "article": "./_data/models.json:Article"
+    },
     "api":[
         {
-            "name":"文章/添加/编辑", /* ddddd */
-            "url":"/post/add/",
-            "body":{
-                "$ref": "./_data/models2.json:Article",
-                "$exclude":["category_name", "read_count", "created", "create_username"],
-                "id":{"name":"文章id", "desc":"添加提交的时候是没有id, 编辑提交的时候才有", "type":"number", "required":false}
-            },
-            "response":{
-                "id": {"name":"文章id"}
-            }
+            "name":"照片上传",
+            "$ref": "./_data/common_api.json:photo_upload",
+            "url":"/upload/"
         },
         {
             "name":"查看文章",
@@ -26,7 +23,7 @@
                 "current_page": {"name":"当前页码", "type":"number"},
                 "result": 
                     [{
-                        "$ref": "./_data/models2.json:Article",
+                        "$ref": "$article",
                         "$exclude":["category_id"]
                     }]
             }
@@ -44,7 +41,7 @@
                 "current_page": {"name":"当前页码", "type":"number"},
                 "result": 
                     [{
-                        "$ref": "./_data/models2.json:Article",
+                        "$ref": "$article",
                         "$include":["id", "title", "category_name", "author_name", "tag", "created"]
                     }]
             }
@@ -62,8 +59,8 @@
                 "current_page": {"name":"当前页码", "type":"number"},
                 "result": 
                     [{
-                        "$ref": "./_data/models2.json:Article",
-                        "$include":["id", "title"]
+                        "id":{"$ref": "$article.id"},
+                        "title":{"$ref": "$article.title"}
                     }]
             }
         }
