@@ -1,5 +1,13 @@
 {
   "project_name": "Panda Api",
   "project_desc": "Panda Api is a simple api manage tool",
-  "server_address": "http://139.155.127.14:8888"
+  "global": {
+    "api":{
+      "auth": true,
+      "response":{
+        "code":{"name":"返回的状态码", "type":"number"},
+        "msg":{"name":"返回的状态说明"}
+      }
+    }
+  }
 }

@@ -1,0 +1,68 @@
+{
+    "name":"测试接口",
+    "api":[
+        {
+            "name":"一个接口",
+            "response":{
+            }
+        },
+        {
+            "name":"获取当前药剂师已审核列表",
+            "method":"POST",
+            "url":"/pharmacist/chufangdan/audited/list/",
+            "body":{
+                "page":{"name":"分页", "type":"number"}
+            },
+            "response":{
+                "$ref":"./_data/models.json:Response",
+                "total_page": {"name":"总页数", "type":"number"},
+                "total_count": {"name":"总记录数", "type":"number"},
+                "current_page": {"name":"当前页码", "type":"number"},
+                "patient_name": {"$ref":"$Chufangdan.patient_name"},
+                "result": 
+                    [{
+                        "-name":"处方单列表",
+                        "id": {"name":"处方单id", "type":"number"},
+                        "created": {"name":"创建时间", "type":"number"},
+                        "chufangdan_code": {"name":"处方单编码"},
+                        "drug_type": {"$ref":"$Chufangdan.drug_type"},
+                        "patient_name": {"$ref":"$Chufangdan.patient_name"},
+                        "patient_tell": {"$ref":"$Chufangdan.patient_tell"},
+                        "pharmacist_verify_status": {"$ref":"$Chufangdan.pharmacist_verify_status"},
+                        "pharmacist_name": {"$ref":"$Chufangdan.pharmacist_name"},
+                        "pharmacist_verify_time": {"$ref":"$Chufangdan.pharmacist_verify_time"},
+                        "is_video_call": {"$ref":"$Chufangdan.is_video_call"}
+                    }]
+                
+            }
+        },
+        {
+            "name":"文章列表",
+            "method":"POST",
+            "url":"/post/star/list/",
+            "body":{
+                "page":{"name":"分页", "type":"number"}
+            },
+            "response":{
+                "total_page": {"name":"总页数", "type":"number"},
+                "total_count": {"name":"总记录数", "type":"number"},
+                "current_page": {"name":"当前页码", "type":"number"},
+                "result": 
+                    [{
+                        "-name":"文章列表",
+                        "-desc":"只包含用户点赞过的文章列表",
+                        "id": {"name":"用户id", "type":"number"},
+                        "title": {"name":"文章标题"},
+                        "category": {
+                            "-name":"文章所属分类",
+                            "-desc":"这里为了体现对象，所以就特意把文章分类用一个对象来表示",
+                            "id":{"name":"分类id", "type":"number"},
+                            "name":{"name":"分类名称", "type":"string"}
+                        },
+                        "content": {"name":"文章内容"},
+                        "created": {"name":"文章创建时间", "type":"number"}
+                    }]
+            }
+        }
+    ]
+}

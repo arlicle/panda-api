@@ -232,7 +232,6 @@ impl Database {
                 };
                 let (mut ref_files, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
 
-
                 let query = match api.get("query") {
                     Some(query) => query.clone(),
                     None => {
@@ -244,20 +243,33 @@ impl Database {
                 };
                 let (mut ref_files, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
 
-
-                let response = match api.get("response") {
-                    Some(response) => {
-                        response.clone()
+                // 最后查询global_value
+                let mut response: Map<String, Value> = match basic_data.global_value.pointer("/api/response") {
+                    Some(v) => {
+                        v.as_object().unwrap().clone()
                     }
-                    None => {
-                        match ref_data.get("response") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
+                    None => json!({}).as_object().unwrap().clone()
+                };
+
+
+                if let Some(r) = ref_data.get("response") {
+                    if let Some(rm) = r.as_object() {
+                        for (k, v) in rm {
+                            response.insert(k.to_string(), v.clone());
                         }
                     }
-                };
+                }
+
+                if let Some(r) = api.get("response") {
+                    if let Some(rm) = r.as_object() {
+                        for (k, v) in rm {
+                            response.insert(k.to_string(), v.clone());
+                        }
+                    }
+                }
+
                 // 处理response中的$ref
-                let (mut ref_files2, response) = parse_attribute_ref_value(response, doc_file_obj, doc_file);
+                let (mut ref_files2, response) = parse_attribute_ref_value(Value::Object(response), doc_file_obj, doc_file);
 
                 ref_files.append(&mut ref_files2);
                 for ref_file in ref_files {
@@ -331,7 +343,6 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
                 file_path = filename.to_string();
             }
             file_path = file_path.trim_start_matches("/").to_string();
-
             // 加载数据文件
             if let Ok(d) = fs::read_to_string(&file_path) {
                 let d = fix_json(d);
@@ -476,24 +487,37 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
             }
             let (ref_file, ref_data) = load_ref_file_data(v_str, doc_file);
             ref_files.push(ref_file);
-            match ref_data {
-                Some(vv) => {
-                    new_value = match vv.as_object() {
-                        Some(v) => v.clone(),
-                        None => {
-                            println!(" file value error '{}' got {:?}", v_str, vv);
-                            json!({}).as_object().unwrap().clone()
+            let mut has_include = false;
+            if let Some(vv) = ref_data {
+                new_value = match vv.as_object() {
+                    Some(ref_data_map) => {
+                        // 判断是否有include 字段，然后只引入include
+                        let mut new_result = Map::new();
+                        if let Some(e) = value_obj.get("$include") {
+                            for v2 in e.as_array().unwrap() {
+                                has_include = true;
+                                let key_str = v2.as_str().unwrap();
+                                if let Some(v) = ref_data_map.get(key_str) {
+                                    new_result.insert(key_str.to_string(), v.clone());
+                                }
+                            }
+                        }
+                        if has_include {
+                            new_result
+                        } else {
+                            ref_data_map.clone()
                         }
                     }
-
-//                        .unwrap().clone();
+                    None => {
+                        println!(" file value error '{}' got {:?}", v_str, vv);
+                        json!({}).as_object().unwrap().clone()
+                    }
                 }
-                None => ()
             }
 
-            // 移除exclude中的字段
-            match value_obj.get("$exclude") {
-                Some(e) => {
+            if !has_include {
+                // 移除exclude中的字段
+                if let Some(e) = value_obj.get("$exclude") {
                     for v2 in e.as_array().unwrap() {
                         let key_str = v2.as_str().unwrap();
                         if key_str.contains(".") {
@@ -503,13 +527,15 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                         }
                     }
                 }
-                None => ()
             }
         }
 
 
         for (k, v) in value_obj {
-            if k == "$ref" || k == "$exclude" {
+            if (v.is_string() && v.as_str().unwrap() == "$del") {
+                new_value.remove(k);
+                continue;
+            } else if k == "$ref" || k == "$exclude" || k == "$include" {
                 continue;
             } else {
                 let (mut ref_files2, field_value) = parse_attribute_ref_value(v.clone(), doc_file_obj, doc_file);

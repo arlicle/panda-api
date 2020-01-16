@@ -1,0 +1,15 @@
+{
+    "Article":{
+        "id":{"name":"文章id", "desc":"添加提交的时候是没有id, 编辑提交的时候才有", "type":"number"},
+        "title":{"name":"文章标题"},
+        "summary":{"name":"文章摘要"},
+        "category_id":{"name":"文章分类id", "type":"number"},
+        "category_name":{"name":"文章分类名称"},
+        "author_name":{"name":"文章作者姓名"},
+        "source":{"name":"文章来源"},
+        "tag":{"name":"文章标签"},
+        "read_count":{"name":"阅读次数", "type":"number"},
+        "created":{"name":"创建时间", "type":"number"},
+        "create_username":{"name":"文章创建人姓名"}
+    }
+}
