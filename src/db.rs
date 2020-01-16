@@ -53,7 +53,10 @@ pub struct ApiData {
 
 
 fn fix_json(org_string: String) -> String {
-    let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap();
+    let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap(); // 修复字符串换行
+
+    let re3 = Regex::new(r"/\*(.|[\r\n])*?\*/").unwrap(); // 去掉/* */注释
+
     let mut new_string = org_string.clone();
     for cap in re.captures_iter(&org_string) {
         let x = &cap[0];
@@ -62,6 +65,9 @@ fn fix_json(org_string: String) -> String {
             new_string = new_string.replace(x, &y);
         }
     }
+
+    let new_string = re3.replace_all(&new_string, "").to_string();
+
     new_string
 }
 
