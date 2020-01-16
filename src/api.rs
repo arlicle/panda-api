@@ -112,6 +112,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 
     // for api documents homepage
     let req_path = req.path();
+    let body_mode = get_request_body_mode(&req);
 
     if req_path == "/" {
         let d = match fs::read_to_string("theme/index.html") {
@@ -122,22 +123,12 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     }
 
 
-    let mut form_data: Map<String, Value> = Map::new();
-    let mut is_request_body = false;
-    let mut is_request_form_data_body = false;
-
-    let mut new_request_body = match request_body {
-        Some(x) => {
-            is_request_body = true;
-            x.into_inner()
-        }
-        None => Value::Null
-    };
-
-
-    if !is_request_body {
+    let mut new_request_body;
+    if &body_mode == "form-data" {
         // 没有request_body，有可能是文件上传
         // 进行文件上传处理
+
+        let mut form_data: Map<String, Value> = Map::new();
         if let Some(mut payload) = request_form_data {
             // 如果是文件上传
             while let Some(item) = payload.next().await {
@@ -177,7 +168,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                             if let Ok(x) = f.write_all(&data) {
                                 form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
                                 form_data.insert(format!("__{}", field_name), Value::String(format!("/_upload/{}", filename)));
-                                is_request_form_data_body = true;
                             } else {
                                 println!("create file error {}", filepath2);
                             }
@@ -189,7 +179,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                             let x = data.to_vec();
                             let v = std::str::from_utf8(&x).unwrap();
                             form_data.insert(field_name.to_string(), Value::String(v.to_string()));
-                            is_request_form_data_body = true;
                         }
 
                     }
@@ -198,11 +187,14 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                 break;
             }
         }
-    }
-
-
-    if is_request_form_data_body {
         new_request_body = Value::Object(form_data);
+    } else {
+        new_request_body = match request_body {
+            Some(x) => {
+                x.into_inner()
+            }
+            None => Value::Null
+        };
     }
 
     let request_query = match request_query {
@@ -210,9 +202,10 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         None => Value::Null
     };
 
-
     find_response_data(&req, new_request_body, request_query, db_data)
 }
+
+
 
 
 /// 找到对应url 对应请求的数据
@@ -222,6 +215,7 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
     let api_data = &db_data.api_data;
     let req_path = req.path();
     let req_method = req.method().as_str();
+
 
     for (k, a_api_data) in api_data {
         // 匹配
@@ -342,6 +336,37 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
     }
     false
 }
+
+
+
+/// 获取请求的request_body
+fn get_request_body_mode(req:&HttpRequest) -> String {
+    let req_method = req.method().as_str();
+    if req_method == "GET" {
+        return "".to_string();
+    }
+
+    if let Some(head_value) = req.headers().get("content-type") {
+        if let Ok(value_str) = head_value.to_str() {
+            if value_str == "application/json" {
+                return "json".to_string();
+            } else if value_str.starts_with("multipart/form-data;") {
+                return "form-data".to_string();
+            } else if value_str == "text/plain" {
+                return "text".to_string();
+            } else if value_str == "application/javascript" {
+                return "javascript".to_string();
+            } else if value_str == "text/html" {
+                return "html".to_string();
+            } else if value_str == "application/xml" {
+                return "xml".to_string();
+            }
+        }
+    }
+
+    "".to_string()
+}
+
 
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
