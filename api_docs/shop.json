@@ -1,0 +1,112 @@
+{
+    "name":"药店操作",
+    "desc":"药店人员的相关操作，上传处方，查看处方审核状态，视频通话等",
+    "order":2,
+    "api":[
+        {
+            "$ref":"./_data/common_api.json:photo_upload"
+        },
+        {
+            "name":"上传处方",
+            "url":"/shop/chufangdan/add/",
+            "method":"POST",
+            "body_mode":"json",
+            "body": {
+                "name":"处方单数据",
+                "$ref":"./_data/models.json:Chufangdan",
+                "$exclude":["id", "repeat_buy_count", "created", "pharmacist_verify_status", "pharmacist_verify_time", "pharmacist", "pharmacist_name", "items.name"]
+            }
+        },
+        {
+            "name":"处方单查看",
+            "url":"/shop/chufangdan/",
+            "method":"POST",
+            "body_mode":"json",
+            "body": {
+                "id":{"name":"处方单id", "type":"number"}
+            },
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "result":{
+                    "name":"处方单数据",
+                    "$ref":"./_data/models.json:Chufangdan"
+                }
+            }
+        },
+        {
+            "name":"当前有多少处方单等待审核",
+            "url":"/chufangdan/waiting/list/count/",
+            "method":"GET",
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "result":{
+                    "-name":"处方单审核数据",
+                    "-desc":"西药待审核数据 = 西药转交他们待审核 + 西药等待池中等待审核
+                    
+                    中药待审核数据 = 中药转交他们待审核 + 中药等待池中等待审核
+                    
+                    总的等待审核处方数据 = 西药待审核数据 + 中药待审核数据
+                    ",
+                    "xiyao_doing":{"name":"西药正在审核", "type":"number"},
+                    "xiyao_reject":{"name":"西药转交他们待审核", "type":"number"},
+                    "xiyao_waiting":{"name":"西药等待池中等待审核", "type":"number"},
+                    "zhongyao_doing":{"name":"中药正在审核", "type":"number"},
+                    "zhongyao_reject":{"name":"中药转交他们待审核", "type":"number"},
+                    "zhongyao_waiting":{"name":"中药等待池中等待审核", "type":"number"}
+                }
+            }
+        },
+        {
+            "name":"上传照片查看",
+            "url":"/img/",
+            "method":"POST",
+            "body_mode":"json",
+            "body":{
+                "id":{"name":"照片id"}
+            },
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "data":{"name":"图片内容"}
+            }
+        },
+        {
+            "name":"药品查询接口",
+            "url":"/shop/drug/list/",
+            "method":"POST",
+            "body_mode":"json",
+            "body":{
+                "keyword":{"name":"查询关键字", "desc":"支持 药品编码、药品名称、药厂名称"}
+            },
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "result":[{
+                    "-name":"药品查询结果列表",
+                    "factory": {"name":"药厂名称"},
+                    "code": {"name":"药品编码"},
+                    "name": {"name":"药品名称"},
+                    "spec": {"name":"药品规格"}
+                }]
+            }
+        },
+        {
+            "name":"慢性病处方单查询",
+            "url":"/shop/chronic_disease/search/",
+            "method":"POST",
+            "body_mode":"json",
+            "body":{
+                "keyword":{"name":"查询关键字", "desc":"病人的手机号或身份证号"}
+            },
+            "response": {
+                "code":{"name":"返回结果状态代码", "type":"number"},
+                "msg":{"name":"返回结果状态说明"},
+                "result":{
+                    "$ref":"./_data/models.json:Chufangdan"
+                }
+            }
+        }
+    ]
+}

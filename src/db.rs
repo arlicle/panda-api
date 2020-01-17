@@ -132,7 +132,6 @@ impl Database {
 
         let current_dir = env::current_dir().expect("Failed to determine current directory");
         let current_dir = current_dir.to_str().unwrap().to_string();
-        println!("current_dir is {}", &current_dir);
 
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();

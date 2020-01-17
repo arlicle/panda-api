@@ -15,16 +15,12 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
 pub struct Config {
-    /// data folder
-    #[structopt(short, long, default_value = "./")]
-    folder: String,
-
     /// Listen ip
-    #[structopt(long, default_value = "127.0.0.1", env = "PANDA_API_HOST")]
+    #[structopt(short, long, default_value = "127.0.0.1", env = "PANDA_API_HOST")]
     host: String,
 
     /// Listen port
-    #[structopt(long, default_value = "9000", env = "PANDA_API_PORT")]
+    #[structopt(short, long, default_value = "9000", env = "PANDA_API_PORT")]
     port: usize,
 }
 
