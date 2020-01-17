@@ -1,8 +1,8 @@
 {
     "name":"文章接口",
     "define":{
-        "model": "./_data/models.json",
-        "article": "./_data/models.json:Article"
+        "model": "./_data/models2.json",
+        "article": "./_data/models2.json:Article"
     },
     "api":[
         {
