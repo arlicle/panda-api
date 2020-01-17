@@ -117,7 +117,12 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     if req_path == "/" {
         let d = match fs::read_to_string("_data/theme/index.html") {
             Ok(x) => x,
-            Err(_) => "no data file".to_string()
+            Err(_) => {
+                println!("no panda api doc theme file: _data/theme/index.html");
+                return  HttpResponse::Found()
+                    .header(http::header::LOCATION, "/__api_docs/")
+                    .finish();
+            }
         };
         return HttpResponse::Ok().content_type("text/html").body(d);
     }
