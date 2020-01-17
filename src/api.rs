@@ -115,7 +115,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     let body_mode = get_request_body_mode(&req);
 
     if req_path == "/" {
-        let d = match fs::read_to_string("theme/index.html") {
+        let d = match fs::read_to_string("_data/theme/index.html") {
             Ok(x) => x,
             Err(_) => "no data file".to_string()
         };
