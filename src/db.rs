@@ -154,7 +154,7 @@ impl Database {
         };
 
         let d = fix_json(d);
-        let mut v: Value = match serde_json::from_str(&d) {
+        let json_value: Value = match serde_json::from_str(&d) {
             Ok(v) => v,
             Err(e) => {
                 println!("Parse json file {} error : {:?}", doc_file, e);
@@ -162,7 +162,7 @@ impl Database {
             }
         };
 
-        let doc_file_obj = v.as_object().unwrap();
+        let doc_file_obj = json_value.as_object().unwrap();
         let doc_name = match doc_file_obj.get("name") {
             Some(name) => {
                 match name.as_str() {
@@ -199,7 +199,7 @@ impl Database {
                     // 处理api数据引用
                     Some(v) => {
                         let v = v.as_str().unwrap();
-                        let (mut ref_file, ref_data2) = load_ref_file_data(v, doc_file);
+                        let (ref_file, ref_data2) = load_ref_file_data(v, doc_file);
                         if ref_file != "" {
                             match fileindex_data.get_mut(&ref_file) {
                                 Some(x) => {
@@ -314,7 +314,7 @@ impl Database {
                 let a_api_data = Arc::new(Mutex::new(ApiData { name, desc, body_mode, body, query, response, test_data, auth: auth, url: url.clone(), method: method.clone() }));
                 // 形成 { url: {method:api} }
                 match api_data.get_mut(&url) {
-                    Some(mut data) => {
+                    Some(data) => {
                         data.insert(method.clone(), a_api_data.clone());
                     }
                     None => {
@@ -356,7 +356,7 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
             // 加载数据文件
             if let Ok(d) = fs::read_to_string(&file_path) {
                 let d = fix_json(d);
-                let mut data: Value = match serde_json::from_str(&d) {
+                let data: Value = match serde_json::from_str(&d) {
                     Ok(v) => v,
                     Err(e) => {
                         println!("Parse json file {} error : {:?}", filename, e);
@@ -561,7 +561,7 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
         // 处理array
         if let Some(value_array) = value.as_array() {
             if let Some(value_array_one) = value_array.get(0) {
-                let (mut ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
+                let (ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
                 return (ref_files, Value::Array(vec![array_item_value]));
             } else {
                 println!(" file array value empty '{}' got {:?}", doc_file, value);

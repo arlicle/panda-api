@@ -23,7 +23,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
     thread::spawn(move || {
         let (tx, rx) = channel();
         let mut watcher: RecommendedWatcher = Watcher::new(tx, Duration::from_secs(2)).unwrap();
-        let x = watcher.watch(&current_dir, RecursiveMode::Recursive).unwrap();
+        watcher.watch(&current_dir, RecursiveMode::Recursive).unwrap();
         loop {
             match rx.recv() {
                 Ok(event) => {
@@ -37,7 +37,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
                         DebouncedEvent::NoticeRemove(f) => {
                             update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
                         }
-                        DebouncedEvent::Rename(f1, f2) => {
+                        DebouncedEvent::Rename(_f1, f2) => {
                             update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
                         }
                         _ => {}
@@ -111,7 +111,7 @@ pub fn get_random_chinese_chars(mut length: u32) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
     while length > 0 {
-        let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
+//        let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
         let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
         match char::from_u32(n) {
             Some(c) => {
