@@ -141,7 +141,7 @@ impl Database {
     /// 只加载一个api_doc文件的数据
     ///
     pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
-        if !doc_file.ends_with(".json") || doc_file.ends_with("_settings.json") || doc_file.contains("_data/") || doc_file.starts_with(".") {
+        if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5")) || doc_file == "_settings.json" || doc_file == "_settings.json5" || doc_file.contains("_data/") || doc_file.starts_with(".") {
             return;
         }
 
