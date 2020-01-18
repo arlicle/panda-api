@@ -3,7 +3,6 @@ use actix_files::Files;
 
 use dotenv::dotenv;
 use std::sync::{Mutex};
-use actix_web::dev::ResourceDef;
 
 mod db;
 mod api;
