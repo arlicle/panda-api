@@ -1,0 +1,15 @@
+{
+    name:"用户566",
+    desc:"用户的登录、退出、密码修改、
+    
+    获取用户当前登录是否有效，以及更新用户在线状态",
+    order:1,
+    define:{
+        "0":"./_data/models.json:Response",
+        "1":"./_data/models.json:Response.code",	
+        "2":"./_data/models.json:Response.msg"	
+    },
+    api:[{
+        name:"用户登录"
+    }]
+}
