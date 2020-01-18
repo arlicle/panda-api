@@ -1,10 +1,11 @@
 # panda-api
 
-Panda makes it easier to build better api、 docs more quickly and eazy.
-Panda api是一个简单快速的接口文档管理工具，
+Panda api makes it easier to build better api docs more quickly and eazy for front end and back end.
+
+Panda api是一个简单快速的前后端接口文档管理工具，
 
 
-
+Panda api encourages test driven development. it takes care of much of the hassle of web development between front end and back end, when you write done your api docs, you can focus on writing front end without needing to finish the backend. It’s free and open source.
 
 
 现在的随着js和js的相关前端框架，移动App的发展，各类软件系统越来越使用前后端分离的方式进行开发。前端和后端被分离为了两个不同的工种，不通工种之间就需要进行交流沟通协作，但是前后端分离开发我一直找不到一个满足我需求的工具。
