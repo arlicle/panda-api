@@ -2,7 +2,7 @@
     "name":"文章接口",
     "api":[
         {
-            "name":"文章添加/编辑ddd",
+            "name":"文章添加/编辑",
             "url":"/post/add/",
             "body":{
                 "id":{"name":"文章id", "desc":"添加提交的时候是没有id, 编辑提交的时候才有", "type":"number", "required":false},

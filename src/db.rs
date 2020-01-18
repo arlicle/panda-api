@@ -150,7 +150,14 @@ impl Database {
             return;
         }
 
-        let d = fs::read_to_string(doc_file).expect(&format!("Unable to read file: {}", doc_file));
+        let d = match fs::read_to_string(doc_file) {
+            Ok(d) => d,
+            Err(e) => {
+                println!("Unable to read file: {}", doc_file);
+                return;
+            }
+        };
+
         let d = fix_json(d);
         let mut v: Value = match serde_json::from_str(&d) {
             Ok(v) => v,
