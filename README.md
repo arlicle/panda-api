@@ -1,6 +1,6 @@
 # panda-api
 
-Panda api makes it easier to build better api docs more quickly and eazy for front end and back end.
+Panda api makes it easier to build better api docs more quickly and easy for front end and back end.
 
 Panda api是一个简单快速的前后端接口文档管理工具，
 

@@ -63,7 +63,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     if filename == "README.md" {
         let basic_data = db::load_basic_data();
         data.basic_data = basic_data;
-    } else if filename == "_settings.json" {
+    } else if filename == "_settings.json" || filename == "_settings.json5" {
         // 全局重新加载
         *data = db::Database::load();
         return;
