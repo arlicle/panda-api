@@ -21,7 +21,6 @@ walkdir = "2.2.9"
 notify = "4.0.15"
 
 
-crossbeam-channel = "0.3.9"
 rand = "0.7.2"
 
 actix-files = "0.2.1"

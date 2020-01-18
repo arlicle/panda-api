@@ -1,4 +1,3 @@
-use log::debug;
 use serde_json::{json, Value, Map};
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +7,6 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use walkdir::WalkDir;
 use std::path::Path;
-use std::env;
 
 #[derive(Debug)]
 pub struct Database {
@@ -87,7 +85,7 @@ pub fn load_basic_data() -> BasicData {
                 match serde_json::from_str(&v) {
                     Ok(v) => v,
                     Err(e) => {
-                        println!("Parse json file {} error", settings_file);
+                        println!("Parse json file {} error {:?}", settings_file, e);
                         json!({})
                     }
                 }
@@ -130,9 +128,6 @@ impl Database {
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
-        let current_dir = env::current_dir().expect("Failed to determine current directory");
-        let current_dir = current_dir.to_str().unwrap().to_string();
-
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap().trim_start_matches("./");
@@ -153,7 +148,7 @@ impl Database {
         let d = match fs::read_to_string(doc_file) {
             Ok(d) => d,
             Err(e) => {
-                println!("Unable to read file: {}", doc_file);
+                println!("Unable to read file: {} {:?}", doc_file, e);
                 return;
             }
         };
@@ -254,7 +249,8 @@ impl Database {
                         }
                     }
                 };
-                let (mut ref_files, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
+                let (mut ref_files2, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
 
                 // 最后查询global_value
                 let mut response: Map<String, Value> = match basic_data.global_value.pointer("/api/response") {
@@ -343,10 +339,11 @@ impl Database {
 
 fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
-    let mut file_path = "".to_string();
+
 
     match ref_info.get(0) {
         Some(filename) => {
+            let mut file_path;
             if filename.starts_with("./_data") {
                 let path = Path::new(doc_file).parent().unwrap();
                 file_path = format!("{}/{}", path.to_str().unwrap(), filename.trim_start_matches("./"));
@@ -471,7 +468,6 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
     }
 
     if value.is_object() {
-        let mut result: Map<String, Value> = Map::new();
         let value_obj = value.as_object().unwrap();
         let mut new_value = value_obj.clone();
 
@@ -482,7 +478,7 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                 match doc_file_obj.get("define") {
                     Some(defined) => {
                         let re = Regex::new(r"\$\w+").unwrap();
-                        let mat = match re.find(v_str) {
+                        match re.find(v_str) {
                             Some(m) => {
                                 let m_str = &v_str[m.start() + 1..m.end()];
                                 match defined.get(m_str) {
@@ -548,7 +544,7 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
 
 
         for (k, v) in value_obj {
-            if (v.is_string() && v.as_str().unwrap() == "$del") {
+            if v.is_string() && v.as_str().unwrap() == "$del" {
                 new_value.remove(k);
                 continue;
             } else if k == "$ref" || k == "$exclude" || k == "$include" {
@@ -577,4 +573,4 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
 }
 
 /// 可以嵌套的删除Value里面的某一个字段数据
-fn remove_value_attribute_field(key_str: &str, value: Value) {}
+fn remove_value_attribute_field(_key_str: &str, _value: Value) {}

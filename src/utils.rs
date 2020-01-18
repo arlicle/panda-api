@@ -5,8 +5,7 @@ use std::time::Duration;
 
 use notify::{RecommendedWatcher, Watcher, RecursiveMode, DebouncedEvent};
 
-use crossbeam_channel::unbounded;
-use actix_web::{http, web, HttpRequest, HttpResponse};
+use actix_web::web;
 
 use std::sync::mpsc::channel;
 use crate::db;

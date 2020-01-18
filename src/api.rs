@@ -1,6 +1,5 @@
 use actix_web::{http, web, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
-use actix_files;
 
 use actix_multipart::Multipart;
 use futures::StreamExt;
@@ -8,12 +7,10 @@ use regex::Regex;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value, Map};
-use std::collections::HashMap;
 use std::fs;
 use std::io::prelude::*;
 use std::sync::Mutex;
-use log::debug;
-use crate::db::{self, ApiDoc};
+use crate::db;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,7 +30,7 @@ pub struct ApiDocDataRequest {
 
 
 /// 根据接口文件路径获取接口文档详情
-pub async fn get_api_doc_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let mut data = data.lock().unwrap();
     let mut api_docs = &data.api_docs;
 
@@ -64,7 +61,7 @@ pub async fn get_api_doc_data(req: HttpRequest, req_get: web::Query<ApiDocDataRe
 /// 获取项目接口的基本信息
 /// 返回项目名称，介绍，项目接口简要列表
 /// 前端需要自己根据 api_doc 的order进行排序
-pub async fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let mut data = data.lock().unwrap();
     let mut basic_data = &data.basic_data;
     let mut api_docs = &data.api_docs;
@@ -84,7 +81,7 @@ pub async fn get_api_doc_basic(req: HttpRequest, data: web::Data<Mutex<db::Datab
 
 
 /// 获取_data目录中的数据, models数据 或者其它加载数据
-pub async fn get_api_doc_schema_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
+pub async fn get_api_doc_schema_data(req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
     let read_me = match fs::read_to_string(&req_get.filename) {
         Ok(x) => x,
         Err(_) => "no data file".to_string()
@@ -152,8 +149,10 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                     }
 
                     match std::fs::create_dir_all("./_data/_upload") {
-                        Ok(i) => (),
-                        Err(e) => ()
+                        Ok(_) => (),
+                        Err(e) => {
+                            println!("create folder failed _data/_upload {:?}", e);
+                        }
                     }
 
                     let filepath = format!("./_data/_upload/{}", filename);
@@ -163,7 +162,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                         while let Some(chunk) = field.next().await {
                             let data = chunk.unwrap();
 
-                            if let Ok(x) = f.write_all(&data) {
+                            if let Ok(_) = f.write_all(&data) {
                                 form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
                                 form_data.insert(format!("__{}", field_name), Value::String(format!("/_upload/{}", filename)));
                             } else {
@@ -171,7 +170,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                             }
                         }
                     } else {
-                        let x = field.next();
                         while let Some(chunk) = field.next().await {
                             let data = chunk.unwrap();
                             let x = data.to_vec();
@@ -246,10 +244,10 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
                 }));
             }
 
-            let x = create_mock_response(&a_api_data.response);
+//            let x = create_mock_response(&a_api_data.response);
             let test_data = test_data.as_array().unwrap();
 
-            'a_loop: for test_case_data in test_data {
+            for test_case_data in test_data {
                 let case_body = match test_case_data.get("body") {
                     Some(v) => v,
                     None => &Value::Null
@@ -314,7 +312,7 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                 }
             }
         }
-        Value::Array(a) => (),
+        Value::Array(_a) => (),
         Value::Null => {
             // 让null 和 empty一样的相等
             match value2.as_object() {
@@ -371,7 +369,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
         let response_model = response_model.as_object().unwrap();
-        for (key, value) in response_model {
+        for (_key, value) in response_model {
             let field_type = match value.get("type") {
                 Some(v) => v.as_str().unwrap(),
                 None => "string"
