@@ -1,6 +1,6 @@
 use serde_json::{json, Value, Map};
 use serde::{Deserialize, Serialize};
-
+use json5;
 use std::fs;
 use std::sync::{Mutex, Arc};
 use std::collections::{HashMap, HashSet};
@@ -76,25 +76,28 @@ pub fn load_basic_data() -> BasicData {
         Err(_) => "Panda api docs".to_string()
     };
 
-    let settings_file = "_settings.json";
+    let settings_files = ["_settings.json5", "_settings.json"];
 
-    let setting_value =
+    let mut setting_value = json!({});
+    for settings_file in settings_files.iter() {
         match fs::read_to_string(settings_file) {
             Ok(v) => {
                 let v = fix_json(v);
-                match serde_json::from_str(&v) {
+                match json5::from_str(&v) {
                     Ok(v) => v,
                     Err(e) => {
-                        println!("Parse json file {} error {:?}", settings_file, e);
+//                        println!("Parse json file {} error {:?}", settings_file, e);
                         json!({})
                     }
                 }
             }
             Err(_) => {
-                println!("warning: no '{}' file", settings_file);
+//                println!("warning: no '{}' file", settings_file);
                 json!({})
             }
         };
+    }
+
 
     let obj = setting_value.as_object().unwrap();
 
@@ -154,7 +157,7 @@ impl Database {
         };
 
         let d = fix_json(d);
-        let json_value: Value = match serde_json::from_str(&d) {
+        let json_value: Value = match json5::from_str(&d) {
             Ok(v) => v,
             Err(e) => {
                 println!("Parse json file {} error : {:?}", doc_file, e);
@@ -356,7 +359,7 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
             // 加载数据文件
             if let Ok(d) = fs::read_to_string(&file_path) {
                 let d = fix_json(d);
-                let data: Value = match serde_json::from_str(&d) {
+                let data: Value = match json5::from_str(&d) {
                     Ok(v) => v,
                     Err(e) => {
                         println!("Parse json file {} error : {:?}", filename, e);
