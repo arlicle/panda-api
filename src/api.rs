@@ -31,8 +31,8 @@ pub struct ApiDocDataRequest {
 
 /// 根据接口文件路径获取接口文档详情
 pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let mut data = data.lock().unwrap();
-    let mut api_docs = &data.api_docs;
+    let data = data.lock().unwrap();
+    let api_docs = &data.api_docs;
 
     for (_, doc) in api_docs {
         if doc.filename == req_get.filename {
@@ -62,9 +62,9 @@ pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web:
 /// 返回项目名称，介绍，项目接口简要列表
 /// 前端需要自己根据 api_doc 的order进行排序
 pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let mut data = data.lock().unwrap();
-    let mut basic_data = &data.basic_data;
-    let mut api_docs = &data.api_docs;
+    let data = data.lock().unwrap();
+    let basic_data = &data.basic_data;
+    let api_docs = &data.api_docs;
 
     let mut docs = Vec::new();
     for (_, doc) in api_docs {
@@ -116,7 +116,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         };
         return HttpResponse::Ok().content_type("text/html").body(d);
     }
-
 
     let mut new_request_body;
     if &body_mode == "form-data" {
@@ -198,7 +197,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         None => Value::Null
     };
 
-    find_response_data(&req, new_request_body, request_query, db_data)
+    find_response_data(&req, body_mode, new_request_body, request_query, db_data)
 }
 
 
@@ -206,7 +205,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(req: &HttpRequest, body_mode:String, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
     let api_data = &db_data.api_data;
     let req_path = req.path();
@@ -252,6 +251,10 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
                     Some(v) => v,
                     None => &Value::Null
                 };
+                let case_form_data = match test_case_data.get("form-data") {
+                    Some(v) => v,
+                    None => &Value::Null
+                };
                 let case_query = match test_case_data.get("query") {
                     Some(v) => v,
                     None => &Value::Null
@@ -261,9 +264,16 @@ fn find_response_data(req: &HttpRequest, request_body: Value, request_query: Val
                     None => &Value::Null
                 };
 
-                if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) {
-                    return HttpResponse::Ok().json(case_response);
+                if &body_mode == "form-data"{
+                    if is_value_equal(&request_body, case_form_data) && is_value_equal(&request_query, case_query) {
+                        return HttpResponse::Ok().json(case_response);
+                    }
+                } else {
+                    if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) {
+                        return HttpResponse::Ok().json(case_response);
+                    }
                 }
+
             }
         }
     };
@@ -366,7 +376,7 @@ fn get_request_body_mode(req:&HttpRequest) -> String {
 
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
-    let mut result: Map<String, Value> = Map::new();
+    let result: Map<String, Value> = Map::new();
     if response_model.is_object() {
         let response_model = response_model.as_object().unwrap();
         for (_key, value) in response_model {
