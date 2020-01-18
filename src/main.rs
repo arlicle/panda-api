@@ -2,7 +2,7 @@ use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
 
 use dotenv::dotenv;
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex};
 use actix_web::dev::ResourceDef;
 
 mod db;
@@ -44,7 +44,6 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::new("%a %{User-Agent}i"))
             .wrap(middleware::DefaultHeaders::new().header("X-Version", "0.2").header("Access-Control-Allow-Origin", "*"))
 
-            .service(web::resource("/index").route(web::get().to(api::server_info)))
             .service(web::resource("/__api_docs/").route(web::get().to(api::get_api_doc_basic)))
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))

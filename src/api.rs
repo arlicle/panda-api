@@ -31,13 +31,6 @@ pub struct ApiDocDataRequest {
 }
 
 
-pub async fn server_info() -> HttpResponse {
-    HttpResponse::Ok().json(json!({
-      "name": "mockrs",
-      "author": "PrivateRookie"
-    }))
-}
-
 
 /// 根据接口文件路径获取接口文档详情
 pub async fn get_api_doc_data(req: HttpRequest, req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
