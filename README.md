@@ -17,7 +17,7 @@ Panda api encourages test driven development. it takes care of much of the hassl
 
 Panda Api 接口文档的工具满足以下几个特性：
 1. 提供一份可以前后端浏览的接口文档
-2. 操作成本、学习成本非常低
+2. 使用json或json5语法来写文档，操作成本、学习成本非常低
 3. 接口文档也可以像代码一样进行版本控制，前后端都有维护的权限。Panda api依赖git等版本管理工具来做
 4. 可以在定义好文档后，立即为前端开发提供接口服务，不用等待后端开发完成
 5. 可以使用这个工具进行前端测试和后端测试
