@@ -24,7 +24,14 @@ Panda Api 接口文档的工具满足以下几个特性：
 
 这个工具的前端展现上还在开发完善中，但是功能已近能够满足前后端接口文档的编写，以及快速开发了。
 
-## 使用文档
+### 带有样例的使用包下载 
+[Panda Api for Mac 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_mac_0.2.tar)  
+[Panda Api for Linux 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_linux_0.2.tar)  
+[Panda Api for Windows 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_windows_0.2.tar)  
+
+
+
+### 使用文档
 [Panda Api使用说明(一)](https://www.debugmyself.com/p/2020/1/15/Panda-api%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)  
 [Panda Api使用说明(二)](https://www.debugmyself.com/p/2020/1/15/Panda-api%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)  
 [Mac下安装配置](https://www.debugmyself.com/p/2020/1/17/Mac%E4%B8%8B%E5%AE%89%E8%A3%85Panda-Api/)  
