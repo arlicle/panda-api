@@ -22,6 +22,8 @@ walkdir = "2.2.9"
 #notify = "5.0.0-pre.2"
 notify = "4.0.15"
 
+actix-web-actors = "2.0.0"
+actix = "0.9.0"
 
 
 rand = "0.7.2"

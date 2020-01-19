@@ -1,5 +1,6 @@
 use actix_web::{http, web, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
+use std::time::{Duration, Instant};
 
 use actix_multipart::Multipart;
 use futures::StreamExt;
@@ -10,8 +11,10 @@ use serde_json::{json, Value, Map};
 use std::fs;
 use std::io::prelude::*;
 use std::sync::Mutex;
-use crate::db;
+use actix_web_actors::ws;
 
+use crate::db;
+use crate::websocket::{WsChatSession};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DocSummary {
@@ -99,10 +102,26 @@ pub struct FormData {
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+    
+    if is_websocket_connect(&req) {
+//        return ws::start(
+//            WsChatSession {
+//                id: 0,
+//                hb: Instant::now(),
+//                room: "Main".to_owned(),
+//                name: None,
+//                addr: srv.get_ref().clone(),
+//            },
+//            &req,
+//            stream,
+//        )
+    }
+
 
     // for api documents homepage
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
+    println!("body_mode: {:?}", body_mode);
 
     if req_path == "/" {
         let d = match fs::read_to_string("_data/theme/index.html") {
@@ -374,6 +393,22 @@ fn get_request_body_mode(req:&HttpRequest) -> String {
     "".to_string()
 }
 
+/// 判断是否是websocket连接请求
+fn is_websocket_connect(req:&HttpRequest) -> bool {
+
+    let mut has_version = false;
+    let mut has_key = false;
+    if let Some(x) = req.headers().get("sec-websocket-version") {
+        has_version = true;
+    }
+    if let Some(x) = req.headers().get("sec-websocket-key") {
+        has_key = true;
+    }
+    if has_version && has_key {
+        return true;
+    }
+    false
+}
 
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
