@@ -7,6 +7,8 @@ use std::sync::{Mutex};
 mod db;
 mod api;
 mod utils;
+mod websocket;
+mod server;
 
 use structopt::StructOpt;
 
