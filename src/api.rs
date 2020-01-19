@@ -102,7 +102,7 @@ pub struct FormData {
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    
+
     if is_websocket_connect(&req) {
 //        return ws::start(
 //            WsChatSession {
@@ -121,7 +121,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     // for api documents homepage
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
-    println!("body_mode: {:?}", body_mode);
 
     if req_path == "/" {
         let d = match fs::read_to_string("_data/theme/index.html") {
