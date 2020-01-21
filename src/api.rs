@@ -1,4 +1,4 @@
-use actix_web::{http, web, HttpRequest, HttpResponse};
+use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
 use std::time::{Duration, Instant};
 
@@ -14,7 +14,10 @@ use std::sync::Mutex;
 use actix_web_actors::ws;
 
 use crate::db;
-use crate::websocket::{WsChatSession};
+use crate::websocket::WsChatSession;
+use crate::server;
+use actix::*;
+
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DocSummary {
@@ -29,7 +32,6 @@ struct DocSummary {
 pub struct ApiDocDataRequest {
     filename: String,
 }
-
 
 
 /// 根据接口文件路径获取接口文档详情
@@ -99,24 +101,33 @@ pub struct FormData {
     username: String,
 }
 
+
+pub async fn chat_route(
+    req: HttpRequest,
+    stream: web::Payload,
+    srv: web::Data<Addr<server::ChatServer>>,
+) -> Result<HttpResponse, Error> {
+    println!("s {:?}", req);
+    ws::start(
+        WsChatSession {
+            id: 0,
+            hb: Instant::now(),
+            room: "Main".to_owned(),
+            name: None,
+            addr: srv.get_ref().clone(),
+        },
+        &req,
+        stream,
+    )
+}
+
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-
     if is_websocket_connect(&req) {
-//        return ws::start(
-//            WsChatSession {
-//                id: 0,
-//                hb: Instant::now(),
-//                room: "Main".to_owned(),
-//                name: None,
-//                addr: srv.get_ref().clone(),
-//            },
-//            &req,
-//            stream,
-//        )
-    }
+        println!("is websocket ");
 
+    }
 
     // for api documents homepage
     let req_path = req.path();
@@ -127,7 +138,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
             Ok(x) => x,
             Err(_) => {
                 println!("no panda api doc theme file: _data/theme/index.html");
-                return  HttpResponse::Found()
+                return HttpResponse::Found()
                     .header(http::header::LOCATION, "/__api_docs/")
                     .finish();
             }
@@ -194,7 +205,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
                             let v = std::str::from_utf8(&x).unwrap();
                             form_data.insert(field_name.to_string(), Value::String(v.to_string()));
                         }
-
                     }
                     continue;
                 }
@@ -220,11 +230,9 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 }
 
 
-
-
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, body_mode:String, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
     let api_data = &db_data.api_data;
     let req_path = req.path();
@@ -283,7 +291,7 @@ fn find_response_data(req: &HttpRequest, body_mode:String, request_body: Value, 
                     None => &Value::Null
                 };
 
-                if &body_mode == "form-data"{
+                if &body_mode == "form-data" {
                     if is_value_equal(&request_body, case_form_data) && is_value_equal(&request_query, case_query) {
                         return HttpResponse::Ok().json(case_response);
                     }
@@ -292,7 +300,6 @@ fn find_response_data(req: &HttpRequest, body_mode:String, request_body: Value, 
                         return HttpResponse::Ok().json(case_response);
                     }
                 }
-
             }
         }
     };
@@ -363,9 +370,8 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
 }
 
 
-
 /// 获取请求的request_body
-fn get_request_body_mode(req:&HttpRequest) -> String {
+fn get_request_body_mode(req: &HttpRequest) -> String {
     let req_method = req.method().as_str();
     if req_method == "GET" {
         return "".to_string();
@@ -393,8 +399,7 @@ fn get_request_body_mode(req:&HttpRequest) -> String {
 }
 
 /// 判断是否是websocket连接请求
-fn is_websocket_connect(req:&HttpRequest) -> bool {
-
+fn is_websocket_connect(req: &HttpRequest) -> bool {
     let mut has_version = false;
     let mut has_key = false;
     if let Some(x) = req.headers().get("sec-websocket-version") {

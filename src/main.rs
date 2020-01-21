@@ -11,6 +11,7 @@ mod websocket;
 mod server;
 
 use structopt::StructOpt;
+use actix::Actor;
 
 
 #[derive(StructOpt, Debug)]
@@ -33,13 +34,19 @@ async fn main() -> std::io::Result<()> {
     pretty_env_logger::init();
     let conf = Config::from_args();
     let db = db::Database::load();
+
+    let websocket_uri = db.websocket_uri.clone();
     let web_db = web::Data::new(Mutex::new(db));
 
     utils::watch_api_docs_change(web_db.clone());
 
+    let server = server::ChatServer::default();
+    let server = server.start();
+
     println!("Starting service on http://{}:{}", conf.host, conf.port);
     HttpServer::new(move || {
         App::new()
+            .data(server.clone())
             .app_data(web_db.clone())
             .wrap(middleware::Logger::default())
             .wrap(middleware::Logger::new("%a %{User-Agent}i"))
@@ -51,6 +58,8 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/js", "_data/theme/js"))
             .service(Files::new("/css", "_data/theme/css"))
             .service(Files::new("/_upload", "_data/_upload"))
+
+            .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(
                 web::resource("/*")
                     .route(web::get().to(api::action_handle))

@@ -14,16 +14,16 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub struct WsChatSession {
     /// unique session id
-    id: usize,
+    pub id: usize,
     /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
     /// otherwise we drop connection.
-    hb: Instant,
+    pub hb: Instant,
     /// joined room
-    room: String,
+    pub room: String,
     /// peer name
-    name: Option<String>,
+    pub name: Option<String>,
     /// Chat server
-    addr: Addr<server::ChatServer>,
+    pub addr: Addr<server::ChatServer>,
 }
 
 impl Actor for WsChatSession {
