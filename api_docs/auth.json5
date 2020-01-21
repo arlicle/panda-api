@@ -10,6 +10,8 @@
         "2":"./_data/models.json:Response.msg"	
     },
     api:[{
-        name:"用户登录"
+        name:"用户聊天窗口",
+        method:"websocket",
+        url:"/liaotian/"
     }]
 }

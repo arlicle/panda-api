@@ -14,6 +14,7 @@ pub struct Database {
     pub api_docs: HashMap<String, ApiDoc>,
     pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>,
     pub fileindex_data: HashMap<String, HashSet<String>>,
+    pub websocket_uri: String,
 }
 
 
@@ -131,19 +132,23 @@ impl Database {
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
+        let mut websocket_uri = Box::new(String::new());
+
+
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap().trim_start_matches("./");
-            Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, &mut fileindex_data);
+            Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, &mut websocket_uri, &mut fileindex_data);
         }
 
-        Database { basic_data, api_data, api_docs, fileindex_data }
+        let websocket_uri= *websocket_uri;
+        Database { basic_data, api_data, api_docs, fileindex_data, websocket_uri }
     }
 
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
+    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_uri:&mut String, fileindex_data: &mut HashMap<String, HashSet<String>>) {
         if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5")) || doc_file == "_settings.json" || doc_file == "_settings.json5" || doc_file.contains("_data/") || doc_file.starts_with(".") || doc_file.contains("/.") {
             return;
         }
@@ -227,10 +232,15 @@ impl Database {
                 let desc = get_api_field_string_value("desc", "".to_string(), api, &ref_data, &basic_data.global_value);
                 let url = get_api_field_string_value("url", "".to_string(), api, &ref_data, &basic_data.global_value);
                 let method = get_api_field_string_value("method", "GET".to_string(), api, &ref_data, &basic_data.global_value);
+                let method = method.to_uppercase();
+
                 let body_mode = get_api_field_string_value("body_mode", "json".to_string(), api, &ref_data, &basic_data.global_value);
                 let auth = get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
 //                let body = get_api_value("body", "json".to_string(), api, &ref_data);
 
+                if &method == "WEBSOCKET" {
+                    *websocket_uri = url.clone();
+                }
 
                 let body = match api.get("body") {
                     Some(body) => body.clone(),
