@@ -124,29 +124,12 @@ pub async fn chat_route(
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    if is_websocket_connect(&req) {
-        println!("is websocket ");
 
-    }
 
-    // for api documents homepage
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
 
-    if req_path == "/websocket/" {
-        let d = match fs::read_to_string("_data/theme/websocket.html") {
-            Ok(x) => x,
-            Err(_) => {
-                println!("no panda api doc theme file: _data/theme/index.html");
-                return HttpResponse::Found()
-                    .header(http::header::LOCATION, "/__api_docs/")
-                    .finish();
-            }
-        };
-        return HttpResponse::Ok().content_type("text/html").body(d);
-    }
-
-
+    // for api documents homepage
     if req_path == "/" {
         let d = match fs::read_to_string("_data/theme/index.html") {
             Ok(x) => x,
