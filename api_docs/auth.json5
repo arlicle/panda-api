@@ -12,6 +12,6 @@
     api:[{
         name:"用户聊天窗口",
         method:"websocket",
-        url:"/liaotian/"
+        url:"/ws/"
     }]
 }

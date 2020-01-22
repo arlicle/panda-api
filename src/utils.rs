@@ -56,7 +56,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
     let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<db::ApiData>>>> = HashMap::new();
     let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
-    let mut websocket_uri = Box::new(String::new());
+    let websocket_api = Arc::new(Mutex::new(db::ApiData::default()));
 
     let mut data = data.lock().unwrap();
     let filename = filepath.trim_start_matches(&format!("{}/", current_dir));
@@ -74,13 +74,13 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
             Some(ref_files) => {
                 // 把找到的文件全部重新load一遍
                 for ref_file in ref_files {
-                    db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, &mut websocket_uri, &mut fileindex_data);
+                    db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
                 }
             }
             None => ()
         }
     } else {
-        db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, &mut websocket_uri, &mut fileindex_data);
+        db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
     }
 
     for (k, v) in api_data {
@@ -91,7 +91,8 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
         data.api_docs.insert(k, v);
     }
 
-    data.websocket_uri = *websocket_uri;
+
+    data.websocket_api = websocket_api;
 
     for (ref_file, doc_files) in fileindex_data {
         if &ref_file != "" {
