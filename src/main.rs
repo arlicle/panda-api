@@ -2,7 +2,7 @@ use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
 
 use dotenv::dotenv;
-use std::sync::{Mutex};
+use std::sync::Mutex;
 
 mod db;
 mod api;
@@ -35,14 +35,18 @@ async fn main() -> std::io::Result<()> {
     let conf = Config::from_args();
     let db = db::Database::load();
 
-    let websocket_uri = db.websocket_uri.clone();
+    let websocket_api = &db.websocket_api.clone();
+    let w = websocket_api.lock().unwrap();
+
+    let websocket_uri = w.url.clone();
     let web_db = web::Data::new(Mutex::new(db));
 
     utils::watch_api_docs_change(web_db.clone());
 
+
+
     let server = server::ChatServer::default();
     let server = server.start();
-
     println!("Starting service on http://{}:{}", conf.host, conf.port);
     HttpServer::new(move || {
         App::new()
@@ -56,6 +60,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
             .service(Files::new("/js", "_data/theme/js"))
+//            .service(Files::new("/websocket", "_data/theme/"))
             .service(Files::new("/css", "_data/theme/css"))
             .service(Files::new("/_upload", "_data/_upload"))
 

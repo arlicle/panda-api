@@ -133,6 +133,20 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
 
+    if req_path == "/websocket/" {
+        let d = match fs::read_to_string("_data/theme/websocket.html") {
+            Ok(x) => x,
+            Err(_) => {
+                println!("no panda api doc theme file: _data/theme/index.html");
+                return HttpResponse::Found()
+                    .header(http::header::LOCATION, "/__api_docs/")
+                    .finish();
+            }
+        };
+        return HttpResponse::Ok().content_type("text/html").body(d);
+    }
+
+
     if req_path == "/" {
         let d = match fs::read_to_string("_data/theme/index.html") {
             Ok(x) => x,
@@ -145,6 +159,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         };
         return HttpResponse::Ok().content_type("text/html").body(d);
     }
+
 
 
     let mut new_request_body;
