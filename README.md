@@ -2,28 +2,18 @@
 
 Panda api makes it easier to build better api docs more quickly and easy for front end and back end.
 
-Panda api是一个简单快速的前后端接口文档管理工具，
-
-
 Panda api encourages test driven development. it takes care of much of the hassle of web development between front end and back end, when you write done your api docs, you can focus on writing front end without needing to finish the backend. It’s free and open source.
 
+Why Panda Api：
 
-现在的随着js和js的相关前端框架，移动App的发展，各类软件系统越来越使用前后端分离的方式进行开发。前端和后端被分离为了两个不同的工种，不通工种之间就需要进行交流沟通协作，但是前后端分离开发我一直找不到一个满足我需求的工具。
-
-传统的API 文档虽然满足了阅读者对接接口的需求，但是通常需要等待后端开发完成才能调用接口，从而真正开始接口调试工作。
-
-如果要让两个工种同时并发的进行开发，就需要前端后端达成接口的约定，也就是接口文档。如果我们提前编写出接口文档，用接口文档就可以分别对前后端进行服务，通过接口文档分隔前后端，那么前后端就可以按照这个接口文档的约定进行开发，开发效率就会大大提升，同时在开发过程中保留了宝贵的接口文档。
-
-
-Panda Api 接口文档的工具满足以下几个特性：
-1. 提供一份可以前后端浏览的接口文档
-2. 使用json或json5语法来写文档，操作成本、学习成本非常低
-3. 接口文档也可以像代码一样进行版本控制，前后端都有维护的权限。Panda api依赖git等版本管理工具来做
-4. 可以在定义好文档后，立即为前端开发提供接口服务，不用等待后端开发完成。为前端支持各类请求:GET, POST, PUT, DELETE, OPTIONS
-5. 可以使用这个工具进行前端测试和后端测试
-6. 可以像Mock一样，自动生成相关测试数据
-7. 支持多种开发环境切换，例如开发环境、测试环境、正式环境
-8. 支持websocket方式为前端开发提供测试接口服务；支持用websocket方式作为客户端进行后端服务测试
+1. A better online read api docs.   
+2. use json or json5 to write the api docs，eazy to lean and write.
+3. Manage you api docs change as your code with git.
+4. You can use Panda api as a back end api service with out backend develop. 
+5. Panda api takes test data helps developers auto test back end and front end
+6. Mork data auto created
+7. the environment route support, you can change the back end on panda api to development, test, production
+8. support websocket
 
 话不多说，大家试一试吧，有任何意见建议，欢迎交流。
 
