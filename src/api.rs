@@ -236,7 +236,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     let req_path = req.path();
     let req_method = req.method().as_str();
 
-
     for (k, a_api_data) in api_data {
         // 匹配
         let res = ResourceDef::new(k);
@@ -272,6 +271,14 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
             let test_data = test_data.as_array().unwrap();
 
             for test_case_data in test_data {
+                // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
+                let mut is_url_match = true;
+                if let Some(url) = test_case_data.get("url") {
+                    if url != req_path {
+                        is_url_match = false;
+                  }
+                }
+
                 let case_body = match test_case_data.get("body") {
                     Some(v) => v,
                     None => &Value::Null
@@ -290,11 +297,11 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 };
 
                 if &body_mode == "form-data" {
-                    if is_value_equal(&request_body, case_form_data) && is_value_equal(&request_query, case_query) {
+                    if is_value_equal(&request_body, case_form_data) && is_value_equal(&request_query, case_query) && is_url_match {
                         return HttpResponse::Ok().json(case_response);
                     }
                 } else {
-                    if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) {
+                    if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) && is_url_match {
                         return HttpResponse::Ok().json(case_response);
                     }
                 }
