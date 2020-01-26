@@ -267,7 +267,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 }));
             }
 
-//            let x = create_mock_response(&a_api_data.response);
             let test_data = test_data.as_array().unwrap();
 
             for test_case_data in test_data {
@@ -304,6 +303,11 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                     if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) && is_url_match {
                         return HttpResponse::Ok().json(case_response);
                     }
+                }
+
+                // 如果设置了$mock数据自动生成
+                if let Some(mock) = case_response.get("$mock") {
+                    println!("mock data created");
                 }
             }
         }

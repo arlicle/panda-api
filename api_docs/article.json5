@@ -61,7 +61,7 @@
                     tag:{name:"article tag"},
                     read_count:{name:"article read count", type:"number"},
                     created:{name:"article created time", type:"number"},
-                    }
+                }
             },
             test_data:[
                 {
@@ -92,7 +92,13 @@
                 },
                 {
                     // other url auto create mock data
-                    "$mock":true
+                    response:{
+                        code:1,
+                        msg:"",
+                        data:{
+                            "$mock":true
+                        }
+                    },
                 }
             ]
         },
@@ -109,15 +115,15 @@
                 total_page: {name:"total page", type:"number"},
                 total_count: {name:"total item count", type:"number"},
                 current_page: {name:"current page num", type:"number"},
-                result: 
-                    [{
-                        id:{name:"article id", type:"number"},
-                        title:{name:"article title"},
-                        category_name:{name:"article category name"},
-                        author_name:{name:"article author name"},
-                        tag:{name:"article tag"},
-                        created:{name:"article created time", type:"number"}
-                    }]
+                result:
+                [{
+                    id:{name:"article id", type:"number"},
+                    title:{name:"article title"},
+                    category_name:{name:"article category name"},
+                    author_name:{name:"article author name"},
+                    tag:{name:"article tag"},
+                    created:{name:"article created time", type:"number"}
+                }]
             }
         }
     ]
