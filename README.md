@@ -130,7 +130,7 @@ If false, the field is optional. Default is true.
 
 1. [Basics](https://github.com/arlicle/panda-api-examples/tree/master/basics)
 2. [Inherit from models](https://github.com/arlicle/panda-api-examples/tree/master/inherit_models)
-
+3. [Global field settings](https://github.com/arlicle/panda-api-examples/tree/master/global_settings)
 
 ### 带有样例的使用包下载 
 [Panda Api for Mac 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_mac_0.2.tar)  
