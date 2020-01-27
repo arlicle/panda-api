@@ -307,7 +307,9 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
                 // 如果设置了$mock数据自动生成
                 if let Some(mock) = case_response.get("$mock") {
+                    // 进入mock数据自动生成
                     println!("mock data created");
+
                 }
             }
         }
@@ -350,14 +352,28 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                     return true;
                 }
                 None => {
-                    if value1_a.is_empty() & &value2.is_null() {
+                    if value1_a.is_empty() && value2.is_null() {
                         return true;
                     }
                     return false;
                 }
             }
         }
-        Value::Array(_a) => (),
+        Value::Array(value1_array) => {
+            match value2.as_array() {
+                Some(value2_array) => {
+                    if value1_array == value2_array {
+                        return true;
+                    }
+                },
+                None => {
+                    if value1_array.is_empty() && value2.is_null() {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        },
         Value::Null => {
             // 让null 和 empty一样的相等
             match value2.as_object() {
