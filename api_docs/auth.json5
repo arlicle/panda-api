@@ -38,10 +38,6 @@
             {
                 body:{password:"123"},
                 response:{code:-1, msg:"username is required"}
-            },
-            {
-                body:[],
-                response:{code:-1, msg:"hello hello hello hello"}
             }
         ]
     },
