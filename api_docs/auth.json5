@@ -14,9 +14,9 @@
             password:{name: "password"}
         },
         response:{
-            code:{name:"response result code", type:"int", desc:"success is 1"},
-            msg:{name:"response result message", type:"string", desc:""},
-            token:{name:"login success, get a user token; login failed, no token", type:"string", required:false}
+            code:{name:"response result code", type:"number", desc:"success is 1", enum: [[-1, "错误"], [1, "成功"]]},
+            msg:{name:"response result message", type:"string"},
+            token:{name:"login success, get a user token; login failed, no token", type:"string", mock_type:"string", length:32, required:false}
         },
         test_data:[
             {
@@ -50,7 +50,7 @@
             username:{}
         },
         response:{
-            code:{name:"response result code", type:"int", desc:"success is 1"},
+            code:{name:"response result code", type:"number", desc:"success is 1"},
             msg:{name:"response result message", type:"string", desc:""}
         },
         test_data:[
