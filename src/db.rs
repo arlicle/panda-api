@@ -132,7 +132,6 @@ impl Database {
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
-//        let mut websocket_uri = Box::new(String::new());
         let mut websocket_api = Arc::new(Mutex::new(ApiData::default()));
 
 
@@ -142,7 +141,6 @@ impl Database {
             Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
         }
 
-//        let websocket_uri= *websocket_uri;
         Database { basic_data, api_data, api_docs, fileindex_data, websocket_api }
     }
 
@@ -578,12 +576,18 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
     } else if value.is_array() {
         // 处理array
         if let Some(value_array) = value.as_array() {
-            if let Some(value_array_one) = value_array.get(0) {
-                let (ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
-                return (ref_files, Value::Array(vec![array_item_value]));
+
+            if value_array.len() == 1 {
+                if let Some(value_array_one) = value_array.get(0) {
+                    let (ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
+                    return (ref_files, Value::Array(vec![array_item_value]));
+                } else {
+                    println!(" file array value empty '{}' got {:?}", doc_file, value);
+                }
             } else {
-                println!(" file array value empty '{}' got {:?}", doc_file, value);
+                return (ref_files, value);
             }
+
         }
     }
 
