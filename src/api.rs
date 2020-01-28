@@ -444,6 +444,40 @@ fn is_websocket_connect(req: &HttpRequest) -> bool {
 }
 
 
+pub fn get_field_type(field_attr: &Value) -> String {
+    let field_type = match field_attr.get("type") {
+        Some(v) => v.as_str().unwrap(),
+        None => if let Some(v) = field_attr.get("-name") {
+            "object"
+        } else {
+            if field_attr.is_array() {
+                "array"
+            } else if field_attr.is_object() {
+                if let Some(field_attr_object) = field_attr.as_object() {
+                    let mut s = "string";
+                    for (k, v) in field_attr_object {
+                        if v.is_object() {
+                            s = "object";
+                            break;
+                        }
+                    }
+                    s
+                } else {
+                    "string"
+                }
+            } else {
+                "string"
+            }
+        }
+    };
+
+    field_type.to_string()
+}
+
+
+
+/// 根据response定义生成返回给前端的mock数据
+///
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
@@ -451,36 +485,65 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
         let mut rng = thread_rng();
 
         for (field_key, field_attr) in response_model {
-            let field_type = match field_attr.get("type") {
-                Some(v) => v.as_str().unwrap(),
-                None => "string"
-            };
+            if field_key == "-type" || field_key == "-name" || field_key == "-desc" {
+                continue;
+            }
+
+            let field_type = get_field_type(field_attr);
 
             let mock_type = match field_attr.get("mock_type") {
                 Some(v) => v.as_str().unwrap(),
                 None => ""
             };
 
-            match field_type {
+            match field_type.as_str() {
                 "number" => {
                     if let Some(enum_data) = field_attr.get("enum") {
                         let list = enum_data.as_array().unwrap();
                         let n = rng.gen_range(0, list.len());
                         let v = &list[n];
                         match v {
-                            Value::Array(v2) => {
-                                result.insert(field_key.clone(), v2[0].clone());
-                            },
-                            Value::Number(v2) => {
-                                result.insert(field_key.clone(), Value::Number(v2.clone()));
-                            },
+                            Value::Object(v2) => {
+                                if let Some(v3) = v2.get("-value") {
+                                    result.insert(field_key.clone(), v3.clone());
+                                } else {
+                                    result.insert(field_key.clone(), v.clone());
+                                }
+                            }
                             _ => {
-                                println!("invalid enum value");
+                                result.insert(field_key.clone(), v.clone());
                             }
                         }
-
                     } else {
                         result.insert(field_key.clone(), Value::from(mock::basic::int()));
+                    }
+                }
+                "bool" => {
+                    result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
+                }
+                "object" => {
+                    let v = create_mock_response(field_attr);
+                    result.insert(field_key.clone(), Value::Object(v));
+                }
+                "array" => {
+                    if let Some(field_attr_array) = field_attr.as_array() {
+                        if field_attr_array.len() > 0 {
+                            let field_attr_one = &field_attr_array[0];
+                            let field_type2 = get_field_type(field_attr_one);
+                            match field_type2.as_str() {
+                                "object" => {
+                                    let v = create_mock_response(field_attr_one);
+                                    result.insert(field_key.clone(), Value::Array(vec![Value::Object(v)]));
+                                },
+                                "array" | _ => {
+                                    let mut result2: Map<String, Value> = Map::new();
+                                    result2.insert("key".to_string(), field_attr_one.clone());
+                                    let v = create_mock_response(&Value::Object(result2));
+//                                    let v = v.as_object().unwrap();
+                                    result.insert(field_key.clone(), Value::Array(vec![v["key"].clone()]));
+                                }
+                            }
+                        }
                     }
                 }
                 "string" | _ => {
@@ -498,6 +561,6 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
             }
         }
     }
-    
+
     result
 }
