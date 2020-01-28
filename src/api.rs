@@ -1,6 +1,7 @@
 use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
 use std::time::{Duration, Instant};
+use rand::{thread_rng, Rng};
 
 use actix_multipart::Multipart;
 use futures::StreamExt;
@@ -126,8 +127,6 @@ pub async fn chat_route(
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-
-
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
 
@@ -144,7 +143,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         };
         return HttpResponse::Ok().content_type("text/html").body(d);
     }
-
 
 
     let mut new_request_body;
@@ -277,7 +275,7 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 if let Some(url) = test_case_data.get("url") {
                     if url != req_path {
                         is_url_match = false;
-                  }
+                    }
                 }
 
                 let case_body = match test_case_data.get("body") {
@@ -311,7 +309,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 if let Some(mock) = case_response.get("$mock") {
                     // 进入mock数据自动生成
                     println!("mock data created");
-
                 }
             }
             println!("创建mock data");
@@ -372,7 +369,7 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                     if value1_array == value2_array {
                         return true;
                     }
-                },
+                }
                 None => {
                     if value1_array.is_empty() && value2.is_null() {
                         return true;
@@ -380,7 +377,7 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                     return false;
                 }
             }
-        },
+        }
         Value::Null => {
             // 让null 和 empty一样的相等
             match value2.as_object() {
@@ -451,6 +448,8 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
         let response_model = response_model.as_object().unwrap();
+        let mut rng = thread_rng();
+
         for (field_key, field_attr) in response_model {
             let field_type = match field_attr.get("type") {
                 Some(v) => v.as_str().unwrap(),
@@ -464,26 +463,41 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
 
             match field_type {
                 "number" => {
-                    result.insert(field_key.clone(), Value::from(mock::basic::int()));
+                    if let Some(enum_data) = field_attr.get("enum") {
+                        let list = enum_data.as_array().unwrap();
+                        let n = rng.gen_range(0, list.len());
+                        let v = &list[n];
+                        match v {
+                            Value::Array(v2) => {
+                                result.insert(field_key.clone(), v2[0].clone());
+                            },
+                            Value::Number(v2) => {
+                                result.insert(field_key.clone(), Value::Number(v2.clone()));
+                            },
+                            _ => {
+                                println!("invalid enum value");
+                            }
+                        }
+
+                    } else {
+                        result.insert(field_key.clone(), Value::from(mock::basic::int()));
+                    }
                 }
                 "string" | _ => {
                     let mut v;
                     match mock_type {
                         "string" => {
                             v = mock::basic::string(32);
-                        },
+                        }
                         _ => {
                             v = mock::text::csentence(0);
                         }
                     }
                     result.insert(field_key.clone(), Value::String(v));
-
                 }
             }
         }
     }
-
-    println!("resutl {:?}", result);
-
+    
     result
 }

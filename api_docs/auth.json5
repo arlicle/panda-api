@@ -14,7 +14,7 @@
             password:{name: "password"}
         },
         response:{
-            code:{name:"response result code", type:"number", desc:"success is 1", enum: [[-1, "错误"], [1, "成功"]]},
+            code:{name:"response result code", type:"number", desc:"success is 1", enum: [[-1, "aaa"], [1, "bbb"]]},
             msg:{name:"response result message", type:"string"},
             token:{name:"login success, get a user token; login failed, no token", type:"string", mock_type:"string", length:32, required:false}
         },
