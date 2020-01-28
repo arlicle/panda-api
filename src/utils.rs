@@ -10,15 +10,12 @@ use actix_web::web;
 use std::sync::mpsc::channel;
 use crate::db;
 use std::env;
-use std::char;
-use rand::{thread_rng, Rng};
 
 
 /// 建立异步线程，监控文件改动，当改动的时候，就重新生成文件
 pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
     let current_dir = env::current_dir().expect("Failed to determine current directory");
     let current_dir = current_dir.to_str().unwrap().to_string();
-
 
     thread::spawn(move || {
         let (tx, rx) = channel();
@@ -108,22 +105,4 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
             }
         }
     }
-}
-
-
-pub fn get_random_chinese_chars(mut length: u32) -> String {
-    let mut s = String::new();
-    let mut rng = thread_rng();
-    while length > 0 {
-//        let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
-        let n: u32 = rng.gen_range(0x4e00, 0x9fa5);
-        match char::from_u32(n) {
-            Some(c) => {
-                s.push(c);
-                length -= 1;
-            }
-            None => continue
-        }
-    }
-    s
 }
