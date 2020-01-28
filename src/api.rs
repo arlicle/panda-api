@@ -17,7 +17,9 @@ use crate::db;
 use crate::websocket::WsChatSession;
 use crate::server;
 use actix::*;
+use crate::mock;
 
+use serde_json::Number;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DocSummary {
@@ -312,8 +314,13 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
                 }
             }
+            println!("创建mock data");
+
+            let x = create_mock_response(&a_api_data.response);
+            return HttpResponse::Ok().json(x);
         }
     };
+
 
     HttpResponse::Ok().json(json!({
         "code": - 1,
@@ -441,21 +448,42 @@ fn is_websocket_connect(req: &HttpRequest) -> bool {
 
 
 pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
-    let result: Map<String, Value> = Map::new();
+    let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
         let response_model = response_model.as_object().unwrap();
-        for (_key, value) in response_model {
-            let field_type = match value.get("type") {
+        for (field_key, field_attr) in response_model {
+            let field_type = match field_attr.get("type") {
                 Some(v) => v.as_str().unwrap(),
                 None => "string"
             };
 
+            let mock_type = match field_attr.get("mock_type") {
+                Some(v) => v.as_str().unwrap(),
+                None => ""
+            };
+
             match field_type {
-                "number" => {}
-                "string" | _ => {}
+                "number" => {
+                    result.insert(field_key.clone(), Value::from(mock::basic::int()));
+                }
+                "string" | _ => {
+                    let mut v;
+                    match mock_type {
+                        "string" => {
+                            v = mock::basic::string(32);
+                        },
+                        _ => {
+                            v = mock::text::csentence(0);
+                        }
+                    }
+                    result.insert(field_key.clone(), Value::String(v));
+
+                }
             }
         }
     }
+
+    println!("resutl {:?}", result);
 
     result
 }
