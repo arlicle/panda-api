@@ -104,10 +104,10 @@
         },
         {
             name:"Article list",
-            method:"POST",
+            method:"GET",
             url:"/post/list/",
-            body:{
-                page:{name:"page num", type:"number"}
+            query:{
+                page:{name:"page num", type:"number", required:false, default:1}
             },
             response:{
                 code:{name:"response result code", type:"int", desc:"success is 1"},
@@ -124,7 +124,29 @@
                     tag:{name:"article tag"},
                     created:{name:"article created time", type:"number"}
                 }]
-            }
+            },
+            test_data:[
+                {
+                    query:{},
+                    response:{
+                        code:1,
+                        msg:"",
+                        total_page:10,
+                        total_count:100,
+                        current_page:1,
+                        result:[
+                            {
+                                id:1,
+                                title:"Hello",
+                                category_name:"Unkown",
+                                author_name: "Edison",
+                                tag:"test",
+                                created:1580048711
+                            }
+                        ]
+                    }
+                }
+            ]
         }
     ]
 }

@@ -9,6 +9,7 @@ mod api;
 mod utils;
 mod websocket;
 mod server;
+mod mock;
 
 use structopt::StructOpt;
 use actix::Actor;
@@ -42,8 +43,6 @@ async fn main() -> std::io::Result<()> {
     let web_db = web::Data::new(Mutex::new(db));
 
     utils::watch_api_docs_change(web_db.clone());
-
-
 
     let server = server::ChatServer::default();
     let server = server.start();
