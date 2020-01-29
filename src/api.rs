@@ -471,8 +471,33 @@ pub fn get_field_type(field_attr: &Value) -> String {
         }
     };
 
-    field_type.to_string()
+    field_type.to_lowercase()
 }
+
+
+
+
+macro_rules! get_mock_enum_value {
+    ( $enum_data:expr, $rng:expr, $result:expr, $field_key:expr ) => {
+    let list = $enum_data.as_array().unwrap();
+    let n = $rng.gen_range(0, list.len());
+    let v = &list[n];
+    match v {
+        Value::Object(v2) => {
+            if let Some(v3) = v2.get("-value") {
+                $result.insert($field_key.clone(), v3.clone());
+            } else {
+                $result.insert($field_key.clone(), v.clone());
+            }
+        }
+        _ => {
+            $result.insert($field_key.clone(), v.clone());
+        }
+    }
+    };
+}
+
+
 
 
 
@@ -490,30 +515,16 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
             }
 
             let field_type = get_field_type(field_attr);
-
+            let field_type = field_type.as_str();
             let mock_type = match field_attr.get("mock_type") {
                 Some(v) => v.as_str().unwrap(),
                 None => ""
             };
 
-            match field_type.as_str() {
+            match field_type {
                 "number" => {
                     if let Some(enum_data) = field_attr.get("enum") {
-                        let list = enum_data.as_array().unwrap();
-                        let n = rng.gen_range(0, list.len());
-                        let v = &list[n];
-                        match v {
-                            Value::Object(v2) => {
-                                if let Some(v3) = v2.get("-value") {
-                                    result.insert(field_key.clone(), v3.clone());
-                                } else {
-                                    result.insert(field_key.clone(), v.clone());
-                                }
-                            }
-                            _ => {
-                                result.insert(field_key.clone(), v.clone());
-                            }
-                        }
+                        get_mock_enum_value!(enum_data, rng, result, field_key);
                     } else {
                         result.insert(field_key.clone(), Value::from(mock::basic::int()));
                     }
@@ -530,16 +541,15 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                         if field_attr_array.len() > 0 {
                             let field_attr_one = &field_attr_array[0];
                             let field_type2 = get_field_type(field_attr_one);
-                            match field_type2.as_str() {
+                            match field_type2.to_lowercase().as_str() {
                                 "object" => {
                                     let v = create_mock_response(field_attr_one);
                                     result.insert(field_key.clone(), Value::Array(vec![Value::Object(v)]));
-                                },
+                                }
                                 "array" | _ => {
                                     let mut result2: Map<String, Value> = Map::new();
                                     result2.insert("key".to_string(), field_attr_one.clone());
                                     let v = create_mock_response(&Value::Object(result2));
-//                                    let v = v.as_object().unwrap();
                                     result.insert(field_key.clone(), Value::Array(vec![v["key"].clone()]));
                                 }
                             }
@@ -547,16 +557,20 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     }
                 }
                 "string" | _ => {
-                    let mut v;
-                    match mock_type {
-                        "string" => {
-                            v = mock::basic::string(32);
+                    if let Some(enum_data) = field_attr.get("enum") {
+                        get_mock_enum_value!(enum_data, rng, result, field_key);
+                    } else {
+                        let mut v;
+                        match mock_type {
+                            "string" => {
+                                v = mock::basic::string(32);
+                            }
+                            _ => {
+                                v = mock::text::csentence(0);
+                            }
                         }
-                        _ => {
-                            v = mock::text::csentence(0);
-                        }
+                        result.insert(field_key.clone(), Value::String(v));
                     }
-                    result.insert(field_key.clone(), Value::String(v));
                 }
             }
         }
@@ -564,3 +578,6 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
 
     result
 }
+
+
+

@@ -16,7 +16,7 @@
         response:{
             success:{name:"response result code", type:"bool", desc:"success is 1"},
             code:{name:"response result code", type:"number", desc:"success is 1", enum: [{"value": -1, "desc": "ddd"}, {"value": 1, "desc":"bbb"}]},
-            msg:{name:"response result message", type:"string"},
+            msg:{name:"response result message", type:"string", enum: ["成功", "失败", "被锁定"]},
             token:{name:"login success, get a user token; login failed, no token", type:"string", mock_type:"string", length:32, required:false},
             data: {
                 category_id: {name: "category id", type: "number"},
