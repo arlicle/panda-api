@@ -51,7 +51,7 @@ macro_rules! float {
         let mut rng = thread_rng();
         let n = rng.gen_range($min_value as f64, $max_value as f64);
         let l = rng.gen_range($min_decimal_places as u32, $max_decimal_places as u32);
-        (n * 10_u32.pow(l) as f64).round() / 10_i32.pow(l) as f64
+        (n * 10_u64.pow(l) as f64).round() / 10_i64.pow(l) as f64
     }
     };
 
@@ -59,7 +59,7 @@ macro_rules! float {
     {
         let mut rng = thread_rng();
         let n = rng.gen_range($min_value as f64, $max_value as f64);
-        (n * 10_u32.pow($min_decimal_places) as f64).round() / 10_i32.pow($min_decimal_places) as f64
+        (n * 10_u64.pow($min_decimal_places) as f64).round() / 10_i64.pow($min_decimal_places) as f64
     }
     };
 }

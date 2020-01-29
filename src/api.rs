@@ -20,10 +20,6 @@ use crate::server;
 use actix::*;
 use crate::mock;
 use crate::{int, float};
-//#[macro_use]
-//use crate::mock::*;
-//#[macro_use]
-//use mock::basic::int;
 
 use serde_json::Number;
 
@@ -528,7 +524,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
             };
 
             match field_type {
-                "number" | "int" | "posint" | "negint" | "float" => {
+                "number" | "int" | "posint" | "negint" | "float" | "posfloat" | "negfloat" => {
                     if let Some(value1) = field_attr.get("value") {
                         // 如果设定了value，那么就只返回一个固定的值
                         if let Some(value1) = value1.as_i64() {
@@ -539,7 +535,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
 
                     if let Some(enum_data) = field_attr.get("enum") {
                         get_mock_enum_value!(enum_data, rng, result, field_key);
-                    } else if field_type == "float" {
+                    } else if field_type == "float" || field_type == "posfloat" || field_type == "negfloat" {
                         let mut min_value = i32::min_value() as f64;
                         let mut max_value = i32::max_value() as f64;
 
@@ -585,13 +581,21 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                             }
                         }
 
-                        if decimal_places > 0 || min_decimal_places == 0 || max_decimal_places == 0 {
+                        if decimal_places > 0 || (min_decimal_places == 0 && max_decimal_places == 0) {
+                            // 如果decimal_places设置了 或者 所有值都没有设置，那么默认就是两位小数
                             if decimal_places <= 0 {
                                 decimal_places = 2;
                             }
                             let x = float!(min_value, max_value, decimal_places);
                             result.insert(field_key.clone(), Value::from(x));
                         } else {
+                            if min_decimal_places == 0 {
+                                min_decimal_places = 2;
+                            }
+                            if max_decimal_places == 0 {
+                                max_decimal_places = 16;
+                            }
+
                             let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
                             result.insert(field_key.clone(), Value::from(x));
                         }

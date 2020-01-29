@@ -14,7 +14,6 @@ mod mock;
 
 use structopt::StructOpt;
 use actix::Actor;
-//use rand::{thread_rng, Rng};
 
 
 
@@ -38,13 +37,6 @@ async fn main() -> std::io::Result<()> {
     pretty_env_logger::init();
     let conf = Config::from_args();
     let db = db::Database::load();
-
-//    int!();
-//    int!();
-
-//    let x = int!();
-//    println!("x {}", x);
-//    wahaha!();
 
     let websocket_api = &db.websocket_api.clone();
     let w = websocket_api.lock().unwrap();
