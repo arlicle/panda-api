@@ -15,11 +15,59 @@ pub fn bool() -> bool {
     }
 }
 
+#[macro_export]
+macro_rules! int {
+    ($min_value:expr, $max_value:expr) => {
+    {
+        let mut rng = thread_rng();
+        rng.gen_range($min_value, $max_value)
+    }
+    };
 
-pub fn int() -> i64 {
-    let mut rng = thread_rng();
-    rng.gen::<i64>()
+    ($min_value:expr) => {
+    {
+        let mut rng = thread_rng();
+        rng.gen_range($min_value, i32::max_value())
+    }
+    };
+
+    () => {
+    {
+        let mut rng = thread_rng();
+        rng.gen::<i32>()
+    }
+    };
 }
+
+
+pub fn round(n: f64, precision: u32) -> f64 {
+    (n * 10_u32.pow(precision) as f64).round() / 10_i32.pow(precision) as f64
+}
+
+#[macro_export]
+macro_rules! float {
+    ($min_value:expr, $max_value:expr, $min_decimal_places:expr, $max_decimal_places:expr) => {
+    {
+        let mut rng = thread_rng();
+        let n = rng.gen_range($min_value as f64, $max_value as f64);
+        let l = rng.gen_range($min_decimal_places as u32, $max_decimal_places as u32);
+        (n * 10_u32.pow(l) as f64).round() / 10_i32.pow(l) as f64
+    }
+    };
+
+    ($min_value:expr, $max_value:expr, $min_decimal_places:expr) => {
+    {
+        let mut rng = thread_rng();
+        let n = rng.gen_range($min_value as f64, $max_value as f64);
+        (n * 10_u32.pow($min_decimal_places) as f64).round() / 10_i32.pow($min_decimal_places) as f64
+    }
+    };
+}
+
+//pub fn int() -> i64 {
+//    let mut rng = thread_rng();
+//    rng.gen::<i64>()
+//}
 
 pub fn float() -> f64 {
     let mut rng = thread_rng();
