@@ -1,6 +1,7 @@
 use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
+
 use rand::{thread_rng, Rng};
 
 use actix_multipart::Multipart;
@@ -524,7 +525,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
             };
 
             match field_type {
-                "number" | "int" | "posint" | "negint" | "float" | "posfloat" | "negfloat" => {
+                "number" | "int" | "posint" | "negint" | "float" | "posfloat" | "negfloat" | "timestamp" => {
                     if let Some(value1) = field_attr.get("value") {
                         // 如果设定了value，那么就只返回一个固定的值
                         if let Some(value1) = value1.as_i64() {
@@ -599,6 +600,37 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                             let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
                             result.insert(field_key.clone(), Value::from(x));
                         }
+                    } else if field_type == "timestamp" {
+                        let mut min_value = 0;
+                        let mut max_value = 0; // 2299年，12月 31日 12时 12 分 12秒
+                        let s = SystemTime::now();
+
+                        if let Some(min_value1) = field_attr.get("min_value") {
+                            if let Some(min_value1) = min_value1.as_u64() {
+                                min_value = min_value1;
+                            }
+                        }
+                        if min_value == 0 {
+                            let s2 = s.checked_sub(Duration::from_secs(63072000)).unwrap();
+                            let s2 = s2.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+                            min_value = s2.as_secs();
+                        }
+
+                        if let Some(max_value1) = field_attr.get("max_value") {
+                            if let Some(max_value1) = max_value1.as_u64() {
+                                max_value = max_value1;
+                            }
+                        }
+
+                        if max_value == 0 {
+                            let s2 = s.checked_add(Duration::from_secs(63072000)).unwrap();
+                            let s2 = s2.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+                            max_value = s2.as_secs();
+                        }
+
+                        let x = int!(min_value, max_value) * 1000;
+                        result.insert(field_key.clone(), Value::from(x));
+
                     } else {
                         let mut min_value = i64::min_value();
                         let mut max_value = i64::max_value();
