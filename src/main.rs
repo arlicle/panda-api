@@ -16,7 +16,6 @@ use structopt::StructOpt;
 use actix::Actor;
 
 
-
 #[derive(StructOpt, Debug)]
 #[structopt(name = "basic")]
 pub struct Config {

@@ -64,6 +64,27 @@ macro_rules! float {
     };
 }
 
+
+
+#[macro_export]
+/// 随机生成时间戳
+macro_rules! timestamp {
+    ($year:expr, $month:expr, $day:expr, $hour:expr, $min:expr, $second:expr) => {
+    {
+        let mut rng = thread_rng();
+
+    }
+    };
+
+    ($min_value:expr, $max_value:expr, $min_decimal_places:expr) => {
+    {
+        let mut rng = thread_rng();
+        let n = rng.gen_range($min_value as f64, $max_value as f64);
+        (n * 10_u64.pow($min_decimal_places) as f64).round() / 10_i64.pow($min_decimal_places) as f64
+    }
+    };
+}
+
 //pub fn int() -> i64 {
 //    let mut rng = thread_rng();
 //    rng.gen::<i64>()
