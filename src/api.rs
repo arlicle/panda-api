@@ -19,8 +19,14 @@ use crate::websocket::WsChatSession;
 use crate::server;
 use actix::*;
 use crate::mock;
+use crate::{int, float};
+//#[macro_use]
+//use crate::mock::*;
+//#[macro_use]
+//use mock::basic::int;
 
 use serde_json::Number;
+
 
 #[derive(Serialize, Deserialize, Debug)]
 struct DocSummary {
@@ -522,11 +528,99 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
             };
 
             match field_type {
-                "number" => {
+                "number" | "int" | "posint" | "negint" | "float" => {
+                    if let Some(value1) = field_attr.get("value") {
+                        // 如果设定了value，那么就只返回一个固定的值
+                        if let Some(value1) = value1.as_i64() {
+                            result.insert(field_key.clone(), Value::from(value1));
+                            continue;
+                        }
+                    }
+
                     if let Some(enum_data) = field_attr.get("enum") {
                         get_mock_enum_value!(enum_data, rng, result, field_key);
+                    } else if field_type == "float" {
+                        let mut min_value = i32::min_value() as f64;
+                        let mut max_value = i32::max_value() as f64;
+
+                        let mut decimal_places = 0;
+                        let mut min_decimal_places = 0;
+                        let mut max_decimal_places = 0;
+
+                        match field_type {
+                            "posfloat" => {
+                                min_value = 0.0;
+                            }
+                            "negfloat" => {
+                                max_value = 0.0;
+                            }
+                            _ => ()
+                        }
+
+                        if let Some(min_value1) = field_attr.get("min_value") {
+                            if let Some(min_value1) = min_value1.as_f64() {
+                                min_value = min_value1;
+                            }
+                        }
+
+                        if let Some(max_value1) = field_attr.get("max_value") {
+                            if let Some(max_value1) = max_value1.as_f64() {
+                                max_value = max_value1;
+                            }
+                        }
+
+                        if let Some(max_value1) = field_attr.get("min_decimal_places") {
+                            if let Some(max_value1) = max_value1.as_u64() {
+                                min_decimal_places = max_value1 as u32;
+                            }
+                        }
+                        if let Some(max_value1) = field_attr.get("max_decimal_places") {
+                            if let Some(max_value1) = max_value1.as_u64() {
+                                max_decimal_places = max_value1 as u32;
+                            }
+                        }
+                        if let Some(max_value1) = field_attr.get("decimal_places") {
+                            if let Some(max_value1) = max_value1.as_u64() {
+                                decimal_places = max_value1 as u32;
+                            }
+                        }
+
+                        if decimal_places > 0 || min_decimal_places == 0 || max_decimal_places == 0 {
+                            if decimal_places <= 0 {
+                                decimal_places = 2;
+                            }
+                            let x = float!(min_value, max_value, decimal_places);
+                            result.insert(field_key.clone(), Value::from(x));
+                        } else {
+                            let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
+                            result.insert(field_key.clone(), Value::from(x));
+                        }
                     } else {
-                        result.insert(field_key.clone(), Value::from(mock::basic::int()));
+                        let mut min_value = i64::min_value();
+                        let mut max_value = i64::max_value();
+                        match field_type {
+                            "posint" => {
+                                min_value = 0;
+                            }
+                            "negint" => {
+                                max_value = 0;
+                            }
+                            _ => ()
+                        }
+
+                        if let Some(min_value1) = field_attr.get("min_value") {
+                            if let Some(min_value1) = min_value1.as_i64() {
+                                min_value = min_value1;
+                            }
+                        }
+
+                        if let Some(max_value1) = field_attr.get("max_value") {
+                            if let Some(max_value1) = max_value1.as_i64() {
+                                max_value = max_value1;
+                            }
+                        }
+                        let x = int!(min_value, max_value);
+                        result.insert(field_key.clone(), Value::from(x));
                     }
                 }
                 "bool" => {
