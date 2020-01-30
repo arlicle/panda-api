@@ -18,14 +18,14 @@ pub fn domain_suffix() -> String {
 
 pub fn domain(is_use_www: bool) -> String {
     if !is_use_www {
-        format!("{}.{}", mock::text::word(0), domain_suffix())
+        format!("{}.{}", mock::text::word(0, 0, 0), domain_suffix())
     } else {
-        format!("www.{}.{}", mock::text::word(0), domain_suffix())
+        format!("www.{}.{}", mock::text::word(0, 0, 0), domain_suffix())
     }
 }
 
 pub fn email() -> String {
-    format!("{}@{}", mock::text::word(0), domain(false))
+    format!("{}@{}", mock::text::word(0, 0, 0), domain(false))
 }
 
 pub fn url() -> String {
@@ -36,5 +36,5 @@ pub fn url() -> String {
     } else {
         "https"
     };
-    format!("{}://{}.{}/{}/", http, mock::text::word(0), domain(false), mock::text::word(0))
+    format!("{}://{}.{}/{}/", http, mock::text::word(0, 0, 0), domain(false), mock::text::word(0, 0, 0))
 }
