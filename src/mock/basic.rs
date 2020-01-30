@@ -1,8 +1,16 @@
 use rand::{thread_rng, Rng};
 use std::time::{Duration, SystemTime};
+use chrono::{DateTime, TimeZone, Utc};
+use regex::Regex;
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 const CHARSET2: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
+
+
+enum Type {
+    String(String),
+    Int(i32),
+}
 
 /// 随机生成一个bool
 pub fn bool() -> bool {
@@ -100,34 +108,47 @@ macro_rules! timestamp {
 }
 
 
-#[macro_export]
-/// 随机生成时间戳
-macro_rules! datetime {
-    () => {
-    {
-        datetime!(0,0,"")
+
+fn datetime_str_to_timestamp(datetime_str: &str) -> u64 {
+    let re = Regex::new(r"\d+").unwrap();
+
+    let mut v = Vec::with_capacity(6);
+
+    for cap in re.captures_iter(datetime_str) {
+        v.push((&cap[0]).parse::<u32>().unwrap());
     }
-    };
 
-    ($min_value:expr, $max_value:expr, $format:expr) => {
-    {
-        use chrono::{DateTime, TimeZone, Utc};
-
-        let t = timestamp!($min_value, $max_value);
-        let mut format:String = $format.to_string();
-        if format.trim() == "" {
-            format = String::from("%Y-%m-%d %H:%M:%S");
-        }
-
-        let dt = Utc.timestamp(t as i64, 0);
-        dt.format(&format).to_string()
+    for i in 0..v.len() {
+        v.push(0);
     }
-    };
+
+    let dt = Utc.ymd(v[0] as i32, v[1], v[2]).and_hms(v[3], v[4], v[5]);
+    dt.timestamp() as u64
 }
 
 
 
+pub fn datetime(min_value: &str, max_value: &str, format: &str) -> String {
+    let mut timestamp_min_value = 0;
+    let mut timestamp_max_value = 0;
+    let mut format = format;
+    let re = Regex::new(r"\d+").unwrap();
+    if min_value != "" {
+        timestamp_min_value = datetime_str_to_timestamp(min_value);
+    }
+    if max_value != "" {
+        timestamp_max_value = datetime_str_to_timestamp(max_value);
+    }
 
+    if format.trim() == "" {
+        format = "%Y-%m-%d %H:%M:%S";
+    }
+
+    let t = timestamp!(timestamp_min_value, timestamp_max_value);
+
+    let dt = Utc.timestamp(t as i64, 0);
+    dt.format(&format).to_string()
+}
 
 
 pub fn float() -> f64 {
