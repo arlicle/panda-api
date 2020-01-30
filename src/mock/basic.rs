@@ -1,4 +1,5 @@
 use rand::{thread_rng, Rng};
+use std::time::{Duration, SystemTime};
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 const CHARSET2: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
@@ -67,28 +68,67 @@ macro_rules! float {
 
 
 #[macro_export]
-/// 随机生成时间戳
 macro_rules! timestamp {
-    ($year:expr, $month:expr, $day:expr, $hour:expr, $min:expr, $second:expr) => {
+    ($min_value:expr, $max_value:expr) => {
     {
-        let mut rng = thread_rng();
+        let s = SystemTime::now();
+        let mut min_value = $min_value;
+        let mut max_value = $max_value;
+        if min_value == 0 {
+            // 两年前：当前时间-两年
+            let s2 = s.checked_sub(Duration::from_secs(63072000)).unwrap();
+            let s2 = s2.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+            min_value = s2.as_secs();
+        }
 
+        if max_value == 0 {
+            // 两年后：当前时间+两年
+            let s2 = s.checked_add(Duration::from_secs(63072000)).unwrap();
+            let s2 = s2.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+            max_value = s2.as_secs();
+        }
+
+        int!(min_value, max_value)
     }
     };
 
-    ($min_value:expr, $max_value:expr, $min_decimal_places:expr) => {
+    () => {
     {
-        let mut rng = thread_rng();
-        let n = rng.gen_range($min_value as f64, $max_value as f64);
-        (n * 10_u64.pow($min_decimal_places) as f64).round() / 10_i64.pow($min_decimal_places) as f64
+        timestamp!(0,0)
     }
     };
 }
 
-//pub fn int() -> i64 {
-//    let mut rng = thread_rng();
-//    rng.gen::<i64>()
-//}
+
+#[macro_export]
+/// 随机生成时间戳
+macro_rules! datetime {
+    () => {
+    {
+        datetime!(0,0,"")
+    }
+    };
+
+    ($min_value:expr, $max_value:expr, $format:expr) => {
+    {
+        use chrono::{DateTime, TimeZone, Utc};
+
+        let t = timestamp!($min_value, $max_value);
+        let mut format:String = $format.to_string();
+        if format.trim() == "" {
+            format = String::from("%Y-%m-%d %H:%M:%S");
+        }
+
+        let dt = Utc.timestamp(t as i64, 0);
+        dt.format(&format).to_string()
+    }
+    };
+}
+
+
+
+
+
 
 pub fn float() -> f64 {
     let mut rng = thread_rng();
