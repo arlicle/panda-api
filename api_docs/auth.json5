@@ -23,7 +23,10 @@
                 category_id2: {name: "category id", type: "NegFloat", decimal_places: 16},
                 category_name: {name: "category name"},
                 created: {"name": "创建时间", type: "datetime", min_value: "1999-09-01", max_value: "2022-01-11"},
-                created2: {"name": "创建时间", type: "date"}
+                created2: {"name": "标题", type: "ctitle"},
+                created3: {"name": "标题", type: "csentence"},
+                created4: {"name": "标题", type: "csummary"},
+                created5: {"name": "标题", type: "cparagraph"}
             },
             items: [{
                 name: "aaaa", type: "number"
