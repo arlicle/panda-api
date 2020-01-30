@@ -4,7 +4,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use regex::Regex;
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
-const CHARSET2: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
+const CHARSET2: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 
 enum Type {
@@ -156,6 +156,13 @@ pub fn float() -> f64 {
 }
 
 
+/// 随机返回一个字符串
+pub fn alphabet() -> char {
+    let mut rng = thread_rng();
+    let idx = rng.gen_range(0, CHARSET2.len());
+    CHARSET2[idx] as char
+}
+
 pub fn char() -> char {
     let mut rng = thread_rng();
     let idx = rng.gen_range(0, CHARSET.len());
@@ -174,8 +181,6 @@ pub fn string(mut length: usize) -> String {
 
     let l = CHARSET.len();
     while length > 0 {
-//        let n: usize = rng.gen_range(0, l);
-//        let a1 = &CHARSET[n];
         s.push(char());
         length -= 1;
     }
