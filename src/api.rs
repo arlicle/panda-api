@@ -708,7 +708,6 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     let x = int!(min_value, max_value);
                     result.insert(field_key.clone(), Value::from(x));
                 }
-
                 "date" | "datetime" => {
                     let mut min_value = "";
                     let mut max_value = "";
@@ -731,6 +730,12 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     };
 
                     result.insert(field_key.clone(), Value::from(d));
+                }
+                "name" => {
+                    result.insert(field_key.clone(), Value::String(mock::name::name()));
+                }
+                "cname" => {
+                    result.insert(field_key.clone(), Value::String(mock::name::cname()));
                 }
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
