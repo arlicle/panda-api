@@ -28,9 +28,10 @@
                 created4: {"name": "标题", type: "csummary"},
                 created5: {"name": "标题", type: "cword"},
                 created6: {"name": "标题", type: "ctitle"},
-                created7: {"name": "标题", type: "cparagraph"},
-                created8: {"name": "标题", type: "name"},
-                created9: {"name": "标题", type: "cname"},
+                created7: {"name": "标题", type: "url"},
+                created8: {"name": "标题", type: "domain"},
+                created9: {"name": "标题", type: "ip"},
+                created10: {"name": "标题", type: "email"},
             },
             items: [{
                 name: "aaaa", type: "number"

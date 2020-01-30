@@ -737,6 +737,18 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "cname" => {
                     result.insert(field_key.clone(), Value::String(mock::name::cname()));
                 }
+                "domain" => {
+                    result.insert(field_key.clone(), Value::String(mock::web::domain(true)));
+                }
+                "ip" => {
+                    result.insert(field_key.clone(), Value::String(mock::web::ip()));
+                }
+                "email" => {
+                    result.insert(field_key.clone(), Value::String(mock::web::email()));
+                }
+                "url" => {
+                    result.insert(field_key.clone(), Value::String(mock::web::url()));
+                }
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
                 }
