@@ -126,7 +126,6 @@ fn datetime_str_to_timestamp(datetime_str: &str) -> u64 {
 }
 
 
-
 pub fn datetime(min_value: &str, max_value: &str, format: &str) -> String {
     let mut timestamp_min_value = 0;
     let mut timestamp_max_value = 0;
@@ -186,4 +185,37 @@ pub fn string(mut length: usize) -> String {
     }
 
     s
+}
+
+/// 随机生成图片
+pub fn image(size: &str, foreground: &str, background: &str, format: &str, text: &str) -> String {
+    let size_list = ["200x100", "300x250", "250x250", "240x400", "336x280", "180x150",
+        "720x300", "468x60", "234x60", "88x31", "120x90",
+        "120x60", "120x240", "125x125", "728x90", "160x600",
+        "120x600", "300x600"];
+    let color_list = [["fff", "868e96"], ["fff", "212529"], ["fff", "007bff"], ["fff", "28a745"], ["fff", "17a2b8"], ["fff", "ffc107"], ["fff", "dc3545"],
+        ["004085", "cce5ff"], ["383d41", "e2e3e5"], ["155724", "d4edda"], ["721c24", "f8d7da"], ["856404", "fff3cd"], ["0c5460", "d1ecf1"]];
+    let mut rng = thread_rng();
+    let mut size = size;
+    let mut background = background;
+    let mut foreground = foreground;
+    if size == "" {
+        let n = rng.gen_range(0, size_list.len());
+        size = size_list[n];
+    }
+    let mut a = "";
+    if background == "" && foreground == "" {
+        let n = rng.gen_range(0, color_list.len());
+        let n = color_list[n];
+        foreground = n[0];
+        background = n[1];
+    } else if background == "" {
+        let n = rng.gen_range(0, color_list.len());
+        let n = color_list[n];
+        background = n[1];
+    } else if foreground == "" {
+        foreground = "fff";
+    }
+
+    format!("https://dummyimage.com/{}/{}/{}/?text={}", size, background, foreground, text)
 }
