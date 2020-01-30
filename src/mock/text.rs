@@ -19,10 +19,10 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> 
     let mut rng = thread_rng();
 
     if min_length == 0 {
-        min_length = 5;
+        min_length = 300;
     }
     if max_length == 0 {
-        max_length = 20;
+        max_length = 1600;
     }
 
     if length == 0 {
@@ -30,12 +30,17 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> 
         length = rng.gen_range(min_length, max_length);
     }
 
-    while length > 0 {
+    let length = (length * 3) as usize;
+    while true {
         let s1 = csummary(0, 0, 0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
         s.push_str(&s1);
         s.push_str("\n\n");
-        length -= 1;
     }
+
     if s.ends_with("，") {
         let x = s.trim_end_matches("，");
         return format!("{}。", x);
@@ -62,7 +67,7 @@ pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
 
     let length = length as usize;
     while true {
-        let s1 = sentence(0, 0, 0);
+        let s1 = summary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
@@ -80,18 +85,24 @@ pub fn csummary(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
     let mut s = String::new();
     let mut rng = thread_rng();
     if min_length == 0 {
-        min_length = 5;
+        min_length = 60;
     }
     if max_length == 0 {
-        max_length = 20;
+        max_length = 250;
     }
 
     if length == 0 {
         length = rng.gen_range(min_length, max_length);
     }
-    while length > 0 {
-        s.push_str(&csentence(0, 0, 0));
-        length -= 1;
+
+    let length = (length * 3) as usize;
+    while true {
+        let s1 = csentence(0, 0, 0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
     }
 
     if s.ends_with("，") {
@@ -142,15 +153,25 @@ pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
         min_length = 5;
     }
     if max_length == 0 {
-        max_length = 20;
+        max_length = 50;
     }
 
     if length == 0 {
         length = rng.gen_range(min_length, max_length);
     }
-    let s1 = cword(length as usize);
+
+    let length = (length * 3) as usize;
+    while true {
+        let s1 = cword(0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
+    }
+
     let s2 = cpunctuation(0);
-    format!("{}{}", s1, s2)
+    format!("{}{}", s, s2)
 }
 
 
@@ -195,19 +216,28 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
         min_length = 5;
     }
     if max_length == 0 {
-        max_length = 20;
+        max_length = 40;
     }
 
     if length == 0 {
         length = rng.gen_range(min_length, max_length);
     }
 
-    let s1 = cword(length as usize);
+    let length = (length * 3) as usize;
+    while true {
+        let s1 = cword(0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
+    }
+
     let s2 = cpunctuation(3);
     if &s2 == " " {
-        return s1;
+        return s;
     }
-    format!("{}{}", s1, s2)
+    format!("{}{}", s, s2)
 }
 
 /// 生成随机英文标题
