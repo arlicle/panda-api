@@ -90,9 +90,8 @@ macro_rules! timestamp {
         }
 
         if max_value == 0 {
-            // 两年后：当前时间+两年
-            let s2 = s.checked_add(Duration::from_secs(63072000)).unwrap();
-            let s2 = s2.duration_since(SystemTime::UNIX_EPOCH).unwrap();
+            // 当前时间戳
+            let s2 = s.duration_since(SystemTime::UNIX_EPOCH).unwrap();
             max_value = s2.as_secs();
         }
 
