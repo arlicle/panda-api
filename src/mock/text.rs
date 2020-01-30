@@ -162,7 +162,7 @@ pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
 
     let length = (length * 3) as usize;
     while true {
-        let s1 = cword(0);
+        let s1 = cword(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
@@ -194,7 +194,7 @@ pub fn sentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
     let c = mock::basic::alphabet();
     s = c.to_uppercase().to_string();
     while true {
-        let s1 = word(0);
+        let s1 = word(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
@@ -225,7 +225,7 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
 
     let length = (length * 3) as usize;
     while true {
-        let s1 = cword(0);
+        let s1 = cword(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
@@ -259,7 +259,7 @@ pub fn title(mut length: u64, mut min_length: u64, mut max_length: u64) -> Strin
     let c = mock::basic::alphabet();
     s = c.to_uppercase().to_string();
     while true {
-        let s1 = word(0);
+        let s1 = word(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
@@ -317,12 +317,18 @@ pub fn punctuation(index: usize) -> String {
 
 
 /// 生成随机英文单词
-pub fn word(mut length: usize) -> String {
+pub fn word(mut length: usize, mut min_length: u64, mut max_length: u64) -> String {
     let mut rng = thread_rng();
     let mut s = String::new();
 
+    if min_length == 0 {
+        min_length = 3;
+    }
+    if max_length == 0 {
+        max_length = 10;
+    }
     if length == 0 {
-        length = rng.gen_range(3, 10);
+        length = rng.gen_range(min_length as usize, max_length as usize);
     }
 
     while length > 0 {
@@ -334,12 +340,18 @@ pub fn word(mut length: usize) -> String {
 
 
 /// 生成随机中文单词
-pub fn cword(mut length: usize) -> String {
+pub fn cword(mut length: usize, mut min_length: u64, mut max_length: u64) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
 
+    if min_length == 0 {
+        min_length = 1;
+    }
+    if max_length == 0 {
+        max_length = 4;
+    }
     if length == 0 {
-        length = rng.gen_range(1, 4);
+        length = rng.gen_range(min_length as usize, max_length as usize);
     }
 
     while length > 0 {

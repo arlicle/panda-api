@@ -525,7 +525,7 @@ macro_rules! get_string_value {
         }
         match $field_type {
             "cword" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::cword(length as usize)));
+                $result.insert($field_key.clone(), Value::String(mock::text::cword(length as usize, min_length, max_length)));
             },
             "ctitle" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::ctitle(length, min_length, max_length)));
@@ -540,7 +540,7 @@ macro_rules! get_string_value {
                 $result.insert($field_key.clone(), Value::String(mock::text::cparagraph(length, min_length, max_length)));
             },
             "word" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::word(length as usize)));
+                $result.insert($field_key.clone(), Value::String(mock::text::word(length as usize, min_length, max_length)));
             },
             "title" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::title(length, min_length, max_length)));
