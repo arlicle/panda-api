@@ -524,135 +524,133 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 None => ""
             };
 
+            if let Some(value1) = field_attr.get("value") {
+                // 如果设定了value，那么就只返回一个固定的值
+                if let Some(value1) = value1.as_i64() {
+                    result.insert(field_key.clone(), Value::from(value1));
+                    continue;
+                }
+            }
+            if let Some(enum_data) = field_attr.get("enum") {
+                // 如果设置了枚举值，那么就只使用枚举值
+                get_mock_enum_value!(enum_data, rng, result, field_key);
+                continue;
+            }
+
             match field_type {
-                "number" | "int" | "posint" | "negint" | "float" | "posfloat" | "negfloat" | "timestamp" => {
-                    if let Some(value1) = field_attr.get("value") {
-                        // 如果设定了value，那么就只返回一个固定的值
-                        if let Some(value1) = value1.as_i64() {
-                            result.insert(field_key.clone(), Value::from(value1));
-                            continue;
+                "float" | "posfloat" | "negfloat" => {
+                    let mut min_value = i32::min_value() as f64;
+                    let mut max_value = i32::max_value() as f64;
+
+                    let mut decimal_places = 0;
+                    let mut min_decimal_places = 0;
+                    let mut max_decimal_places = 0;
+
+                    match field_type {
+                        "posfloat" => {
+                            min_value = 0.0;
+                        }
+                        "negfloat" => {
+                            max_value = 0.0;
+                        }
+                        _ => ()
+                    }
+
+                    if let Some(min_value1) = field_attr.get("min_value") {
+                        if let Some(min_value1) = min_value1.as_f64() {
+                            min_value = min_value1;
                         }
                     }
 
-                    if let Some(enum_data) = field_attr.get("enum") {
-                        get_mock_enum_value!(enum_data, rng, result, field_key);
-                    } else  {
-                        match field_type {
-                            "float" | "posfloat" | "negfloat" => {
-                                let mut min_value = i32::min_value() as f64;
-                                let mut max_value = i32::max_value() as f64;
-
-                                let mut decimal_places = 0;
-                                let mut min_decimal_places = 0;
-                                let mut max_decimal_places = 0;
-
-                                match field_type {
-                                    "posfloat" => {
-                                        min_value = 0.0;
-                                    }
-                                    "negfloat" => {
-                                        max_value = 0.0;
-                                    }
-                                    _ => ()
-                                }
-
-                                if let Some(min_value1) = field_attr.get("min_value") {
-                                    if let Some(min_value1) = min_value1.as_f64() {
-                                        min_value = min_value1;
-                                    }
-                                }
-
-                                if let Some(max_value1) = field_attr.get("max_value") {
-                                    if let Some(max_value1) = max_value1.as_f64() {
-                                        max_value = max_value1;
-                                    }
-                                }
-
-                                if let Some(max_value1) = field_attr.get("min_decimal_places") {
-                                    if let Some(max_value1) = max_value1.as_u64() {
-                                        min_decimal_places = max_value1 as u32;
-                                    }
-                                }
-                                if let Some(max_value1) = field_attr.get("max_decimal_places") {
-                                    if let Some(max_value1) = max_value1.as_u64() {
-                                        max_decimal_places = max_value1 as u32;
-                                    }
-                                }
-                                if let Some(max_value1) = field_attr.get("decimal_places") {
-                                    if let Some(max_value1) = max_value1.as_u64() {
-                                        decimal_places = max_value1 as u32;
-                                    }
-                                }
-
-                                if decimal_places > 0 || (min_decimal_places == 0 && max_decimal_places == 0) {
-                                    // 如果decimal_places设置了 或者 所有值都没有设置，那么默认就是两位小数
-                                    if decimal_places <= 0 {
-                                        decimal_places = 2;
-                                    }
-                                    let x = float!(min_value, max_value, decimal_places);
-                                    result.insert(field_key.clone(), Value::from(x));
-                                } else {
-                                    if min_decimal_places == 0 {
-                                        min_decimal_places = 2;
-                                    }
-                                    if max_decimal_places == 0 {
-                                        max_decimal_places = 16;
-                                    }
-
-                                    let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
-                                    result.insert(field_key.clone(), Value::from(x));
-                                }
-                            },
-                            "timestamp" => {
-                                let mut min_value = 0;
-                                let mut max_value = 0; // 2299年，12月 31日 12时 12 分 12秒
-
-                                if let Some(min_value1) = field_attr.get("min_value") {
-                                    if let Some(min_value1) = min_value1.as_u64() {
-                                        min_value = min_value1;
-                                    }
-                                }
-
-                                if let Some(max_value1) = field_attr.get("max_value") {
-                                    if let Some(max_value1) = max_value1.as_u64() {
-                                        max_value = max_value1;
-                                    }
-                                }
-
-                                let x = timestamp!(min_value, max_value);
-                                result.insert(field_key.clone(), Value::from(x));
-                            },
-                            _ => {
-                                let mut min_value = i64::min_value();
-                                let mut max_value = i64::max_value();
-                                match field_type {
-                                    "posint" => {
-                                        min_value = 0;
-                                    }
-                                    "negint" => {
-                                        max_value = 0;
-                                    }
-                                    _ => ()
-                                }
-
-                                if let Some(min_value1) = field_attr.get("min_value") {
-                                    if let Some(min_value1) = min_value1.as_i64() {
-                                        min_value = min_value1;
-                                    }
-                                }
-
-                                if let Some(max_value1) = field_attr.get("max_value") {
-                                    if let Some(max_value1) = max_value1.as_i64() {
-                                        max_value = max_value1;
-                                    }
-                                }
-                                let x = int!(min_value, max_value);
-                                result.insert(field_key.clone(), Value::from(x));
-                            }
+                    if let Some(max_value1) = field_attr.get("max_value") {
+                        if let Some(max_value1) = max_value1.as_f64() {
+                            max_value = max_value1;
                         }
                     }
-                },
-                "date"|"datetime" => {
+
+                    if let Some(max_value1) = field_attr.get("min_decimal_places") {
+                        if let Some(max_value1) = max_value1.as_u64() {
+                            min_decimal_places = max_value1 as u32;
+                        }
+                    }
+                    if let Some(max_value1) = field_attr.get("max_decimal_places") {
+                        if let Some(max_value1) = max_value1.as_u64() {
+                            max_decimal_places = max_value1 as u32;
+                        }
+                    }
+                    if let Some(max_value1) = field_attr.get("decimal_places") {
+                        if let Some(max_value1) = max_value1.as_u64() {
+                            decimal_places = max_value1 as u32;
+                        }
+                    }
+
+                    if decimal_places > 0 || (min_decimal_places == 0 && max_decimal_places == 0) {
+                        // 如果decimal_places设置了 或者 所有值都没有设置，那么默认就是两位小数
+                        if decimal_places <= 0 {
+                            decimal_places = 2;
+                        }
+                        let x = float!(min_value, max_value, decimal_places);
+                        result.insert(field_key.clone(), Value::from(x));
+                    } else {
+                        if min_decimal_places == 0 {
+                            min_decimal_places = 2;
+                        }
+                        if max_decimal_places == 0 {
+                            max_decimal_places = 16;
+                        }
+
+                        let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
+                        result.insert(field_key.clone(), Value::from(x));
+                    }
+                }
+                "timestamp" => {
+                    let mut min_value = 0;
+                    let mut max_value = 0; // 2299年，12月 31日 12时 12 分 12秒
+
+                    if let Some(min_value1) = field_attr.get("min_value") {
+                        if let Some(min_value1) = min_value1.as_u64() {
+                            min_value = min_value1;
+                        }
+                    }
+
+                    if let Some(max_value1) = field_attr.get("max_value") {
+                        if let Some(max_value1) = max_value1.as_u64() {
+                            max_value = max_value1;
+                        }
+                    }
+
+                    let x = timestamp!(min_value, max_value);
+                    result.insert(field_key.clone(), Value::from(x));
+                }
+                "number" | "int" | "posint" | "negint" => {
+                    let mut min_value = i64::min_value();
+                    let mut max_value = i64::max_value();
+                    match field_type {
+                        "posint" => {
+                            min_value = 0;
+                        }
+                        "negint" => {
+                            max_value = 0;
+                        }
+                        _ => ()
+                    }
+
+                    if let Some(min_value1) = field_attr.get("min_value") {
+                        if let Some(min_value1) = min_value1.as_i64() {
+                            min_value = min_value1;
+                        }
+                    }
+
+                    if let Some(max_value1) = field_attr.get("max_value") {
+                        if let Some(max_value1) = max_value1.as_i64() {
+                            max_value = max_value1;
+                        }
+                    }
+                    let x = int!(min_value, max_value);
+                    result.insert(field_key.clone(), Value::from(x));
+                }
+
+                "date" | "datetime" => {
                     let mut min_value = "";
                     let mut max_value = "";
 
@@ -674,7 +672,6 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     };
 
                     result.insert(field_key.clone(), Value::from(d));
-
                 }
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
