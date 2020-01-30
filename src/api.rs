@@ -755,6 +755,9 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "cword" | "ctitle" | "csentence" | "csummary" | "cparagraph" | "word" | "title" | "sentence" | "summary" | "paragraph" => {
                     get_string_value!(field_key, field_type, field_attr, result);
                 }
+                "image" => {
+                    result.insert(field_key.clone(), Value::String(mock::basic::image("", "", "", "", "")));
+                }
                 "object" => {
                     let v = create_mock_response(field_attr);
                     result.insert(field_key.clone(), Value::Object(v));
