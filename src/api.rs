@@ -20,7 +20,7 @@ use crate::websocket::WsChatSession;
 use crate::server;
 use actix::*;
 use crate::mock;
-use crate::{int, float, timestamp, datetime};
+use crate::{int, float, timestamp};
 
 use serde_json::Number;
 
@@ -653,10 +653,24 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     }
                 },
                 "date"|"datetime" => {
+                    let mut min_value = "";
+                    let mut max_value = "";
+
+                    if let Some(min_value1) = field_attr.get("min_value") {
+                        if let Some(min_value1) = min_value1.as_str() {
+                            min_value = min_value1;
+                        }
+                    }
+
+                    if let Some(max_value1) = field_attr.get("max_value") {
+                        if let Some(max_value1) = max_value1.as_str() {
+                            max_value = max_value1;
+                        }
+                    }
                     let d = if field_type == "date" {
-                        datetime!(0, 0, "%Y-%m-%d")
+                        mock::basic::datetime(min_value, max_value, "%Y-%m-%d")
                     } else {
-                        datetime!()
+                        mock::basic::datetime(min_value, max_value, "")
                     };
 
                     result.insert(field_key.clone(), Value::from(d));
