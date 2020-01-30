@@ -500,7 +500,51 @@ macro_rules! get_mock_enum_value {
     };
 }
 
+macro_rules! get_string_value {
+    ($field_key:expr, $field_type:ident, $field_attr:expr, $result:expr) => {
+        let mut min_length = 0;
+        let mut max_length = 0;
+        let mut length = 0;
 
+        if let Some(min_value1) = $field_attr.get("length") {
+            if let Some(min_value1) = min_value1.as_u64() {
+                length = min_value1;
+            }
+        }
+
+        if let Some(min_value1) = $field_attr.get("min_length") {
+            if let Some(min_value1) = min_value1.as_u64() {
+                min_length = min_value1;
+            }
+        }
+
+        if let Some(max_value1) = $field_attr.get("max_length") {
+            if let Some(max_value1) = max_value1.as_u64() {
+                max_length = max_value1;
+            }
+        }
+        match $field_type {
+            "cword" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::cword(length as usize)));
+            },
+            "ctitle" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::ctitle(length, min_length, max_length)));
+            },
+            "csentence" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::csentence(length, min_length, max_length)));
+            },
+            "csummary" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::csummary(length, min_length, max_length)));
+            },
+            "cparagraph" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::cparagraph(length, min_length, max_length)));
+            },
+            _ => {
+
+            }
+        }
+    }
+}
 
 
 
@@ -676,6 +720,9 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
                 }
+                "cword"|"ctitle"|"csentence"|"csummary"|"cparagraph" => {
+                    get_string_value!(field_key, field_type, field_attr, result);
+                }
                 "object" => {
                     let v = create_mock_response(field_attr);
                     result.insert(field_key.clone(), Value::Object(v));
@@ -710,7 +757,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                                 v = mock::basic::string(32);
                             }
                             _ => {
-                                v = mock::text::csentence(0);
+                                v = mock::text::csentence(0, 0, 0);
                             }
                         }
                         result.insert(field_key.clone(), Value::String(v));
