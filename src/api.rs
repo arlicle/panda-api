@@ -539,6 +539,21 @@ macro_rules! get_string_value {
             "cparagraph" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::cparagraph(length, min_length, max_length)));
             },
+            "word" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::word(length as usize)));
+            },
+            "title" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::title(length, min_length, max_length)));
+            },
+            "sentence" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::sentence(length, min_length, max_length)));
+            },
+            "summary" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::summary(length, min_length, max_length)));
+            },
+            "paragraph" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::paragraph(length, min_length, max_length)));
+            },
             _ => {
 
             }
@@ -720,7 +735,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
                 }
-                "cword"|"ctitle"|"csentence"|"csummary"|"cparagraph" => {
+                "cword" | "ctitle" | "csentence" | "csummary" | "cparagraph" | "word" | "title" | "sentence" | "summary" | "paragraph" => {
                     get_string_value!(field_key, field_type, field_attr, result);
                 }
                 "object" => {

@@ -6,6 +6,11 @@ const CHINESE_PUNCTUATION: [char; 9] = ['，', '。', '，', '！', '，', '？'
 const CHINESE_PUNCTUATION2: [char; 4] = [':', '、', '-', '"'];
 const CHINESE_PUNCTUATION3: [char; 4] = ['！', '？', ' ', ' '];
 
+const EN_PUNCTUATION: [char; 9] = [',', '.', ',', '!', ',', '?', ',', ';', ','];
+// 句子结尾符号
+const EN_PUNCTUATION2: [char; 4] = [':', '.', '-', '"'];
+// 语句中间的符号
+const EN_PUNCTUATION3: [char; 4] = ['！', '？', ' ', ' ']; // 标题结尾符号
 
 /// 生成随机中文段落
 /// length 表示有几个句子
@@ -38,6 +43,37 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> 
     s
 }
 
+/// 随机生成英文段落
+pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
+    let mut s = String::new();
+    let mut rng = thread_rng();
+
+    if min_length == 0 {
+        min_length = 300;
+    }
+    if max_length == 0 {
+        max_length = 1600;
+    }
+
+    if length == 0 {
+        // 默认有5到10个句子
+        length = rng.gen_range(min_length, max_length);
+    }
+
+    let length = length as usize;
+    while true {
+        let s1 = sentence(0, 0, 0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
+        s.push_str("\n\n");
+    }
+
+    s
+}
+
 
 /// 生成随机中文小段落
 pub fn csummary(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
@@ -66,6 +102,38 @@ pub fn csummary(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
 }
 
 
+/// 生成随机英文小段落
+pub fn summary(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
+    let mut s = String::new();
+    let mut rng = thread_rng();
+    if min_length == 0 {
+        min_length = 60;
+    }
+    if max_length == 0 {
+        max_length = 180;
+    }
+
+    if length == 0 {
+        length = rng.gen_range(min_length, max_length);
+    }
+    let length = length as usize;
+    while true {
+        let s1 = sentence(0, 0, 0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
+    }
+
+    if s.ends_with(", ") {
+        let x = s.trim_end_matches(", ");
+        return format!("{}.", x);
+    }
+    s
+}
+
+
 /// 生成随机中文句子
 pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
     let mut s = String::new();
@@ -83,6 +151,39 @@ pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
     let s1 = cword(length as usize);
     let s2 = cpunctuation(0);
     format!("{}{}", s1, s2)
+}
+
+
+/// 生成随机英文句子
+pub fn sentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
+    let mut s = String::new();
+    let mut rng = thread_rng();
+    if min_length == 0 {
+        min_length = 20;
+    }
+    if max_length == 0 {
+        max_length = 90;
+    }
+
+    if length == 0 {
+        length = rng.gen_range(min_length, max_length);
+    }
+
+    let length = length as usize;
+    let c = mock::basic::alphabet();
+    s = c.to_uppercase().to_string();
+    while true {
+        let s1 = word(0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
+        s.push_str(" ");
+    }
+
+    let s2 = punctuation(0);
+    format!("{}{} ", s.trim(), s2)
 }
 
 
@@ -109,7 +210,42 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
     format!("{}{}", s1, s2)
 }
 
-/// 生成随机结尾标点符号
+/// 生成随机英文标题
+pub fn title(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
+    let mut s = String::new();
+    let mut rng = thread_rng();
+    if min_length == 0 {
+        min_length = 20;
+    }
+    if max_length == 0 {
+        max_length = 90;
+    }
+
+    if length == 0 {
+        length = rng.gen_range(min_length, max_length);
+    }
+
+    let length = length as usize;
+    let c = mock::basic::alphabet();
+    s = c.to_uppercase().to_string();
+    while true {
+        let s1 = word(0);
+        if (s.len() + s1.len()) >= length {
+            // 整个title长度不能超过length长度
+            break;
+        }
+        s.push_str(&s1);
+        s.push_str(" ");
+    }
+
+    let s2 = punctuation(3);
+    if &s2 == " " {
+        return s.trim().to_string();
+    }
+    format!("{}{}", s.trim(), s2)
+}
+
+/// 生成中文随机结尾标点符号
 pub fn cpunctuation(index: usize) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
@@ -126,21 +262,43 @@ pub fn cpunctuation(index: usize) -> String {
         a1 = &CHINESE_PUNCTUATION[n];
     }
     s.push(*a1);
+    s
+}
 
+/// 生成英文随机结尾标点符号
+pub fn punctuation(index: usize) -> String {
+    let mut s = String::new();
+    let mut rng = thread_rng();
 
+    let mut a1;
+    if index == 3 {
+        let n: usize = rng.gen_range(0, EN_PUNCTUATION3.len());
+        a1 = &EN_PUNCTUATION3[n];
+    } else if index == 2 {
+        let n: usize = rng.gen_range(0, EN_PUNCTUATION2.len());
+        a1 = &EN_PUNCTUATION2[n];
+    } else {
+        let n: usize = rng.gen_range(0, EN_PUNCTUATION.len());
+        a1 = &EN_PUNCTUATION[n];
+    }
+    s.push(*a1);
     s
 }
 
 
 /// 生成随机英文单词
-pub fn word() -> String {
+pub fn word(mut length: usize) -> String {
     let mut rng = thread_rng();
-    let mut n = rng.gen_range(3, 10);
     let mut s = String::new();
-    while n > 0 {
-        s.push(mock::basic::char());
+
+    if length == 0 {
+        length = rng.gen_range(3, 10);
     }
 
+    while length > 0 {
+        s.push(mock::basic::alphabet());
+        length -= 1;
+    }
     s
 }
 

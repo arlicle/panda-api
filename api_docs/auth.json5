@@ -26,7 +26,11 @@
                 created2: {"name": "标题", type: "ctitle"},
                 created3: {"name": "标题", type: "csentence"},
                 created4: {"name": "标题", type: "csummary"},
-                created5: {"name": "标题", type: "cparagraph"}
+                created5: {"name": "标题", type: "word"},
+                created6: {"name": "标题", type: "title"},
+                created7: {"name": "标题", type: "sentence"},
+                created8: {"name": "标题", type: "summary"},
+                created9: {"name": "标题", type: "paragraph"},
             },
             items: [{
                 name: "aaaa", type: "number"
