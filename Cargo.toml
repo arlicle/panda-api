@@ -33,6 +33,9 @@ actix-files = "0.2.1"
 actix-multipart = "0.2.0"
 futures = "0.3.1"
 
+uuid = { version = "0.8.1", features = ["serde", "v4"] }
+
+
 
 
 

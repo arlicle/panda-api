@@ -2,6 +2,7 @@ use rand::{thread_rng, Rng};
 use std::time::{Duration, SystemTime};
 use chrono::{DateTime, TimeZone, Utc};
 use regex::Regex;
+use uuid::Uuid;
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 const CHARSET2: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
@@ -10,6 +11,13 @@ const CHARSET2: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 enum Type {
     String(String),
     Int(i32),
+}
+
+
+/// 生成uuid
+pub fn uuid() -> String {
+    let uuid = Uuid::new_v4();
+    uuid.to_string()
 }
 
 /// 随机生成一个bool

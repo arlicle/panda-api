@@ -772,6 +772,9 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "url" => {
                     result.insert(field_key.clone(), Value::String(mock::web::url()));
                 }
+                "uuid" => {
+                    result.insert(field_key.clone(), Value::String(mock::basic::uuid()));
+                }
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
                 }
