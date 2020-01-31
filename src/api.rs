@@ -580,10 +580,9 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
         let mut rng = thread_rng();
 
         for (field_key, field_attr) in response_model {
-            if field_key == "-type" || field_key == "-name" || field_key == "-desc" {
+            if field_key == "-type" || field_key == "-name" || field_key == "-desc" || field_key == "-length" || field_key == "-min_length" || field_key == "-max_length"{
                 continue;
             }
-
 
             let field_type = get_field_type(field_attr);
             let field_type = field_type.as_str();
@@ -823,16 +822,54 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                         if field_attr_array.len() > 0 {
                             let field_attr_one = &field_attr_array[0];
                             let field_type2 = get_field_type(field_attr_one);
+
+                            let mut length = 0;
+                            let mut min_length = 3;
+                            let mut max_length = 10;
+                            // 可以设定数组要展示多少个元素
+                            if let Some(v) = field_attr_one.get("-length") {
+                                if let Some(v) = v.as_u64() {
+                                    length = v;
+                                }
+                            }
+
+                            if let Some(v) = field_attr_one.get("-min_length") {
+                                if let Some(v) = v.as_u64() {
+                                    min_length = v;
+                                }
+                            }
+
+                            if let Some(v) = field_attr_one.get("-max_length") {
+                                if let Some(v) = v.as_u64() {
+                                    max_length = v;
+                                }
+                            }
+                            if length == 0 {
+                                length = rng.gen_range(min_length, max_length);
+                            }
+
                             match field_type2.to_lowercase().as_str() {
                                 "object" => {
-                                    let v = create_mock_response(field_attr_one);
-                                    result.insert(field_key.clone(), Value::Array(vec![Value::Object(v)]));
+                                    let mut vec = Vec::with_capacity(length as usize);
+                                    while length > 0 {
+                                        let v = create_mock_response(field_attr_one);
+                                        vec.push(Value::Object(v));
+                                        length -= 1;
+                                    }
+                                    result.insert(field_key.clone(), Value::Array(vec));
                                 }
                                 "array" | _ => {
                                     let mut result2: Map<String, Value> = Map::new();
                                     result2.insert("key".to_string(), field_attr_one.clone());
-                                    let v = create_mock_response(&Value::Object(result2));
-                                    result.insert(field_key.clone(), Value::Array(vec![v["key"].clone()]));
+
+                                    let mut vec = Vec::with_capacity(length as usize);
+                                    while length > 0 {
+                                        let v = create_mock_response(&Value::Object({ &result2 }.clone()));
+                                        vec.push(v["key"].clone());
+                                        length -= 1;
+                                    }
+
+                                    result.insert(field_key.clone(), Value::Array(vec));
                                 }
                             }
                         }
