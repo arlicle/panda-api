@@ -197,8 +197,10 @@ pub fn image(size: &str, foreground: &str, background: &str, format: &str, text:
         ["004085", "cce5ff"], ["383d41", "e2e3e5"], ["155724", "d4edda"], ["721c24", "f8d7da"], ["856404", "fff3cd"], ["0c5460", "d1ecf1"]];
     let mut rng = thread_rng();
     let mut size = size;
-    let mut background = background;
-    let mut foreground = foreground;
+    let background = background.replace("#", "");
+    let mut background = background.trim();
+    let foreground = foreground.replace("#", "");
+    let mut foreground = foreground.trim();
     if size == "" {
         let n = rng.gen_range(0, size_list.len());
         size = size_list[n];

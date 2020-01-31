@@ -764,7 +764,42 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     get_string_value!(field_key, field_type, field_attr, result);
                 }
                 "image" => {
-                    result.insert(field_key.clone(), Value::String(mock::basic::image("", "", "", "", "")));
+                    let mut size = "";
+                    let mut foreground = "";
+                    let mut background = "";
+                    let mut format = "";
+                    let mut text = "";
+                    if let Some(v) = field_attr.get("size") {
+                        if let Some(v) = v.as_str() {
+                            size = v;
+                        }
+                    }
+
+                    if let Some(v) = field_attr.get("foreground") {
+                        if let Some(v) = v.as_str() {
+                            foreground = v;
+                        }
+                    }
+
+                    if let Some(v) = field_attr.get("background") {
+                        if let Some(v) = v.as_str() {
+                            background = v;
+                        }
+                    }
+
+                    if let Some(v) = field_attr.get("format") {
+                        if let Some(v) = v.as_str() {
+                            format = v;
+                        }
+                    }
+
+                    if let Some(v) = field_attr.get("text") {
+                        if let Some(v) = v.as_str() {
+                            text = v;
+                        }
+                    }
+
+                    result.insert(field_key.clone(), Value::String(mock::basic::image(size, foreground, background, format, text)));
                 }
                 "object" => {
                     let v = create_mock_response(field_attr);

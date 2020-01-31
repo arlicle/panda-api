@@ -32,13 +32,13 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64, con
 
     let length = (length * 3) as usize;
     while true {
-        if content_type == "html" {
-            s.push_str("<p>");
-        }
         let s1 = csummary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
+        }
+        if content_type == "html" {
+            s.push_str("<p>");
         }
         s.push_str(&s1);
         if content_type == "html" {
@@ -74,14 +74,13 @@ pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64, cont
 
     let length = length as usize;
     while true {
-        if content_type == "html" {
-            s.push_str("<p>");
-        }
-
         let s1 = summary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
+        }
+        if content_type == "html" {
+            s.push_str("<p>");
         }
         s.push_str(&s1);
         if content_type == "html" {
