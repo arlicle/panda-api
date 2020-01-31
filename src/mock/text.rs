@@ -31,7 +31,7 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64, con
     }
 
     let length = (length * 3) as usize;
-    while true {
+    loop {
         let s1 = csummary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -73,7 +73,7 @@ pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64, cont
     }
 
     let length = length as usize;
-    while true {
+    loop {
         let s1 = summary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -110,7 +110,7 @@ pub fn csummary(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
     }
 
     let length = (length * 3) as usize;
-    while true {
+    loop {
         let s1 = csentence(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -142,7 +142,7 @@ pub fn summary(mut length: u64, mut min_length: u64, mut max_length: u64) -> Str
         length = rng.gen_range(min_length, max_length);
     }
     let length = length as usize;
-    while true {
+    loop {
         let s1 = sentence(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -175,7 +175,7 @@ pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
     }
 
     let length = (length * 3) as usize;
-    while true {
+    loop {
         let s1 = cword(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -207,7 +207,7 @@ pub fn sentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
     let length = length as usize;
     let c = mock::basic::alphabet();
     s = c.to_uppercase().to_string();
-    while true {
+    loop {
         let s1 = word(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -238,7 +238,7 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
     }
 
     let length = (length * 3) as usize;
-    while true {
+    loop {
         let s1 = cword(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
@@ -272,7 +272,7 @@ pub fn title(mut length: u64, mut min_length: u64, mut max_length: u64) -> Strin
     let length = length as usize;
     let c = mock::basic::alphabet();
     s = c.to_uppercase().to_string();
-    while true {
+    loop {
         let s1 = word(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
