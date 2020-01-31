@@ -170,12 +170,19 @@ pub fn char() -> char {
 
 
 /// 随机生成英文+符号的字符串
-pub fn string(mut length: usize) -> String {
+pub fn string(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
 
+    if min_length == 0 {
+        min_length = 5;
+    }
+    if max_length == 0 {
+        max_length = 30;
+    }
+
     if length == 0 {
-        length = rng.gen_range(7, 20);
+        length = rng.gen_range(min_length, max_length);
     }
 
     let l = CHARSET.len();

@@ -562,8 +562,8 @@ macro_rules! get_string_value {
             "paragraph" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::paragraph(length, min_length, max_length, content_type)));
             },
-            _ => {
-
+            "string" | _ => {
+                $result.insert($field_key.clone(), Value::String(mock::basic::string(length, min_length, max_length)));
             }
         }
     }
@@ -584,12 +584,28 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 continue;
             }
 
+
             let field_type = get_field_type(field_attr);
             let field_type = field_type.as_str();
-            let mock_type = match field_attr.get("mock_type") {
-                Some(v) => v.as_str().unwrap(),
-                None => ""
-            };
+
+            let mut required = true;
+
+            match field_attr.get("required") {
+                Some(v) => {
+                    if let Some(v) = v.as_bool() {
+                        required = v;
+                    }
+                }
+                None => ()
+            }
+
+            if !required {
+                // 如果required是false，那么返回数据就随机丢失
+                let n = rng.gen_range(0, 10);
+                if n % 2 == 0 {
+                    continue;
+                }
+            }
 
             if let Some(value1) = field_attr.get("value") {
                 // 如果设定了value，那么就只返回一个固定的值
@@ -760,9 +776,6 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
                 }
-                "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cs" | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence" | "summary" | "paragraph" => {
-                    get_string_value!(field_key, field_type, field_attr, result);
-                }
                 "image" => {
                     let mut size = "";
                     let mut foreground = "";
@@ -825,21 +838,8 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                         }
                     }
                 }
-                "string" | _ => {
-                    if let Some(enum_data) = field_attr.get("enum") {
-                        get_mock_enum_value!(enum_data, rng, result, field_key);
-                    } else {
-                        let mut v;
-                        match mock_type {
-                            "string" => {
-                                v = mock::basic::string(32);
-                            }
-                            _ => {
-                                v = mock::text::csentence(0, 0, 0);
-                            }
-                        }
-                        result.insert(field_key.clone(), Value::String(v));
-                    }
+                "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cs" | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence" | "summary" | "paragraph" | _ => {
+                    get_string_value!(field_key, field_type, field_attr, result);
                 }
             }
         }
