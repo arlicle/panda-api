@@ -861,12 +861,9 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                                 "array" | _ => {
                                     let mut result2: Map<String, Value> = Map::new();
                                     result2.insert("key".to_string(), field_attr_one.clone());
-                                    println!("field_attr_one {:?}", field_attr_one);
-                                    println!("result2 {:?}", result2);
                                     let mut vec = Vec::with_capacity(length as usize);
                                     while length > 0 {
                                         let v = create_mock_response(&Value::Object({ &result2 }.clone()));
-                                        println!("v {:?}", v);
                                         if v.contains_key("key") {
                                             vec.push(v["key"].clone());
                                         }
