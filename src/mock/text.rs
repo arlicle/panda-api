@@ -14,7 +14,7 @@ const EN_PUNCTUATION3: [char; 4] = ['！', '？', ' ', ' ']; // 标题结尾符�
 
 /// 生成随机中文段落
 /// length 表示有几个句子
-pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
+pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64, content_type:&str) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
 
@@ -32,13 +32,20 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> 
 
     let length = (length * 3) as usize;
     while true {
+        if content_type == "html" {
+            s.push_str("<p>");
+        }
         let s1 = csummary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
         }
         s.push_str(&s1);
-        s.push_str("\n\n");
+        if content_type == "html" {
+            s.push_str("</p>\n");
+        } else if content_type == "markdown" {
+            s.push_str("\n\n");
+        }
     }
 
     if s.ends_with("，") {
@@ -49,7 +56,7 @@ pub fn cparagraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> 
 }
 
 /// 随机生成英文段落
-pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
+pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64, content_type:&str) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
 
@@ -67,13 +74,21 @@ pub fn paragraph(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
 
     let length = length as usize;
     while true {
+        if content_type == "html" {
+            s.push_str("<p>");
+        }
+
         let s1 = summary(0, 0, 0);
         if (s.len() + s1.len()) >= length {
             // 整个title长度不能超过length长度
             break;
         }
         s.push_str(&s1);
-        s.push_str("\n\n");
+        if content_type == "html" {
+            s.push_str("</p>\n");
+        } else if content_type == "markdown" {
+            s.push_str("\n\n");
+        }
     }
 
     s
@@ -118,10 +133,10 @@ pub fn summary(mut length: u64, mut min_length: u64, mut max_length: u64) -> Str
     let mut s = String::new();
     let mut rng = thread_rng();
     if min_length == 0 {
-        min_length = 60;
+        min_length = 120;
     }
     if max_length == 0 {
-        max_length = 180;
+        max_length = 300;
     }
 
     if length == 0 {
@@ -216,7 +231,7 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
         min_length = 5;
     }
     if max_length == 0 {
-        max_length = 40;
+        max_length = 50;
     }
 
     if length == 0 {
