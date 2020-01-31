@@ -19,11 +19,21 @@
             msg:{name:"response result message", type:"string", enum: ["成功", "失败", "被锁定"]},
             token:{name:"login success, get a user token; login failed, no token", type:"string", mock_type:"string", length:32, required:false},
             data: {
-                category_id: {name: "category id", type: "number", min_value:10, max_value: 100, required:false},
-                category_id2: {name: "category id", type: "NegFloat", decimal_places: 16, required:false},
-                category_name: {name: "category name", required:false},
-                category_name2: {name: "category name"},
+                category_id: {name: "category id", type: "number", min_value:10, max_value: 100},
+                category_id2: {name: "category id", type: "NegFloat", decimal_places: 16},
+                category_name: {name: "category name"},
             },
+            items: [{
+                "-length": 10,
+                name: "aaaa", type: "number"
+            }],
+            items2: [{
+                "-min_length":1,
+                "-max_length":3,
+                title: {name: "post title"},
+                id: {name: "post id", type:"number"},
+                author: {name: "post author"}
+            }]
         },
         test_data:[
             {
