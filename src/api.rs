@@ -505,6 +505,7 @@ macro_rules! get_string_value {
         let mut min_length = 0;
         let mut max_length = 0;
         let mut length = 0;
+        let mut content_type = "markdown";
 
         if let Some(min_value1) = $field_attr.get("length") {
             if let Some(min_value1) = min_value1.as_u64() {
@@ -523,21 +524,28 @@ macro_rules! get_string_value {
                 max_length = max_value1;
             }
         }
+
+        if let Some(min_value1) = $field_attr.get("content_type") {
+            if let Some(min_value1) = min_value1.as_str() {
+                content_type = min_value1;
+            }
+        }
+
         match $field_type {
             "cword"|"cw" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::cword(length as usize, min_length, max_length)));
             },
-            "ctitle" => {
+            "ctitle" | "ct" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::ctitle(length, min_length, max_length)));
             },
-            "csentence" => {
+            "csentence" | "cs" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::csentence(length, min_length, max_length)));
             },
-            "csummary" => {
+            "csummary" | "cm" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::csummary(length, min_length, max_length)));
             },
-            "cparagraph" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::cparagraph(length, min_length, max_length)));
+            "cparagraph" | "cp" => {
+                $result.insert($field_key.clone(), Value::String(mock::text::cparagraph(length, min_length, max_length, content_type)));
             },
             "word" => {
                 $result.insert($field_key.clone(), Value::String(mock::text::word(length as usize, min_length, max_length)));
@@ -552,7 +560,7 @@ macro_rules! get_string_value {
                 $result.insert($field_key.clone(), Value::String(mock::text::summary(length, min_length, max_length)));
             },
             "paragraph" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::paragraph(length, min_length, max_length)));
+                $result.insert($field_key.clone(), Value::String(mock::text::paragraph(length, min_length, max_length, content_type)));
             },
             _ => {
 
@@ -752,7 +760,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
                 }
-                "cword" | "cw" | "ctitle" | "csentence" | "csummary" | "cparagraph" | "word" | "title" | "sentence" | "summary" | "paragraph" => {
+                "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cs" | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence" | "summary" | "paragraph" => {
                     get_string_value!(field_key, field_type, field_attr, result);
                 }
                 "image" => {

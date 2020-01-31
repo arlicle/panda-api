@@ -24,9 +24,10 @@
                 category_name: {name: "category name"},
                 created: {"name": "创建时间", type: "datetime", min_value: "1999-09-01", max_value: "2022-01-11"},
                 created1: {"name": "标题", type: "image"},
-                created2: {"name": "标题", type: "ctitle"},
-                created3: {"name": "标题", type: "csentence"},
-                created4: {"name": "标题", type: "csummary"},
+                created2: {"name": "标题", type: "paragraph", content_type: "html"},
+                created3: {"name": "标题", type: "cp", content_type: "html"},
+
+                created4: {"name": "标题", type: "cm"},
                 created5: {"name": "标题", type: "cword"},
                 created6: {"name": "标题", type: "ctitle"},
                 created7: {"name": "标题", type: "url"},
