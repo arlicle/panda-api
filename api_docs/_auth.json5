@@ -1,0 +1,30 @@
+{
+    name: "用户认证接口文档",
+    desc: "相关认证说明",
+    test_data:[
+    {
+        token:["aaa", "bbb", "ccc", "eee"],
+        perm:["*"], // * 表示拥有所有接口的全部权限
+    }, 
+    {
+        token:["abc", "bdef"],
+        perm:["/user/list/", "/post/add/", "/post/{id:\\d+}/"],
+        // 没有不接口权限在的，返回错误
+        no_perm_response: {
+            code: -1,
+            msg: "没有权限非法操作"
+        }
+    }, 
+    {
+        // 直接设置多接口权限
+        token:["abc", "bdef"],
+        perm:["auth.json5", "article.json5"], // 拥有auth.json5 和 article.json5的全部接口权限
+        no_perm:["/aa/login/"], // 设定没有权限的接口列表
+        // 没有不接口权限在的，返回错误
+        no_perm_response: {
+            code: -1,
+            msg: "没有权限非法操作"
+        }
+    }
+    ]
+}
