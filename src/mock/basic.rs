@@ -1,6 +1,6 @@
 use rand::{thread_rng, Rng};
 use std::time::{Duration, SystemTime};
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{TimeZone, Utc};
 use regex::Regex;
 use uuid::Uuid;
 
