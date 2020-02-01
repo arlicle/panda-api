@@ -36,6 +36,9 @@ pub struct ApiDoc {
 }
 
 
+
+
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiData {
     pub name: String,
@@ -48,6 +51,37 @@ pub struct ApiData {
     pub query: Value,
     pub response: Value,
     pub test_data: Value,
+}
+
+
+#[derive(Debug)]
+/// auth认证中心文档
+pub struct AuthDoc {
+    pub name: String, // auth 文档名称
+    pub desc: String, // auth 相关说明
+    pub auth_type: String, // auth 类型
+    pub auth_place: String, // auth 放在什么地方：headers 或者是 url上
+    pub filename: String, // 文件名称
+    pub test_data: Vec<AuthData>,
+    pub no_perm_response: Value
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UrlPerm {
+    pub url:String,
+    pub methods: Vec<String>
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AuthData {
+    pub name: String,
+    pub desc: String,
+    pub users: HashMap<String, Value>,
+    pub has_perms: Vec<UrlPerm>,
+    pub no_perms: Vec<UrlPerm>,
+    pub no_perm_response: Value
 }
 
 
