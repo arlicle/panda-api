@@ -61,7 +61,6 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
             .service(Files::new("/js", "_data/theme/js"))
-//            .service(Files::new("/websocket", "_data/theme/"))
             .service(Files::new("/css", "_data/theme/css"))
             .service(Files::new("/_upload", "_data/_upload"))
 
@@ -72,6 +71,8 @@ async fn main() -> std::io::Result<()> {
                     .route(web::post().to(api::action_handle))
                     .route(web::put().to(api::action_handle))
                     .route(web::delete().to(api::action_handle))
+                    .route(web::patch().to(api::action_handle))
+                    .route(web::head().to(api::action_handle))
             )
     })
         .bind(format!("{}:{}", conf.host, conf.port))?
