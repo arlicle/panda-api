@@ -23,7 +23,6 @@ use crate::mock;
 use crate::{int, float, timestamp};
 
 
-
 #[derive(Serialize, Deserialize, Debug)]
 struct DocSummary {
     pub name: String,
@@ -579,7 +578,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
         let mut rng = thread_rng();
 
         for (field_key, field_attr) in response_model {
-            if field_key == "-type" || field_key == "-name" || field_key == "-desc" || field_key == "-length" || field_key == "-min_length" || field_key == "-max_length"{
+            if field_key == "-type" || field_key == "-name" || field_key == "-desc" || field_key == "-length" || field_key == "-min_length" || field_key == "-max_length" {
                 continue;
             }
 
@@ -776,6 +775,19 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                 }
                 "bool" => {
                     result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
+                }
+                "regex" => {
+                    let mut r = "";
+                    if let Some(v) = field_attr.get("regex") {
+                        if let Some(v) = v.as_str() {
+                            r = v.trim();
+                        }
+                    }
+                    if r == "" {
+                        result.insert(field_key.clone(), Value::String("".to_string()));
+                    } else {
+                        result.insert(field_key.clone(), Value::String(mock::basic::regex_string(r)));
+                    }
                 }
                 "image" => {
                     let mut size = "";
