@@ -1,7 +1,8 @@
 {
     name: "用户认证接口文档",
     desc: "相关auth认证说明，token生成规则及相关说明",
-    auth_type:"Bearer Token",
+    auth_type:"Bearer",
+    auth_place:"headers",
     test_data:[
     {
         name: "token列表对用权限组或者用户角色的名称",
