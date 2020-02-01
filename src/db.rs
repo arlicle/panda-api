@@ -15,6 +15,7 @@ pub struct Database {
     pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>,
     pub fileindex_data: HashMap<String, HashSet<String>>,
     pub websocket_api: Arc<Mutex<ApiData>>,
+    pub auth_doc: Option<AuthDoc>,
 }
 
 
@@ -36,9 +37,6 @@ pub struct ApiDoc {
 }
 
 
-
-
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiData {
     pub name: String,
@@ -57,21 +55,20 @@ pub struct ApiData {
 #[derive(Debug)]
 /// auth认证中心文档
 pub struct AuthDoc {
-    pub name: String, // auth 文档名称
-    pub desc: String, // auth 相关说明
-    pub auth_type: String, // auth 类型
-    pub auth_place: String, // auth 放在什么地方：headers 或者是 url上
-    pub filename: String, // 文件名称
+    pub name: String,
+    // auth 文档名称
+    pub desc: String,
+    // auth 相关说明
+    pub auth_type: String,
+    // auth 类型
+    pub auth_place: String,
+    // auth 放在什么地方：headers 或者是 url上
+    pub filename: String,
+    // 文件名称
     pub test_data: Vec<AuthData>,
-    pub no_perm_response: Value
+    pub no_perm_response: Value,
 }
 
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct UrlPerm {
-    pub url:String,
-    pub methods: Vec<String>
-}
 
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -79,9 +76,9 @@ pub struct AuthData {
     pub name: String,
     pub desc: String,
     pub users: HashMap<String, Value>,
-    pub has_perms: Vec<UrlPerm>,
-    pub no_perms: Vec<UrlPerm>,
-    pub no_perm_response: Value
+    pub has_perms: HashMap<String, HashSet<String>>,
+    pub no_perms: HashMap<String, HashSet<String>>,
+    pub no_perm_response: Value,
 }
 
 
@@ -102,21 +99,22 @@ fn fix_json(org_string: String) -> String {
 }
 
 
-
 /// 加载auth认证的相关数据
-pub fn load_auth_data() {
+pub fn load_auth_data() -> Option<AuthDoc> {
     let auth_files = ["_auth.json5", "_auth.json"];
 
     let mut auth_value = json!({});
+    let mut filename = "";
     for file in auth_files.iter() {
         match fs::read_to_string(file) {
             Ok(v) => {
                 let v = fix_json(v);
                 match json5::from_str(&v) {
                     Ok(v) => {
+                        filename = file;
                         auth_value = v;
                         break;
-                    },
+                    }
                     Err(e) => ()
                 }
             }
@@ -124,10 +122,132 @@ pub fn load_auth_data() {
         };
     }
 
-    println!(" auth_value {:?}", auth_value);
+    let obj = auth_value.as_object().unwrap();
+
+    let name = match obj.get("name") {
+        Some(name) => name.as_str().unwrap(),
+        None => "Panda api auth"
+    };
+
+    let desc = match obj.get("desc") {
+        Some(name) => name.as_str().unwrap(),
+        None => "Panda api desc"
+    };
+
+    let auth_type = match obj.get("auth_type") {
+        Some(name) => name.as_str().unwrap(),
+        None => "Bearer"
+    };
+
+    let auth_place = match obj.get("auth_place") {
+        Some(v) => v.as_str().unwrap(),
+        None => "headers"
+    };
+
+    let no_perm_response = match obj.get("no_perm_response") {
+        Some(v) => v.clone(),
+        None => Value::Null
+    };
+
+    let mut test_data: Vec<AuthData> = Vec::new();
+
+    if let Some(test_data_value) = obj.get("test_data") {
+        if let Some(items) = test_data_value.as_array() {
+            for data in items {
+                let test_data_name = match data.get("name") {
+                    Some(v) => v.as_str().unwrap(),
+                    None => ""
+                };
+                let test_data_desc = match data.get("desc") {
+                    Some(v) => v.as_str().unwrap(),
+                    None => ""
+                };
+
+                let mut users: HashMap<String, Value> = HashMap::new();
+
+                if let Some(v) = data.get("users") {
+                    if let Some(uu) = v.as_array() {
+                        for user in uu {
+                            if let Some(t) = user.get("token") {
+                                if let Some(token) = t.as_str() {
+                                    users.insert(token.to_string(), user.clone());
+                                }
+                            }
+                        }
+                    }
+                };
+
+                let x: Option<&Value> = data.get("has_perms");
+                let mut has_perms: HashMap<String, HashSet<String>> = HashMap::new();
+
+                let mut has_perms = parse_auth_perms(data.get("has_perms"));
+                let mut no_perms = parse_auth_perms(data.get("no_perms"));
+
+                let test_data_no_perm_response = match data.get("no_perm_response") {
+                    Some(v) => v.clone(),
+                    None => Value::Null
+                };
+
+                test_data.push(AuthData{name:test_data_name.to_string(), desc:test_data_desc.to_string(), users:users, has_perms:has_perms, no_perms:no_perms, no_perm_response:test_data_no_perm_response})
+            }
+        }
+    }
+
+    Some(AuthDoc{name:name.to_string(), desc:desc.to_string(), auth_type:auth_type.to_string(), auth_place:auth_place.to_string(), filename:filename.to_string(), test_data:test_data, no_perm_response:no_perm_response})
 }
 
 
+fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<String>> {
+    let mut result: HashMap<String, HashSet<String>> = HashMap::new();
+    if let Some(perms) = perms_data {
+        if let Some(perms) = perms.as_array() {
+            for perm in perms {
+                if perm.is_string() {
+                    let mut methods = HashSet::new();
+                    methods.insert("*".to_string());
+                    let url = perm.as_str().unwrap();
+                    result.insert(url.to_string(), methods);
+                } else if perm.is_array() {
+                    let perms = perm.as_array().unwrap();
+                    let mut url = "";
+                    let mut methods = HashSet::new();
+                    for (i, perm) in perms.iter().enumerate() {
+                        if i == 0 {
+                            url = perm.as_str().unwrap();
+                        } else {
+                            let perm = perm.as_str().unwrap();
+                            methods.insert(perm.to_string());
+                        }
+                    }
+                    result.insert(url.to_string(), methods);
+                } else if perm.is_object() {
+                    let perm = perm.as_object().unwrap();
+                    let url = match perm.get("url") {
+                        Some(url) => url,
+                        None => continue
+                    };
+
+                    let mut methods = HashSet::new();
+
+                    if let Some(m) = perm.get("methods") {
+                        if m.is_string() {
+                            let m = m.as_str().unwrap();
+                            methods.insert(m.to_string());
+                        } else if m.is_array() {
+                            let m = m.as_array().unwrap();
+                            for i in m {
+                                let i = i.as_str().unwrap();
+                                methods.insert(i.to_string());
+                            }
+                        }
+                    }
+                    result.insert(url.to_string(), methods);
+                }
+            }
+        }
+    };
+    result
+}
 
 pub fn load_basic_data() -> BasicData {
     let read_me = match fs::read_to_string("README.md") {
@@ -144,16 +264,15 @@ pub fn load_basic_data() -> BasicData {
                 let v = fix_json(v);
                 match json5::from_str(&v) {
                     Ok(v) => {
-                        setting_value=v;
+                        setting_value = v;
                         break;
-                    },
+                    }
                     Err(e) => ()
                 }
             }
             Err(_) => ()
         };
     }
-
 
     let obj = setting_value.as_object().unwrap();
 
@@ -183,6 +302,8 @@ impl Database {
     pub fn load() -> Database {
         let basic_data = load_basic_data();
 
+        let auth_doc = load_auth_data();
+
         let mut api_docs = HashMap::new();
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
@@ -196,7 +317,7 @@ impl Database {
             Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
         }
 
-        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api }
+        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc}
     }
 
 
@@ -379,7 +500,6 @@ impl Database {
                 if &method == "WEBSOCKET" {
                     let mut websocket_api = websocket_api.lock().unwrap();
                     *websocket_api = o_api_data.clone();
-
                 }
                 // 形成 { url: {method:api} }
                 match api_data.get_mut(&url) {
@@ -629,7 +749,6 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
     } else if value.is_array() {
         // 处理array
         if let Some(value_array) = value.as_array() {
-
             if value_array.len() == 1 {
                 if let Some(value_array_one) = value_array.get(0) {
                     let (ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
@@ -640,12 +759,12 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
             } else {
                 return (ref_files, value);
             }
-
         }
     }
 
     (ref_files, value)
 }
+
 
 /// 可以嵌套的删除Value里面的某一个字段数据
 fn remove_value_attribute_field(_key_str: &str, _value: Value) {}
