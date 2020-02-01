@@ -3,6 +3,7 @@ use std::time::{Duration, SystemTime};
 use chrono::{TimeZone, Utc};
 use regex::Regex;
 use uuid::Uuid;
+use regex_generate::{DEFAULT_MAX_REPEAT, Generator};
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 const CHARSET2: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
@@ -13,6 +14,18 @@ enum Type {
     Int(i32),
 }
 
+
+/// 根据正则regx生成字符串
+pub fn regex_string(regex_pattern: &str) -> String {
+//    let mut gen = Generator::new(r"(?x) (?P<year>[0-9]{4}) - (?P<month>[0-9]{2}) - (?P<day>[0-9]{2})", rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
+//    let mut gen = Generator::new(regex_pattern, rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
+    let mut gen = Generator::new(r"\w{3}", rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
+    let mut buffer = vec![];
+    gen.generate(&mut buffer).unwrap();
+    let output = String::from_utf8(buffer).unwrap();
+
+    output
+}
 
 /// 生成uuid
 pub fn uuid() -> String {

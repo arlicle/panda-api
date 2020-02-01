@@ -339,7 +339,7 @@ pub fn word(mut length: usize, mut min_length: u64, mut max_length: u64) -> Stri
         min_length = 3;
     }
     if max_length == 0 {
-        max_length = 10;
+        max_length = 12;
     }
     if length == 0 {
         length = rng.gen_range(min_length as usize, max_length as usize);
