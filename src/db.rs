@@ -87,7 +87,6 @@ pub struct AuthData {
 
 fn fix_json(org_string: String) -> String {
     let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap(); // 修复字符串换行
-
     let re3 = Regex::new(r"/\*(.|[\r\n])*?\*/").unwrap(); // 去掉/* */注释
 
     let mut new_string = org_string.clone();
@@ -98,11 +97,36 @@ fn fix_json(org_string: String) -> String {
             new_string = new_string.replace(x, &y);
         }
     }
-
     let new_string = re3.replace_all(&new_string, "").to_string();
-
     new_string
 }
+
+
+
+/// 加载auth认证的相关数据
+pub fn load_auth_data() {
+    let auth_files = ["_auth.json5", "_auth.json"];
+
+    let mut auth_value = json!({});
+    for file in auth_files.iter() {
+        match fs::read_to_string(file) {
+            Ok(v) => {
+                let v = fix_json(v);
+                match json5::from_str(&v) {
+                    Ok(v) => {
+                        auth_value = v;
+                        break;
+                    },
+                    Err(e) => ()
+                }
+            }
+            Err(_) => ()
+        };
+    }
+
+    println!(" auth_value {:?}", auth_value);
+}
+
 
 
 pub fn load_basic_data() -> BasicData {
@@ -119,17 +143,14 @@ pub fn load_basic_data() -> BasicData {
             Ok(v) => {
                 let v = fix_json(v);
                 match json5::from_str(&v) {
-                    Ok(v) => v,
-                    Err(e) => {
-//                        println!("Parse json file {} error {:?}", settings_file, e);
-                        json!({})
-                    }
+                    Ok(v) => {
+                        setting_value=v;
+                        break;
+                    },
+                    Err(e) => ()
                 }
             }
-            Err(_) => {
-//                println!("warning: no '{}' file", settings_file);
-                json!({})
-            }
+            Err(_) => ()
         };
     }
 
@@ -269,8 +290,6 @@ impl Database {
 
                 let body_mode = get_api_field_string_value("body_mode", "json".to_string(), api, &ref_data, &basic_data.global_value);
                 let auth = get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
-//                let body = get_api_value("body", "json".to_string(), api, &ref_data);
-
 
                 let body = match api.get("body") {
                     Some(body) => body.clone(),
