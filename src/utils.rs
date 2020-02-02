@@ -67,7 +67,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
         return;
     } else if filename == "_auth.json" || filename == "_auth.json5" {
         // 加载auth
-        let auth_data = db::load_auth_data();
+        let auth_data = db::load_auth_data(&data.api_docs);
         data.auth_doc = auth_data;
         return;
     } else if filename.contains("_data/") {
