@@ -47,7 +47,7 @@ async fn main() -> std::io::Result<()> {
         }
         return Ok(());
     }
-    
+
     let db = db::Database::load();
 
     let websocket_api = &db.websocket_api.clone();
