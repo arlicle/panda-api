@@ -1,5 +1,6 @@
 use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
+use std::env;
 
 use dotenv::dotenv;
 use std::sync::Mutex;
@@ -26,16 +27,27 @@ pub struct Config {
     /// Listen port
     #[structopt(short, long, default_value = "9000", env = "PANDA_API_PORT")]
     port: usize,
+
+    /// create auth token length
+    #[structopt(short, long, env = "PANDA_API_PORT")]
+    token_length: Option<usize>,
 }
 
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-
     std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
     let conf = Config::from_args();
+    if let Some(token_length) = conf.token_length {
+        // create token
+        for i in 0..10 {
+            println!("{}", mock::basic::string(token_length as u64, 0, 0));
+        }
+        return Ok(());
+    }
+    
     let db = db::Database::load();
 
     let websocket_api = &db.websocket_api.clone();
@@ -45,6 +57,7 @@ async fn main() -> std::io::Result<()> {
     let web_db = web::Data::new(Mutex::new(db));
 
     utils::watch_api_docs_change(web_db.clone());
+
 
     let server = server::ChatServer::default();
     let server = server.start();

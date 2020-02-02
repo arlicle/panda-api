@@ -2,6 +2,7 @@
     name: "用户认证接口文档",
     desc: "相关auth认证说明，token生成规则及相关说明",
     auth_type:"Bearer Token",
+    auth_place:"headers", // headers body query
     // jwt 的token生成规则
     test_data:[
     {
