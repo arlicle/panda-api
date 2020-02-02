@@ -14,6 +14,7 @@ pub struct Database {
     pub api_docs: HashMap<String, ApiDoc>,
     pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>,
     pub fileindex_data: HashMap<String, HashSet<String>>,
+    // ref和相关文件的索引，当文件更新后，要找到所有ref他的地方，然后进行更新
     pub websocket_api: Arc<Mutex<ApiData>>,
     pub auth_doc: Option<AuthDoc>,
 }
@@ -65,7 +66,7 @@ pub struct AuthDoc {
     // auth 放在什么地方：headers 或者是 url上
     pub filename: String,
     // 文件名称
-    pub test_data: Vec<AuthData>,
+    pub groups: Vec<AuthData>,
     pub no_perm_response: Value,
 }
 
@@ -99,7 +100,7 @@ fn fix_json(org_string: String) -> String {
 
 
 /// 加载auth认证的相关数据
-pub fn load_auth_data() -> Option<AuthDoc> {
+pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
     let auth_files = ["_auth.json5", "_auth.json"];
 
     let mut auth_value = json!({});
@@ -148,9 +149,9 @@ pub fn load_auth_data() -> Option<AuthDoc> {
         None => json!({"code":-1, "error":"no perm to visit"})
     };
 
-    let mut test_data: Vec<AuthData> = Vec::new();
+    let mut groups: Vec<AuthData> = Vec::new();
 
-    if let Some(test_data_value) = obj.get("test_data") {
+    if let Some(test_data_value) = obj.get("groups") {
         if let Some(items) = test_data_value.as_array() {
             for data in items {
                 let test_data_name = match data.get("name") {
@@ -176,23 +177,20 @@ pub fn load_auth_data() -> Option<AuthDoc> {
                     }
                 };
 
-                let x: Option<&Value> = data.get("has_perms");
-                let mut has_perms: HashMap<String, HashSet<String>> = HashMap::new();
-
-                let mut has_perms = parse_auth_perms(data.get("has_perms"));
-                let mut no_perms = parse_auth_perms(data.get("no_perms"));
+                let mut has_perms = parse_auth_perms(data.get("has_perms"), api_docs);
+                let mut no_perms = parse_auth_perms(data.get("no_perms"), api_docs);
 
                 let test_data_no_perm_response = match data.get("no_perm_response") {
                     Some(v) => v.clone(),
                     None => no_perm_response.clone(),
                 };
 
-                test_data.push(AuthData { name: test_data_name.to_string(), desc: test_data_desc.to_string(), users: users, has_perms: has_perms, no_perms: no_perms, no_perm_response: test_data_no_perm_response })
+                groups.push(AuthData { name: test_data_name.to_string(), desc: test_data_desc.to_string(), users: users, has_perms: has_perms, no_perms: no_perms, no_perm_response: test_data_no_perm_response })
             }
         }
     }
 
-    Some(AuthDoc { name: name.to_string(), desc: desc.to_string(), auth_type: auth_type.to_string(), auth_place: auth_place.to_string(), filename: filename.to_string(), test_data: test_data, no_perm_response: no_perm_response })
+    Some(AuthDoc { name: name.to_string(), desc: desc.to_string(), auth_type: auth_type.to_string(), auth_place: auth_place.to_string(), filename: filename.to_string(), groups: groups, no_perm_response: no_perm_response })
 }
 
 
@@ -249,7 +247,6 @@ impl Database {
     pub fn load() -> Database {
         let basic_data = load_basic_data();
 
-        let auth_doc = load_auth_data();
 
         let mut api_docs = HashMap::new();
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
@@ -264,6 +261,7 @@ impl Database {
             Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
         }
 
+        let auth_doc = load_auth_data(&api_docs);
         Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc }
     }
 
@@ -426,10 +424,8 @@ impl Database {
                     }
                 }
 
-
                 let test_data = match api.get("test_data") {
                     Some(test_data) => {
-//                        let a = match test_data.as_array().expect(&format!("json file {} test_data is not a array", doc_file));
                         test_data.clone()
                     }
                     None => {
@@ -439,7 +435,6 @@ impl Database {
                         }
                     }
                 };
-
 
                 let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, auth: auth, url: url.clone(), method: method.clone() };
                 let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
@@ -459,15 +454,11 @@ impl Database {
                         api_data.insert(url.clone(), x);
                     }
                 }
-//                    api_data.insert(url.clone(), api.clone());
                 api_vec.push(a_api_data.clone());
             }
         }
 
-
         let api_doc = ApiDoc { name: doc_name, desc: doc_desc, order: doc_order, filename: doc_file.to_string(), apis: api_vec };
-
-
         api_docs.insert(doc_file.to_string(), api_doc);
     }
 }
@@ -475,7 +466,6 @@ impl Database {
 
 fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
-
 
     match ref_info.get(0) {
         Some(filename) => {
@@ -713,8 +703,20 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
 }
 
 
+/// auth文件里面，可能是按文件加载接口地址
+fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file: &str, methods: HashSet<String>, api_docs: &HashMap<String, ApiDoc>) {
+    let doc_file = doc_file.trim_start_matches("$");
+    if let Some(api_doc) = api_docs.get(doc_file) {
+        for a in &api_doc.apis {
+            let api = a.lock().unwrap();
+            result.insert(api.url.clone(), methods.clone());
+        }
+    }
+}
+
+
 /// 把权限解析为一个map
-fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<String>> {
+fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDoc>) -> HashMap<String, HashSet<String>> {
     let mut result: HashMap<String, HashSet<String>> = HashMap::new();
     if let Some(perms) = perms_data {
         if let Some(perms) = perms.as_array() {
@@ -722,8 +724,13 @@ fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<Strin
                 if perm.is_string() {
                     let mut methods = HashSet::new();
                     methods.insert("*".to_string());
-                    let url = perm.as_str().unwrap();
-                    result.insert(url.to_string(), methods);
+                    let url = perm.as_str().unwrap().trim();
+                    if url.starts_with("$") {
+                        // 按接口文件加载urls
+                        load_all_api_docs_url(&mut result, url, methods, api_docs);
+                    } else {
+                        result.insert(url.to_string(), methods);
+                    }
                 } else if perm.is_array() {
                     let perms = perm.as_array().unwrap();
                     let mut url = "";
@@ -737,11 +744,16 @@ fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<Strin
                         }
                     }
                     // 如果没有设置methods，默认就是所有方法
-                    result.insert(url.to_string(), methods);
+                    if url.starts_with("$") {
+                        // 按接口文件加载urls
+                        load_all_api_docs_url(&mut result, url, methods, api_docs);
+                    } else {
+                        result.insert(url.to_string(), methods);
+                    }
                 } else if perm.is_object() {
                     let perm = perm.as_object().unwrap();
                     let url = match perm.get("url") {
-                        Some(url) => url,
+                        Some(url) => url.as_str().unwrap(),
                         None => continue
                     };
 
@@ -760,8 +772,23 @@ fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<Strin
                         }
                     }
                     // 如果没有设置methods，默认就是所有方法
-                    result.insert(url.to_string(), methods);
+                    if url.starts_with("$") {
+                        // 按接口文件加载urls
+                        load_all_api_docs_url(&mut result, url, methods, api_docs);
+                    } else {
+                        result.insert(url.to_string(), methods);
+                    }
                 }
+            }
+        } else if perms.is_string() {
+            let url = perms.as_str().unwrap();
+            let mut methods = HashSet::new();
+            methods.insert("*".to_string());
+            if url.starts_with("$") {
+                // 按接口文件加载urls
+                load_all_api_docs_url(&mut result, url, methods, api_docs);
+            } else {
+                result.insert(url.to_string(), methods);
             }
         }
     };

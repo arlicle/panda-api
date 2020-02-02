@@ -9,12 +9,6 @@ const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
 const CHARSET2: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 
-enum Type {
-    String(String),
-    Int(i32),
-}
-
-
 /// 根据正则regx生成字符串
 pub fn regex_string(regex_pattern: &str) -> String {
 //    let mut gen = Generator::new(r"(?x) (?P<year>[0-9]{4}) - (?P<month>[0-9]{2}) - (?P<day>[0-9]{2})", rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
