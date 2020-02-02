@@ -70,7 +70,6 @@ pub struct AuthDoc {
 }
 
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AuthData {
     pub name: String,
@@ -83,7 +82,7 @@ pub struct AuthData {
 
 
 fn fix_json(org_string: String) -> String {
-    let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap(); // 修复字符串换行
+    let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap(); // 把多换行变为一个
     let re3 = Regex::new(r"/\*(.|[\r\n])*?\*/").unwrap(); // 去掉/* */注释
 
     let mut new_string = org_string.clone();
@@ -146,7 +145,7 @@ pub fn load_auth_data() -> Option<AuthDoc> {
 
     let no_perm_response = match obj.get("no_perm_response") {
         Some(v) => v.clone(),
-        None => Value::Null
+        None => json!({"code":-1, "error":"no perm to visit"})
     };
 
     let mut test_data: Vec<AuthData> = Vec::new();
@@ -185,69 +184,17 @@ pub fn load_auth_data() -> Option<AuthDoc> {
 
                 let test_data_no_perm_response = match data.get("no_perm_response") {
                     Some(v) => v.clone(),
-                    None => Value::Null
+                    None => no_perm_response.clone(),
                 };
 
-                test_data.push(AuthData{name:test_data_name.to_string(), desc:test_data_desc.to_string(), users:users, has_perms:has_perms, no_perms:no_perms, no_perm_response:test_data_no_perm_response})
+                test_data.push(AuthData { name: test_data_name.to_string(), desc: test_data_desc.to_string(), users: users, has_perms: has_perms, no_perms: no_perms, no_perm_response: test_data_no_perm_response })
             }
         }
     }
 
-    Some(AuthDoc{name:name.to_string(), desc:desc.to_string(), auth_type:auth_type.to_string(), auth_place:auth_place.to_string(), filename:filename.to_string(), test_data:test_data, no_perm_response:no_perm_response})
+    Some(AuthDoc { name: name.to_string(), desc: desc.to_string(), auth_type: auth_type.to_string(), auth_place: auth_place.to_string(), filename: filename.to_string(), test_data: test_data, no_perm_response: no_perm_response })
 }
 
-
-fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<String>> {
-    let mut result: HashMap<String, HashSet<String>> = HashMap::new();
-    if let Some(perms) = perms_data {
-        if let Some(perms) = perms.as_array() {
-            for perm in perms {
-                if perm.is_string() {
-                    let mut methods = HashSet::new();
-                    methods.insert("*".to_string());
-                    let url = perm.as_str().unwrap();
-                    result.insert(url.to_string(), methods);
-                } else if perm.is_array() {
-                    let perms = perm.as_array().unwrap();
-                    let mut url = "";
-                    let mut methods = HashSet::new();
-                    for (i, perm) in perms.iter().enumerate() {
-                        if i == 0 {
-                            url = perm.as_str().unwrap();
-                        } else {
-                            let perm = perm.as_str().unwrap();
-                            methods.insert(perm.to_string());
-                        }
-                    }
-                    result.insert(url.to_string(), methods);
-                } else if perm.is_object() {
-                    let perm = perm.as_object().unwrap();
-                    let url = match perm.get("url") {
-                        Some(url) => url,
-                        None => continue
-                    };
-
-                    let mut methods = HashSet::new();
-
-                    if let Some(m) = perm.get("methods") {
-                        if m.is_string() {
-                            let m = m.as_str().unwrap();
-                            methods.insert(m.to_string());
-                        } else if m.is_array() {
-                            let m = m.as_array().unwrap();
-                            for i in m {
-                                let i = i.as_str().unwrap();
-                                methods.insert(i.to_string());
-                            }
-                        }
-                    }
-                    result.insert(url.to_string(), methods);
-                }
-            }
-        }
-    };
-    result
-}
 
 pub fn load_basic_data() -> BasicData {
     let read_me = match fs::read_to_string("README.md") {
@@ -317,7 +264,7 @@ impl Database {
             Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
         }
 
-        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc}
+        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc }
     }
 
 
@@ -763,6 +710,62 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
     }
 
     (ref_files, value)
+}
+
+
+/// 把权限解析为一个map
+fn parse_auth_perms(perms_data: Option<&Value>) -> HashMap<String, HashSet<String>> {
+    let mut result: HashMap<String, HashSet<String>> = HashMap::new();
+    if let Some(perms) = perms_data {
+        if let Some(perms) = perms.as_array() {
+            for perm in perms {
+                if perm.is_string() {
+                    let mut methods = HashSet::new();
+                    methods.insert("*".to_string());
+                    let url = perm.as_str().unwrap();
+                    result.insert(url.to_string(), methods);
+                } else if perm.is_array() {
+                    let perms = perm.as_array().unwrap();
+                    let mut url = "";
+                    let mut methods = HashSet::new();
+                    for (i, perm) in perms.iter().enumerate() {
+                        if i == 0 {
+                            url = perm.as_str().unwrap();
+                        } else {
+                            let perm = perm.as_str().unwrap();
+                            methods.insert(perm.to_string());
+                        }
+                    }
+                    // 如果没有设置methods，默认就是所有方法
+                    result.insert(url.to_string(), methods);
+                } else if perm.is_object() {
+                    let perm = perm.as_object().unwrap();
+                    let url = match perm.get("url") {
+                        Some(url) => url,
+                        None => continue
+                    };
+
+                    let mut methods = HashSet::new();
+
+                    if let Some(m) = perm.get("methods") {
+                        if m.is_string() {
+                            let m = m.as_str().unwrap();
+                            methods.insert(m.to_string());
+                        } else if m.is_array() {
+                            let m = m.as_array().unwrap();
+                            for i in m {
+                                let i = i.as_str().unwrap();
+                                methods.insert(i.to_string());
+                            }
+                        }
+                    }
+                    // 如果没有设置methods，默认就是所有方法
+                    result.insert(url.to_string(), methods);
+                }
+            }
+        }
+    };
+    result
 }
 
 

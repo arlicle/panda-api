@@ -1,6 +1,7 @@
 use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
 use std::time::{Duration, Instant, SystemTime};
+use std::collections::{HashMap, HashSet};
 
 use rand::{thread_rng, Rng};
 
@@ -125,6 +126,7 @@ pub async fn chat_route(
     )
 }
 
+
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
@@ -229,6 +231,82 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 }
 
 
+fn get_token_from_request(req: &HttpRequest) {}
+
+
+/// 判断是否有某个url的权限
+fn is_has_perm(url: &str, method: &str, perms: &HashMap<String, HashSet<String>>) -> bool {
+
+    if let Some(methods) = perms.get("*") {
+        // 如果有所有网址权限，再判断方法上的权限是否满足
+        if methods.contains(method)  || methods.contains("*") || methods.len() == 0 {
+            return true;
+        }
+    }
+
+    match perms.get(url) {
+        Some(methods) => {
+            // 如果有所有网址权限，再判断方法上的权限是否满足
+            if methods.contains(method)  || methods.contains("*") || methods.len() == 0 {
+                return true;
+            }
+        },
+        None => return false
+    }
+
+    false
+}
+
+
+/// 判断用户是否有当前接口访问权限，如果有权限返回None，如果没有权限 返回报错信息
+fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db::AuthDoc>) -> Option<&'a Value> {
+    let x = req.headers();
+
+    let mut token = "";
+    if let Some(x) = x.get("authorization") {
+        if let Ok(x) = x.to_str() {
+            token = x.trim_start_matches("Bearer ").trim();
+        }
+    }
+
+    if let Some(auth_data) = auth_doc {
+        let no_perm_response = &auth_data.no_perm_response;
+
+        // 判断token是否符合生成规则
+        if token == "" {
+            return Some(no_perm_response);
+        }
+
+        let req_method = req.method().as_str();
+
+        let mut is_find_user = false;
+        for test_data in &auth_data.test_data {
+            let mut test_data_no_perm_response = &test_data.no_perm_response;
+            if test_data_no_perm_response.is_null() {
+                test_data_no_perm_response = no_perm_response;
+            }
+            for (t, user) in &test_data.users {
+                if t == token {
+                    is_find_user = true;
+                    // 判断请求是否在权限范围内
+                    if is_has_perm(api_url, req_method, &test_data.no_perms) {
+                        return Some(test_data_no_perm_response);
+                    } else if is_has_perm(api_url, req_method, &test_data.has_perms) {
+                        return None;
+                    }
+                    return Some(test_data_no_perm_response);
+                }
+            }
+        }
+
+        if !is_find_user {
+            return Some(no_perm_response);
+        }
+    }
+    None
+}
+
+
 /// 找到对应url 对应请求的数据
 ///
 fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
@@ -251,6 +329,12 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 }
             };
             let a_api_data = a_api_data.lock().unwrap();
+            if a_api_data.auth {
+                if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
+                    return HttpResponse::Ok().json(auth_valid_errors);
+                }
+            }
+
 
             let test_data = &a_api_data.test_data;
 
