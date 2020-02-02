@@ -65,6 +65,11 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
         // 全局重新加载
         *data = db::Database::load();
         return;
+    } else if filename == "_auth.json" || filename == "_auth.json5" {
+        // 加载auth
+        let auth_data = db::load_auth_data();
+        data.auth_doc = auth_data;
+        return;
     } else if filename.contains("_data/") {
         // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
         match data.fileindex_data.get(filename) {
