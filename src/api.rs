@@ -154,7 +154,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     }
 
 
-    let mut new_request_body;
+    let new_request_body;
     if &body_mode == "form-data" {
         // 没有request_body，有可能是文件上传
         // 进行文件上传处理
@@ -264,7 +264,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                     return HttpResponse::Ok().json(auth_valid_errors);
                 }
             }
-
 
             let test_data = &a_api_data.test_data;
 
@@ -502,7 +501,6 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
 
         let req_method = req.method().as_str();
 
-        let mut is_find_user = false;
         for group in &auth_data.groups {
             let mut group_no_perm_response = &group.no_perm_response;
             if group_no_perm_response.is_null() {
@@ -510,7 +508,6 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
             }
             for (t, _) in &group.users {
                 if t == &token {
-                    is_find_user = true;
                     // 判断请求是否在权限范围内
                     if is_has_perm(api_url, req_method, &group.no_perms) {
                         return Some(group_no_perm_response);
@@ -521,10 +518,7 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
                 }
             }
         }
-
-        if !is_find_user {
-            return Some(no_perm_response);
-        }
+        return Some(no_perm_response);
     }
     None
 }

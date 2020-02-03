@@ -2,7 +2,7 @@
     name:"Auth",
     desc:"user login and logout",
     order:1,
-    api:
+    apis:
     [{
         name:"user login",
         desc:"if user login success, will get a token",
