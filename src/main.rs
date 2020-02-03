@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{middleware, web, App, HttpServer, http};
 use actix_files::Files;
 
 use dotenv::dotenv;
@@ -51,7 +51,7 @@ async fn main() -> std::io::Result<()> {
         Some(path) => {
             let current_dir = std::env::current_dir().expect("Failed to determine current directory");
             if path == current_dir {
-                println!("You can not run panda api on double click, you need run it on shell with command. ex: ./panda , the more at https://github.com/arlicle/panda-api");
+                println!("You can not run panda api on double click, you need run it on shell with command at api docs folder. ex: ./panda , the more at https://github.com/arlicle/panda-api");
                 return Ok(());
             }
         },
@@ -90,6 +90,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(
                 web::resource("/*")
+                    .route(web::method(http::Method::OPTIONS).to(api::options_handle))
                     .route(web::get().to(api::action_handle))
                     .route(web::post().to(api::action_handle))
                     .route(web::put().to(api::action_handle))

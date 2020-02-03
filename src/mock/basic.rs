@@ -64,9 +64,6 @@ macro_rules! int {
 }
 
 
-//pub fn round(n: f64, precision: u32) -> f64 {
-//    (n * 10_u32.pow(precision) as f64).round() / 10_i32.pow(precision) as f64
-//}
 
 #[macro_export]
 macro_rules! float {
@@ -162,12 +159,6 @@ pub fn datetime(min_value: &str, max_value: &str, format: &str) -> String {
     let dt = Utc.timestamp(t as i64, 0);
     dt.format(&format).to_string()
 }
-
-
-//pub fn float() -> f64 {
-//    let mut rng = thread_rng();
-//    rng.gen::<f64>()
-//}
 
 
 /// 随机返回一个字符串
