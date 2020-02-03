@@ -115,7 +115,7 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
                         auth_value = v;
                         break;
                     }
-                    Err(e) => ()
+                    Err(_) => ()
                 }
             }
             Err(_) => ()
@@ -177,8 +177,8 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
                     }
                 };
 
-                let mut has_perms = parse_auth_perms(data.get("has_perms"), api_docs);
-                let mut no_perms = parse_auth_perms(data.get("no_perms"), api_docs);
+                let has_perms = parse_auth_perms(data.get("has_perms"), api_docs);
+                let no_perms = parse_auth_perms(data.get("no_perms"), api_docs);
 
                 let test_data_no_perm_response = match data.get("no_perm_response") {
                     Some(v) => v.clone(),
@@ -212,7 +212,7 @@ pub fn load_basic_data() -> BasicData {
                         setting_value = v;
                         break;
                     }
-                    Err(e) => ()
+                    Err(_) => ()
                 }
             }
             Err(_) => ()
@@ -247,13 +247,14 @@ impl Database {
     pub fn load() -> Database {
         let basic_data = load_basic_data();
 
+        let current_dir = std::env::current_dir().expect("Failed to determine current directory");
+        let current_dir = current_dir.to_str().unwrap().to_string();
 
         let mut api_docs = HashMap::new();
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
         let mut websocket_api = Arc::new(Mutex::new(ApiData::default()));
-
 
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
@@ -290,7 +291,11 @@ impl Database {
             }
         };
 
-        let doc_file_obj = json_value.as_object().unwrap();
+        let doc_file_obj = match json_value.as_object() {
+            Some(doc_file_obj) => doc_file_obj,
+            None => return
+        };
+
         let doc_name = match doc_file_obj.get("name") {
             Some(name) => {
                 match name.as_str() {
@@ -312,7 +317,7 @@ impl Database {
             None => 0
         };
 
-        let apis = match doc_file_obj.get("api") {
+        let apis = match doc_file_obj.get("apis") {
             Some(api) => api.clone(),
             None => { json!([]) }
         };
@@ -528,7 +533,7 @@ fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref
     }
 
     // 最后查询global_value
-    match global_data.get("api") {
+    match global_data.get("apis") {
         Some(v) => {
             match v.get(key) {
                 Some(v2) => {
@@ -567,7 +572,7 @@ fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_dat
         }
     }
 
-    match global_data.get("api") {
+    match global_data.get("apis") {
         Some(v) => {
             match v.get(key) {
                 Some(d) => {

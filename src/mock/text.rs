@@ -294,7 +294,7 @@ pub fn cpunctuation(index: usize) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
 
-    let mut a1;
+    let a1;
     if index == 3 {
         let n: usize = rng.gen_range(0, CHINESE_PUNCTUATION3.len());
         a1 = &CHINESE_PUNCTUATION3[n];
@@ -314,7 +314,7 @@ pub fn punctuation(index: usize) -> String {
     let mut s = String::new();
     let mut rng = thread_rng();
 
-    let mut a1;
+    let a1;
     if index == 3 {
         let n: usize = rng.gen_range(0, EN_PUNCTUATION3.len());
         a1 = &EN_PUNCTUATION3[n];

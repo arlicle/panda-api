@@ -1,6 +1,5 @@
 use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
-use std::env;
 
 use dotenv::dotenv;
 use std::sync::Mutex;
@@ -42,10 +41,21 @@ async fn main() -> std::io::Result<()> {
     let conf = Config::from_args();
     if let Some(token_length) = conf.token_length {
         // create token
-        for i in 0..10 {
+        for _ in 0..10 {
             println!("{}", mock::basic::string(token_length as u64, 0, 0));
         }
         return Ok(());
+    }
+
+    match dirs::home_dir() {
+        Some(path) => {
+            let current_dir = std::env::current_dir().expect("Failed to determine current directory");
+            if path == current_dir {
+                println!("You can not run panda api on double click, you need run it on shell with command. ex: ./panda , the more at https://github.com/arlicle/panda-api");
+                return Ok(());
+            }
+        },
+        None => println!("Impossible to get your home dir!"),
     }
 
     let db = db::Database::load();

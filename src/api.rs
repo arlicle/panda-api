@@ -314,12 +314,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         return HttpResponse::Ok().json(case_response);
                     }
                 }
-
-                // 如果设置了$mock数据自动生成
-                if let Some(mock) = case_response.get("$mock") {
-                    // 进入mock数据自动生成
-                    println!("mock data created");
-                }
             }
             println!("创建mock data");
 
@@ -441,10 +435,10 @@ fn get_request_body_mode(req: &HttpRequest) -> String {
 fn is_websocket_connect(req: &HttpRequest) -> bool {
     let mut has_version = false;
     let mut has_key = false;
-    if let Some(x) = req.headers().get("sec-websocket-version") {
+    if let Some(_) = req.headers().get("sec-websocket-version") {
         has_version = true;
     }
-    if let Some(x) = req.headers().get("sec-websocket-key") {
+    if let Some(_) = req.headers().get("sec-websocket-key") {
         has_key = true;
     }
     if has_version && has_key {
@@ -513,7 +507,7 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
             if group_no_perm_response.is_null() {
                 group_no_perm_response = no_perm_response;
             }
-            for (t, user) in &group.users {
+            for (t, _) in &group.users {
                 if t == &token {
                     is_find_user = true;
                     // 判断请求是否在权限范围内
@@ -547,7 +541,7 @@ pub fn get_field_type(field_attr: &Value) -> String {
             } else if field_attr.is_object() {
                 if let Some(field_attr_object) = field_attr.as_object() {
                     let mut s = "string";
-                    for (k, v) in field_attr_object {
+                    for (_k, v) in field_attr_object {
                         if v.is_object() {
                             s = "object";
                             break;
