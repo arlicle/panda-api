@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
 use actix::*;
-use actix_files as fs;
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
 

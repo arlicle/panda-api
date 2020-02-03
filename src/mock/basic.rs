@@ -64,9 +64,9 @@ macro_rules! int {
 }
 
 
-pub fn round(n: f64, precision: u32) -> f64 {
-    (n * 10_u32.pow(precision) as f64).round() / 10_i32.pow(precision) as f64
-}
+//pub fn round(n: f64, precision: u32) -> f64 {
+//    (n * 10_u32.pow(precision) as f64).round() / 10_i32.pow(precision) as f64
+//}
 
 #[macro_export]
 macro_rules! float {
@@ -132,7 +132,7 @@ fn datetime_str_to_timestamp(datetime_str: &str) -> u64 {
         v.push((&cap[0]).parse::<u32>().unwrap());
     }
 
-    for i in 0..v.len() {
+    for _ in 0..v.len() {
         v.push(0);
     }
 
@@ -164,10 +164,10 @@ pub fn datetime(min_value: &str, max_value: &str, format: &str) -> String {
 }
 
 
-pub fn float() -> f64 {
-    let mut rng = thread_rng();
-    rng.gen::<f64>()
-}
+//pub fn float() -> f64 {
+//    let mut rng = thread_rng();
+//    rng.gen::<f64>()
+//}
 
 
 /// 随机返回一个字符串
@@ -200,7 +200,6 @@ pub fn string(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
         length = rng.gen_range(min_length, max_length);
     }
 
-    let l = CHARSET.len();
     while length > 0 {
         s.push(char());
         length -= 1;
@@ -227,7 +226,6 @@ pub fn image(size: &str, foreground: &str, background: &str, format: &str, text:
         let n = rng.gen_range(0, size_list.len());
         size = size_list[n];
     }
-    let mut a = "";
     if background == "" && foreground == "" {
         let n = rng.gen_range(0, color_list.len());
         let n = color_list[n];

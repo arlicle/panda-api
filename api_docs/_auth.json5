@@ -14,43 +14,16 @@
             username:"edison",
             password:"123",
             mobile:"13759502619",
-            token:"fjsdkafldj",
+            token:"V3*dSX6wbuCg@XX*Oy&8ynFdv7bDmOUe6OBo3X#bL5t!ZJ!M5Km@3^c@gGQb",
         }
         ],
-        has_perms:["*", ["*", "GET", "POST", "PUT"]], // *星号表示拥有所有接口的全部权限
+        has_perms:[["*", "GET", "POST"]], // *星号表示拥有所有接口的全部权限
         no_perms:[["/admin/user/", "GET"]], // 表示没有权限的列表，没有权限列表优先
-        no_perms:[{
-            "url":"admin/user/",
-            "methods":["GET", "POST", "PUT"]
-        }], // 表示没有权限的列表，没有权限列表优先
         no_perm_response: {
             code: -1,
             msg: "没有权限非法操作"
         }
     }, // 表示所有接口，有权限的只有token里面的，没有权限的或者没有token的就返回 no_perem_response中的内容
-    {
-        name: "token列表对用权限组或者用户角色的名称",
-        desc:"相关权限描述",
-        tokens:["abc", "bdef"],
-        has_perms:["/user/list/", "/post/add/", "/post/{id:\\d+}/"],
-        // 没有不接口权限在的，返回错误
-        no_perm_response: {
-            code: -1,
-            msg: "没有权限非法操作"
-        }
-    }, 
-    {
-        name: "token列表对用权限组或者用户角色的名称",
-        desc:"相关权限描述",
-        // 直接设置多接口权限
-        tokens:["abc", "bdef"],
-        has_perms:["auth.json5", "article.json5"], // 拥有auth.json5 和 article.json5的全部接口权限
-        no_perms:["/aa/login/"], // 设定没有权限的接口列表
-        // 没有不接口权限在的，返回错误
-        no_perm_response: {
-            code: -1,
-            msg: "没有权限非法操作"
-        }
-    }
+
     ]
 }
