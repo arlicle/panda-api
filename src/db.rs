@@ -43,6 +43,7 @@ pub struct ApiData {
     pub name: String,
     pub desc: String,
     pub url: String,
+    pub url_param: Value,
     pub method: String,
     pub auth: bool,
     pub body_mode: String,
@@ -359,6 +360,17 @@ impl Database {
                 let body_mode = get_api_field_string_value("body_mode", "json".to_string(), api, &ref_data, &basic_data.global_value);
                 let auth = get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
 
+                let url_param = match api.get("url_param") {
+                    Some(url_param) => url_param.clone(),
+                    None => {
+                        match ref_data.get("url_param") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
+                };
+                let (mut ref_files, url_param) = parse_attribute_ref_value(url_param, doc_file_obj, doc_file);
+
                 let body = match api.get("body") {
                     Some(body) => body.clone(),
                     None => {
@@ -368,7 +380,8 @@ impl Database {
                         }
                     }
                 };
-                let (mut ref_files, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
+                let (mut ref_files2, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
 
                 let query = match api.get("query") {
                     Some(query) => query.clone(),
@@ -438,7 +451,7 @@ impl Database {
                     }
                 };
 
-                let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, auth: auth, url: url.clone(), method: method.clone() };
+                let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, url_param, auth: auth, url: url.clone(), method: method.clone() };
                 let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
 
                 if &method == "WEBSOCKET" {

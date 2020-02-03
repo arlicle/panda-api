@@ -44,6 +44,9 @@
             name:"Article view",
             method:"GET",
             url:"/post/{id:\\d+}/", // the url support regex match
+            url_param: {
+                id: {name: "post id", type: "int", desc: "article post id in url"}
+            },
             response:{
                 code:{name:"response result code", type:"int", desc:"success is 1"},
                 msg:{name:"response result message", type:"string", desc:""},
