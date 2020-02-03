@@ -247,9 +247,6 @@ impl Database {
     pub fn load() -> Database {
         let basic_data = load_basic_data();
 
-        let current_dir = std::env::current_dir().expect("Failed to determine current directory");
-        let current_dir = current_dir.to_str().unwrap().to_string();
-
         let mut api_docs = HashMap::new();
         let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();

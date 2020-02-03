@@ -191,7 +191,7 @@ pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
 
 /// 生成随机英文句子
 pub fn sentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
-    let mut s = String::new();
+    let mut s;
     let mut rng = thread_rng();
     if min_length == 0 {
         min_length = 20;
@@ -256,7 +256,7 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
 
 /// 生成随机英文标题
 pub fn title(mut length: u64, mut min_length: u64, mut max_length: u64) -> String {
-    let mut s = String::new();
+    let mut s;
     let mut rng = thread_rng();
     if min_length == 0 {
         min_length = 20;

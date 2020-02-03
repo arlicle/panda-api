@@ -1,6 +1,6 @@
 {
     name:"Article",
-    api:[
+    apis:[
         {
             name:"Article add or edit",
             url:"/post/add/",

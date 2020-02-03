@@ -142,7 +142,6 @@ pub fn datetime(min_value: &str, max_value: &str, format: &str) -> String {
     let mut timestamp_min_value = 0;
     let mut timestamp_max_value = 0;
     let mut format = format;
-    let re = Regex::new(r"\d+").unwrap();
     if min_value != "" {
         timestamp_min_value = datetime_str_to_timestamp(min_value);
     }
