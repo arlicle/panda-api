@@ -90,6 +90,12 @@ pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResp
 }
 
 
+/// 处理所有options请求
+pub async fn options_handle() -> HttpResponse {
+    HttpResponse::Ok().body("")
+}
+
+
 /// 获取_data目录中的数据, models数据 或者其它加载数据
 pub async fn get_api_doc_schema_data(req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
     let read_me = match fs::read_to_string(&req_get.filename) {
@@ -229,7 +235,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 
     find_response_data(&req, body_mode, new_request_body, request_query, db_data)
 }
-
 
 
 /// 找到对应url 对应请求的数据
@@ -448,9 +453,6 @@ fn is_websocket_connect(req: &HttpRequest) -> bool {
 }
 
 
-
-
-
 fn get_token_from_request(req: &HttpRequest) -> String {
     let headers = req.headers();
     let mut token = "";
@@ -465,10 +467,9 @@ fn get_token_from_request(req: &HttpRequest) -> String {
 
 /// 判断是否有某个url的权限
 fn is_has_perm(url: &str, method: &str, perms: &HashMap<String, HashSet<String>>) -> bool {
-
     if let Some(methods) = perms.get("*") {
         // 如果有所有网址权限，再判断方法上的权限是否满足
-        if methods.contains(method)  || methods.contains("*") || methods.len() == 0 {
+        if methods.contains(method) || methods.contains("*") || methods.len() == 0 {
             return true;
         }
     }
@@ -476,10 +477,10 @@ fn is_has_perm(url: &str, method: &str, perms: &HashMap<String, HashSet<String>>
     match perms.get(url) {
         Some(methods) => {
             // 如果有所有网址权限，再判断方法上的权限是否满足
-            if methods.contains(method)  || methods.contains("*") || methods.len() == 0 {
+            if methods.contains(method) || methods.contains("*") || methods.len() == 0 {
                 return true;
             }
-        },
+        }
         None => return false
     }
 
@@ -527,7 +528,6 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
     }
     None
 }
-
 
 
 pub fn get_field_type(field_attr: &Value) -> String {
