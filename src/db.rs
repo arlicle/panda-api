@@ -116,7 +116,9 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
                         auth_value = v;
                         break;
                     }
-                    Err(_) => ()
+                    Err(e) => {
+                        println!("Parse json file {} error : {:?}", file, e);
+                    }
                 }
             }
             Err(_) => ()
@@ -208,7 +210,9 @@ pub fn load_basic_data() -> BasicData {
                         setting_value = v;
                         break;
                     }
-                    Err(_) => ()
+                    Err(e) => {
+                        println!("Parse json file {} error : {:?}", settings_file, e);
+                    }
                 }
             }
             Err(_) => ()
@@ -271,16 +275,16 @@ impl Database {
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) {
+    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) -> bool {
         if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5")) || doc_file == "_settings.json" || doc_file == "_settings.json5" || doc_file.contains("_data/") || doc_file.starts_with(".") || doc_file.contains("/.") {
-            return;
+            return false;
         }
 
         let d = match fs::read_to_string(doc_file) {
             Ok(d) => d,
             Err(e) => {
                 println!("Unable to read file: {} {:?}", doc_file, e);
-                return;
+                return false;
             }
         };
 
@@ -289,13 +293,13 @@ impl Database {
             Ok(v) => v,
             Err(e) => {
                 println!("Parse json file {} error : {:?}", doc_file, e);
-                return;
+                return false;
             }
         };
 
         let doc_file_obj = match json_value.as_object() {
             Some(doc_file_obj) => doc_file_obj,
-            None => return
+            None => return false
         };
 
         let doc_name = match doc_file_obj.get("name") {
@@ -479,6 +483,8 @@ impl Database {
 
         let api_doc = ApiDoc { name: doc_name, desc: doc_desc, order: doc_order, filename: doc_file.to_string(), apis: api_vec };
         api_docs.insert(doc_file.to_string(), api_doc);
+
+        true
     }
 }
 
