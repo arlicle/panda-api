@@ -38,6 +38,7 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
+
     let conf = Config::from_args();
     if let Some(token_length) = conf.token_length {
         // create token
@@ -83,8 +84,13 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/").route(web::get().to(api::get_api_doc_basic)))
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
-            .service(Files::new("/js", "_data/theme/js"))
-            .service(Files::new("/css", "_data/theme/css"))
+
+            .service(web::resource("/").route(web::get().to(api::theme_view)))
+            .service(web::resource("/js/*").route(web::get().to(api::theme_view)))
+            .service(web::resource("/css/*").route(web::get().to(api::theme_view)))
+            .service(web::resource("/fonts/*").route(web::get().to(api::theme_view)))
+//            .service(Files::new("/js", "_data/theme/js"))
+//            .service(Files::new("/css", "_data/theme/css"))
             .service(Files::new("/_upload", "_data/_upload"))
 
             .service(web::resource(&websocket_uri).to(api::chat_route))

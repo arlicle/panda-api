@@ -196,11 +196,6 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
 
 
 pub fn load_basic_data() -> BasicData {
-    let read_me = match fs::read_to_string("README.md") {
-        Ok(x) => x,
-        Err(_) => "Panda api docs".to_string()
-    };
-
     let settings_files = ["_settings.json5", "_settings.json"];
 
     let mut setting_value = json!({});
@@ -233,6 +228,15 @@ pub fn load_basic_data() -> BasicData {
         None => ""
     };
     let project_desc = project_desc.to_string();
+
+    let read_me = match fs::read_to_string("README.md") {
+        Ok(x) => x,
+        Err(_) => if &project_desc == "" {
+            "Panda api docs".to_string()
+        } else {
+            project_desc.clone()
+        }
+    };
 
     let global_value = match obj.get("global") {
         Some(v) => v.clone(),

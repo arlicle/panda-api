@@ -96,6 +96,38 @@ pub async fn options_handle() -> HttpResponse {
 }
 
 
+/// api docs 在线浏览文档 前端服务
+pub async fn theme_view(req: HttpRequest) -> HttpResponse {
+    let req_path = req.path();
+
+    // for api documents homepage
+    println!("req_path {}", req_path);
+
+    let home_dir = dirs::home_dir().unwrap();
+    let theme_home_dir = format!("{}/.panda_api/theme", home_dir.to_str().unwrap().trim_end_matches("/"));
+    let theme_file;
+    if req_path == "/" {
+        theme_file = "/index.html";
+    } else {
+        theme_file = req_path;
+    }
+
+    let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
+
+    let d = match fs::read_to_string(&theme_filepath) {
+        Ok(x) => x,
+        Err(_) => {
+            println!("no panda api doc theme file: {}", theme_filepath);
+            return HttpResponse::Found()
+                .header(http::header::LOCATION, "/__api_docs/")
+                .finish();
+        }
+    };
+//    HttpResponse::Ok().content_type("text/css").body(d)
+    HttpResponse::Ok().body(d)
+}
+
+
 /// 获取_data目录中的数据, models数据 或者其它加载数据
 pub async fn get_api_doc_schema_data(req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
     let read_me = match fs::read_to_string(&req_get.filename) {
@@ -138,21 +170,6 @@ pub async fn chat_route(
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
-
-    // for api documents homepage
-    if req_path == "/" {
-        let d = match fs::read_to_string("_data/theme/index.html") {
-            Ok(x) => x,
-            Err(_) => {
-                println!("no panda api doc theme file: _data/theme/index.html");
-                return HttpResponse::Found()
-                    .header(http::header::LOCATION, "/__api_docs/")
-                    .finish();
-            }
-        };
-        return HttpResponse::Ok().content_type("text/html").body(d);
-    }
-
 
     let new_request_body;
     if &body_mode == "form-data" {
@@ -285,41 +302,49 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
             for test_case_data in test_data {
                 // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
-                let mut is_url_match = true;
+                let mut is_all_match = true;
                 if let Some(url) = test_case_data.get("url") {
                     if url != req_path {
-                        is_url_match = false;
+                        is_all_match = false;
                     }
                 }
 
-                let case_body = match test_case_data.get("body") {
-                    Some(v) => v,
-                    None => &Value::Null
+                match test_case_data.get("body") {
+                    Some(v) => {
+                        if !is_value_equal(&request_body, v) {
+                            is_all_match = false;
+                        }
+                    },
+                    None => ()
                 };
-                let case_form_data = match test_case_data.get("form-data") {
-                    Some(v) => v,
-                    None => &Value::Null
+
+                match test_case_data.get("form-data") {
+                    Some(v) => {
+                        if !is_value_equal(&request_body, v) {
+                            is_all_match = false;
+                        }
+                    },
+                    None => ()
                 };
-                let case_query = match test_case_data.get("query") {
-                    Some(v) => v,
-                    None => &Value::Null
+
+                match test_case_data.get("query") {
+                    Some(v) => {
+                        if !is_value_equal(&request_query, v) {
+                            is_all_match = false;
+                        }
+                    },
+                    None => ()
                 };
+
                 let case_response = match test_case_data.get("response") {
                     Some(v) => v,
                     None => &Value::Null
                 };
 
-                if &body_mode == "form-data" {
-                    if is_value_equal(&request_body, case_form_data) && is_value_equal(&request_query, case_query) && is_url_match {
-                        return HttpResponse::Ok().json(case_response);
-                    }
-                } else {
-                    if is_value_equal(&request_body, case_body) && is_value_equal(&request_query, case_query) && is_url_match {
-                        return HttpResponse::Ok().json(case_response);
-                    }
+                if is_all_match {
+                    return HttpResponse::Ok().json(case_response);
                 }
             }
-            println!("创建mock data");
 
             let x = create_mock_response(&a_api_data.response);
             return HttpResponse::Ok().json(x);
@@ -527,9 +552,10 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
 pub fn get_field_type(field_attr: &Value) -> String {
     let field_type = match field_attr.get("type") {
         Some(v) => v.as_str().unwrap(),
-        None => if let Some(v) = field_attr.get("-type") {
-            v.as_str().unwrap()
-        } else {
+        None => {
+//            if let Some(v) = field_attr.get("-type") {
+//                v.as_str().unwrap()
+//            } else
             if field_attr.is_array() {
                 "array"
             } else if field_attr.is_object() {
