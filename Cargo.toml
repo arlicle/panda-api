@@ -4,12 +4,7 @@ version = "0.1.0"
 authors = ["edison <arlicle@gmail.com>"]
 edition = "2018"
 
-[profile.release]
-opt-level = 3
 
-#[[bin]]
-#name = "panda"
-#path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
