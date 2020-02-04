@@ -8,8 +8,12 @@ use notify::{RecommendedWatcher, Watcher, RecursiveMode, DebouncedEvent};
 use actix_web::web;
 
 use std::sync::mpsc::channel;
-use crate::db;
 use std::env;
+
+use chrono::{Local};
+
+use crate::db;
+
 
 
 /// 建立异步线程，监控文件改动，当改动的时候，就重新生成文件
@@ -50,6 +54,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 /// 发生文件改动/新增时，更新接口文档数据
 /// README.md, json数据
 fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::Database>>) {
+
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
     let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<db::ApiData>>>> = HashMap::new();
     let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
@@ -58,17 +63,23 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     let mut data = data.lock().unwrap();
     let filename = filepath.trim_start_matches(&format!("{}/", current_dir));
 
+    let mut is_parse_error = false;
+
     if filename == "README.md" {
         let basic_data = db::load_basic_data();
         data.basic_data = basic_data;
+    } else if !filepath.ends_with(".json5") &&  !filepath.ends_with(".json") {
+        return;
     } else if filename == "_settings.json" || filename == "_settings.json5" {
         // 全局重新加载
         *data = db::Database::load();
+        println!("{} data update done. {}", filepath, Local::now());
         return;
     } else if filename == "_auth.json" || filename == "_auth.json5" {
         // 加载auth
         let auth_data = db::load_auth_data(&data.api_docs);
         data.auth_doc = auth_data;
+        println!("{} data update done. {}", filepath, Local::now());
         return;
     } else if filename.contains("_data/") {
         // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
@@ -76,13 +87,19 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
             Some(ref_files) => {
                 // 把找到的文件全部重新load一遍
                 for ref_file in ref_files {
-                    db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+                    let x = db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+                    if !x {
+                        is_parse_error = true;
+                    }
                 }
             }
             None => ()
         }
     } else {
-        db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+        let x= db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+        if !x {
+            is_parse_error = true;
+        }
     }
 
     for (k, v) in api_data {
@@ -92,7 +109,6 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     for (k, v) in api_docs {
         data.api_docs.insert(k, v);
     }
-
 
     data.websocket_api = websocket_api;
 
@@ -109,5 +125,10 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
                 }
             }
         }
+    }
+
+    if !is_parse_error {
+        // 没有解析错误，才会打印解析完成
+        println!("{} data update done. {}", filepath, Local::now());
     }
 }
