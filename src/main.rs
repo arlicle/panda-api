@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpServer, http};
+use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
 
 use dotenv::dotenv;
@@ -85,14 +85,14 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
 
-            .service(web::resource("/").route(web::get().to(api::theme_view)))
-            .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
+//            .service(web::resource("/").route(web::get().to(api::theme_view)))
+//            .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
             .service(Files::new("/_upload", "_data/_upload"))
 
-            .service(web::resource(&websocket_uri).to(api::chat_route))
+//            .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(
                 web::resource("/*")
-                    .route(web::method(http::Method::OPTIONS).to(api::options_handle))
+//                    .route(web::method(http::Method::OPTIONS).to(api::options_handle))
                     .route(web::get().to(api::action_handle))
                     .route(web::post().to(api::action_handle))
                     .route(web::put().to(api::action_handle))

@@ -169,6 +169,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
 
+    println!("hello: {:?}", request_body);
     let new_request_body;
     if &body_mode == "form-data" {
         // 没有request_body，有可能是文件上传
@@ -243,6 +244,8 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         };
     }
 
+    println!("request_body {:?}", new_request_body);
+
     let request_query = match request_query {
         Some(x) => x.into_inner(),
         None => Value::Null
@@ -292,30 +295,51 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 for test_case_data in test_data {
                     // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
                     let mut is_all_match = true;
+
                     if let Some(url) = test_case_data.get("url") {
                         if url != req_path {
                             is_all_match = false;
                         }
                     }
 
-//                    match test_case_data.get("method") {
-//                        Some(v) => {
-//                            if let Some(test_case_method) = v.as_str() {}
-//                            if !is_value_equal(&request_body, v) {
-//                                is_all_match = false;
-//                            }
-//                        }
-//                        None => ()
-//                    };
+                    if let Some(method) = test_case_data.get("method") {
+                        if method.is_string() {
+                            if let Some(test_case_method) = method.as_str() {
+                                if test_case_method != req_method {
+                                    is_all_match = false;
+                                }
+                            }
+                        } else if method.is_array() {
+                            // 如果method是一个数组
+                            if let Some(method_list) = method.as_array() {
+                                let mut has_equal = false;
+                                for method in method_list {
+                                    if let Some(test_case_method) = method.as_str() {
+                                        if test_case_method == req_method {
+                                            has_equal = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if !has_equal {
+                                    is_all_match = false;
+                                }
+                            }
+                        }
+                    }
+                    println!("1 is_all_match: {}", is_all_match);
+                    println!("request_body {:?}", request_body);
 
                     match test_case_data.get("body") {
                         Some(v) => {
+                            println!("v {:?}", v);
                             if !is_value_equal(&request_body, v) {
                                 is_all_match = false;
                             }
                         }
                         None => ()
                     };
+                    println!("2 is_all_match: {}", is_all_match);
 
                     match test_case_data.get("form-data") {
                         Some(v) => {
@@ -325,6 +349,7 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         }
                         None => ()
                     };
+                    println!("3 is_all_match: {}", is_all_match);
 
                     match test_case_data.get("query") {
                         Some(v) => {
@@ -334,11 +359,14 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         }
                         None => ()
                     };
+                    println!("4 is_all_match: {}", is_all_match);
 
                     let case_response = match test_case_data.get("response") {
                         Some(v) => v,
                         None => &Value::Null
                     };
+
+                    println!("222is_all_match: {}", is_all_match);
 
                     if is_all_match {
                         return HttpResponse::Ok().json(case_response);
