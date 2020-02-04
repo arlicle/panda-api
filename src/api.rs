@@ -101,8 +101,6 @@ pub async fn theme_view(req: HttpRequest) -> HttpResponse {
     let req_path = req.path();
 
     // for api documents homepage
-    println!("req_path {}", req_path);
-
     let home_dir = dirs::home_dir().unwrap();
     let theme_home_dir = format!("{}/.panda_api/theme", home_dir.to_str().unwrap().trim_end_matches("/"));
     let theme_file;
@@ -299,6 +297,16 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             is_all_match = false;
                         }
                     }
+
+//                    match test_case_data.get("method") {
+//                        Some(v) => {
+//                            if let Some(test_case_method) = v.as_str() {}
+//                            if !is_value_equal(&request_body, v) {
+//                                is_all_match = false;
+//                            }
+//                        }
+//                        None => ()
+//                    };
 
                     match test_case_data.get("body") {
                         Some(v) => {
