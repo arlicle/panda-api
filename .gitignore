@@ -12,3 +12,6 @@ Cargo.lock
 .DS_Store
 .idea/
 _upload/
+
+_settings.json5
+auth.json5
