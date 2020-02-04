@@ -262,19 +262,25 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     let req_path = req.path();
     let req_method = req.method().as_str();
 
-    for (k, a_api_data) in api_data {
+    for (api_url, a_api_data) in api_data {
         // 匹配
-        let res = ResourceDef::new(k);
+        let res = ResourceDef::new(api_url);
         if res.is_match(req_path) {
             let a_api_data = match a_api_data.get(req_method) {
                 Some(v) => v,
                 None => {
-                    return HttpResponse::Ok().json(json!({
+                    match a_api_data.get("*") {
+                        Some(v) => v,
+                        None => {
+                            return HttpResponse::Ok().json(json!({
                         "code": - 1,
                         "msg": format ! ("this api address {} not defined method {}", req_path, req_method)
                     }));
+                        }
+                    }
                 }
             };
+
             let a_api_data = a_api_data.lock().unwrap();
             if a_api_data.auth {
                 if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
@@ -284,65 +290,51 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
             let test_data = &a_api_data.test_data;
 
-            if test_data.is_null() {
-                return HttpResponse::Ok().json(json!({
-                    "code": - 1,
-                    "msg": format ! ("this api {} with defined method {} have not test_data", req_path, req_method)
-                }));
-            }
-
-            if !test_data.is_array() {
-                return HttpResponse::Ok().json(json!({
-                    "code": - 1,
-                    "msg": format ! ("this api {} with defined method {} test_data is not a array", req_path, req_method)
-                }));
-            }
-
-            let test_data = test_data.as_array().unwrap();
-
-            for test_case_data in test_data {
-                // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
-                let mut is_all_match = true;
-                if let Some(url) = test_case_data.get("url") {
-                    if url != req_path {
-                        is_all_match = false;
+            if let Some(test_data) = test_data.as_array() {
+                for test_case_data in test_data {
+                    // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
+                    let mut is_all_match = true;
+                    if let Some(url) = test_case_data.get("url") {
+                        if url != req_path {
+                            is_all_match = false;
+                        }
                     }
-                }
 
-                match test_case_data.get("body") {
-                    Some(v) => {
-                        if !is_value_equal(&request_body, v) {
-                            is_all_match = false;
+                    match test_case_data.get("body") {
+                        Some(v) => {
+                            if !is_value_equal(&request_body, v) {
+                                is_all_match = false;
+                            }
                         }
-                    },
-                    None => ()
-                };
+                        None => ()
+                    };
 
-                match test_case_data.get("form-data") {
-                    Some(v) => {
-                        if !is_value_equal(&request_body, v) {
-                            is_all_match = false;
+                    match test_case_data.get("form-data") {
+                        Some(v) => {
+                            if !is_value_equal(&request_body, v) {
+                                is_all_match = false;
+                            }
                         }
-                    },
-                    None => ()
-                };
+                        None => ()
+                    };
 
-                match test_case_data.get("query") {
-                    Some(v) => {
-                        if !is_value_equal(&request_query, v) {
-                            is_all_match = false;
+                    match test_case_data.get("query") {
+                        Some(v) => {
+                            if !is_value_equal(&request_query, v) {
+                                is_all_match = false;
+                            }
                         }
-                    },
-                    None => ()
-                };
+                        None => ()
+                    };
 
-                let case_response = match test_case_data.get("response") {
-                    Some(v) => v,
-                    None => &Value::Null
-                };
+                    let case_response = match test_case_data.get("response") {
+                        Some(v) => v,
+                        None => &Value::Null
+                    };
 
-                if is_all_match {
-                    return HttpResponse::Ok().json(case_response);
+                    if is_all_match {
+                        return HttpResponse::Ok().json(case_response);
+                    }
                 }
             }
 
