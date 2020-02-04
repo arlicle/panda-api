@@ -12,7 +12,7 @@ use std::path::Path;
 pub struct Database {
     pub basic_data: BasicData,
     pub api_docs: HashMap<String, ApiDoc>,
-    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>,
+    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, // {url:{"GET":a_api_doc, "POST":a_api_doc}}
     pub fileindex_data: HashMap<String, HashSet<String>>,
     // ref和相关文件的索引，当文件更新后，要找到所有ref他的地方，然后进行更新
     pub websocket_api: Arc<Mutex<ApiData>>,
@@ -44,7 +44,7 @@ pub struct ApiData {
     pub desc: String,
     pub url: String,
     pub url_param: Value,
-    pub method: String,
+    pub method: Vec<String>,
     pub auth: bool,
     pub body_mode: String,
     pub body: Value,
@@ -362,8 +362,11 @@ impl Database {
                 let name = get_api_field_string_value("name", doc_file.to_string(), api, &ref_data, &basic_data.global_value);
                 let desc = get_api_field_string_value("desc", "".to_string(), api, &ref_data, &basic_data.global_value);
                 let url = get_api_field_string_value("url", "".to_string(), api, &ref_data, &basic_data.global_value);
-                let method = get_api_field_string_value("method", "GET".to_string(), api, &ref_data, &basic_data.global_value);
-                let method = method.to_uppercase();
+
+                let mut method = get_api_field_array_value("method", vec!["GET".to_string()], api, &ref_data, &basic_data.global_value);
+                for m in method.iter_mut() {
+                    *m = m.to_uppercase();
+                }
 
                 let body_mode = get_api_field_string_value("body_mode", "json".to_string(), api, &ref_data, &basic_data.global_value);
                 let auth = get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
@@ -462,18 +465,23 @@ impl Database {
                 let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, url_param, auth: auth, url: url.clone(), method: method.clone() };
                 let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
 
-                if &method == "WEBSOCKET" {
+                if method.contains(&"WEBSOCKET".to_string()) {
                     let mut websocket_api = websocket_api.lock().unwrap();
                     *websocket_api = o_api_data.clone();
                 }
                 // 形成 { url: {method:api} }
                 match api_data.get_mut(&url) {
                     Some(data) => {
-                        data.insert(method.clone(), a_api_data.clone());
+                        for m in &method {
+                            data.insert(m.clone(), a_api_data.clone());
+                        }
                     }
                     None => {
                         let mut x = HashMap::new();
-                        x.insert(method.clone(), a_api_data.clone());
+                        for m in &method {
+                            x.insert(m.clone(), a_api_data.clone());
+                        }
+
                         api_data.insert(url.clone(), x);
                     }
                 }
@@ -531,8 +539,57 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
 }
 
 
+/// 从value中获取array
+fn get_array_from_value(key: &str, value: &Value) -> Option<Vec<String>> {
+    if let Some(v) = value.get(key) {
+        if v.is_string() {
+            if let Some(v) = v.as_str() {
+                return Some(vec![v.to_string()]);
+            } else {
+                return Some(vec![format!("{}", v)]);
+            }
+        } else if v.is_array() {
+            if let Some(v_list) = v.as_array() {
+                let mut r = Vec::new();
+                for i in v_list {
+                    if let Some(x) = i.as_str() {
+                        r.push(x.to_string());
+                    }
+                }
+                return Some(r);
+            }
+        }
+    }
+    None
+}
+
+
+/// 获取值可能是数组的字段值
+/// 例如method，可能填写是字符串，也可能是数组
+fn get_api_field_array_value(key: &str, default_value: Vec<String>, api: &Value, ref_data: &Value, global_data: &Value) -> Vec<String> {
+
+    // 如果直接在api接口上有设置值
+    if let Some(v) = get_array_from_value(key, api) {
+        return v;
+    }
+
+    // 如果在ref_data上有设置值
+    if let Some(v) = get_array_from_value(key, ref_data) {
+        return v;
+    }
+
+    // 最后查询global_value
+    if let Some(v) = global_data.get("apis") {
+        if let Some(v) = get_array_from_value(key, v) {
+            return v;
+        }
+    }
+    default_value
+}
+
+
 /// 获取api里面字段的数据
-/// 如 url, name, method等
+/// 如 url, name等
 fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref_data: &Value, global_data: &Value) -> String {
     match api.get(key) {
         Some(d) => {
@@ -544,6 +601,7 @@ fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref
         }
         None => ()
     }
+
     if let Some(d) = ref_data.get(key) {
         if let Some(v) = d.as_str() {
             return v.to_owned();
