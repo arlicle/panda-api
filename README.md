@@ -1,4 +1,4 @@
-# panda-api | <a href="https://www.debugmyself.com/p/2020/1/24/Panda-api%E4%B8%AD%E6%96%87%E8%AF%B4%E6%98%8E/">中文文档</a>
+# panda-api | <a href="https://www.debugmyself.com/p/2020/1/24/panda_api_read_me/">中文文档</a>
 
 Panda api makes it easier to build better api docs more quickly and easy for front end and back end.
 
