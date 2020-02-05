@@ -90,12 +90,6 @@ pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResp
 }
 
 
-/// 处理所有options请求
-pub async fn options_handle() -> HttpResponse {
-    HttpResponse::Ok().body("")
-}
-
-
 /// api docs 在线浏览文档 前端服务
 pub async fn theme_view(req: HttpRequest) -> HttpResponse {
     let req_path = req.path();
@@ -168,73 +162,15 @@ pub async fn chat_route(
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
+    let req_method = req.method().as_str();
 
-    println!("hello: {:?}", request_body);
-    let new_request_body;
+    if req_method == "OPTIONS" {
+        return HttpResponse::Ok().body("");
+    }
+
+    let new_request_body:Value;
     if &body_mode == "form-data" {
-        // 没有request_body，有可能是文件上传
-        // 进行文件上传处理
-
-        let mut form_data: Map<String, Value> = Map::new();
-        if let Some(mut payload) = request_form_data {
-            // 如果是文件上传
-            while let Some(item) = payload.next().await {
-                if let Ok(mut field) = item {
-                    let content_type = match field.content_disposition() {
-                        Some(v) => v,
-                        None => {
-                            break;
-                        }
-                    };
-                    let x = field.headers().clone();
-                    let x = x.get("content-disposition").unwrap().to_str().unwrap();
-                    let re = Regex::new(r#"form-data; name="\w+""#).unwrap();
-
-                    let mut field_name = "";
-                    if let Some(m) = re.find(x) {
-                        field_name = &x[m.start() + 17..m.end() - 1];
-                    };
-
-                    let mut filename = "";
-                    if let Some(f) = content_type.get_filename() {
-                        filename = f;
-                    }
-
-                    match std::fs::create_dir_all("./_data/_upload") {
-                        Ok(_) => (),
-                        Err(e) => {
-                            println!("create folder failed _data/_upload {:?}", e);
-                        }
-                    }
-
-                    let filepath = format!("./_data/_upload/{}", filename);
-                    let filepath2 = &format!("./_data/_upload/{}", filename);
-
-                    if let Ok(mut f) = web::block(|| std::fs::File::create(filepath)).await {
-                        while let Some(chunk) = field.next().await {
-                            let data = chunk.unwrap();
-
-                            if let Ok(_) = f.write_all(&data) {
-                                form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
-                                form_data.insert(format!("__{}", field_name), Value::String(format!("/_upload/{}", filename)));
-                            } else {
-                                println!("create file error {}", filepath2);
-                            }
-                        }
-                    } else {
-                        while let Some(chunk) = field.next().await {
-                            let data = chunk.unwrap();
-                            let x = data.to_vec();
-                            let v = std::str::from_utf8(&x).unwrap();
-                            form_data.insert(field_name.to_string(), Value::String(v.to_string()));
-                        }
-                    }
-                    continue;
-                }
-                break;
-            }
-        }
-        new_request_body = Value::Object(form_data);
+        new_request_body = get_request_form_data(request_form_data).await;
     } else {
         new_request_body = match request_body {
             Some(x) => {
@@ -244,8 +180,6 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         };
     }
 
-    println!("request_body {:?}", new_request_body);
-
     let request_query = match request_query {
         Some(x) => x.into_inner(),
         None => Value::Null
@@ -253,6 +187,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 
     find_response_data(&req, body_mode, new_request_body, request_query, db_data)
 }
+
 
 
 /// 找到对应url 对应请求的数据
@@ -327,46 +262,33 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             }
                         }
                     }
-                    println!("1 is_all_match: {}", is_all_match);
-                    println!("request_body {:?}", request_body);
 
-                    match test_case_data.get("body") {
-                        Some(v) => {
-                            println!("v {:?}", v);
-                            if !is_value_equal(&request_body, v) {
-                                is_all_match = false;
-                            }
+                    if let Some(v) = test_case_data.get("body") {
+                        if !is_value_equal(&request_body, v) {
+                            is_all_match = false;
                         }
-                        None => ()
-                    };
-                    println!("2 is_all_match: {}", is_all_match);
+                    }
 
-                    match test_case_data.get("form-data") {
-                        Some(v) => {
-                            if !is_value_equal(&request_body, v) {
-                                is_all_match = false;
-                            }
-                        }
-                        None => ()
-                    };
-                    println!("3 is_all_match: {}", is_all_match);
 
-                    match test_case_data.get("query") {
-                        Some(v) => {
-                            if !is_value_equal(&request_query, v) {
-                                is_all_match = false;
-                            }
+                    if let Some(v) = test_case_data.get("form-data") {
+                        if !is_value_equal(&request_body, v) {
+                            is_all_match = false;
                         }
-                        None => ()
-                    };
-                    println!("4 is_all_match: {}", is_all_match);
+                    }
+
+
+                    if let Some(v) = test_case_data.get("query") {
+                        if !is_value_equal(&request_query, v) {
+                            is_all_match = false;
+                        }
+                    }
+
 
                     let case_response = match test_case_data.get("response") {
                         Some(v) => v,
                         None => &Value::Null
                     };
 
-                    println!("222is_all_match: {}", is_all_match);
 
                     if is_all_match {
                         return HttpResponse::Ok().json(case_response);
@@ -458,6 +380,72 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
     }
     false
 }
+
+
+/// 从请求中获取form_data里面的数据以及文件上传
+async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
+    let mut form_data: Map<String, Value> = Map::new();
+    if let Some(mut payload) = request_form_data {
+        // 如果是文件上传
+        while let Some(item) = payload.next().await {
+            if let Ok(mut field) = item {
+                let content_type = match field.content_disposition() {
+                    Some(v) => v,
+                    None => {
+                        break;
+                    }
+                };
+                let x = field.headers().clone();
+                let x = x.get("content-disposition").unwrap().to_str().unwrap();
+                let re = Regex::new(r#"form-data; name="\w+""#).unwrap();
+
+                let mut field_name = "";
+                if let Some(m) = re.find(x) {
+                    field_name = &x[m.start() + 17..m.end() - 1];
+                };
+
+                let mut filename = "";
+                if let Some(f) = content_type.get_filename() {
+                    filename = f;
+                }
+
+                match std::fs::create_dir_all("./_data/_upload") {
+                    Ok(_) => (),
+                    Err(e) => {
+                        println!("create folder failed _data/_upload {:?}", e);
+                    }
+                }
+
+                let filepath = format!("./_data/_upload/{}", filename);
+                let filepath2 = &format!("./_data/_upload/{}", filename);
+
+                if let Ok(mut f) = web::block(|| std::fs::File::create(filepath)).await {
+                    while let Some(chunk) = field.next().await {
+                        let data = chunk.unwrap();
+
+                        if let Ok(_) = f.write_all(&data) {
+                            form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
+                            form_data.insert(format!("__{}", field_name), Value::String(format!("/_upload/{}", filename)));
+                        } else {
+                            println!("create file error {}", filepath2);
+                        }
+                    }
+                } else {
+                    while let Some(chunk) = field.next().await {
+                        let data = chunk.unwrap();
+                        let x = data.to_vec();
+                        let v = std::str::from_utf8(&x).unwrap();
+                        form_data.insert(field_name.to_string(), Value::String(v.to_string()));
+                    }
+                }
+                continue;
+            }
+            break;
+        }
+    }
+    Value::Object(form_data)
+}
+
 
 
 /// 获取请求的request_body

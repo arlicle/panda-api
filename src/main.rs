@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpServer};
+use actix_web::{middleware, web, App, HttpServer, http};
 use actix_files::Files;
 
 use dotenv::dotenv;
@@ -69,7 +69,6 @@ async fn main() -> std::io::Result<()> {
 
     utils::watch_api_docs_change(web_db.clone());
 
-
     let server = server::ChatServer::default();
     let server = server.start();
     println!("Starting service on http://{}:{}", conf.host, conf.port);
@@ -79,27 +78,21 @@ async fn main() -> std::io::Result<()> {
             .app_data(web_db.clone())
             .wrap(middleware::Logger::default())
             .wrap(middleware::Logger::new("%a %{User-Agent}i"))
-            .wrap(middleware::DefaultHeaders::new().header("X-Version", "0.2").header("Access-Control-Allow-Origin", "*"))
+            .wrap(middleware::DefaultHeaders::new()
+                .header("Panda-Api", "0.5")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*"))
 
             .service(web::resource("/__api_docs/").route(web::get().to(api::get_api_doc_basic)))
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
-
-//            .service(web::resource("/").route(web::get().to(api::theme_view)))
-//            .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
+            .service(web::resource("/").route(web::get().to(api::theme_view)))
+            .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
             .service(Files::new("/_upload", "_data/_upload"))
 
-//            .service(web::resource(&websocket_uri).to(api::chat_route))
-            .service(
-                web::resource("/*")
-//                    .route(web::method(http::Method::OPTIONS).to(api::options_handle))
-                    .route(web::get().to(api::action_handle))
-                    .route(web::post().to(api::action_handle))
-                    .route(web::put().to(api::action_handle))
-                    .route(web::delete().to(api::action_handle))
-                    .route(web::patch().to(api::action_handle))
-                    .route(web::head().to(api::action_handle))
-            )
+            .service(web::resource(&websocket_uri).to(api::chat_route))
+            .service(web::resource("/*").to(api::action_handle))
     })
         .bind(format!("{}:{}", conf.host, conf.port))?
         .run()
