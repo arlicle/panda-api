@@ -168,31 +168,31 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
         return HttpResponse::Ok().body("");
     }
 
-    let new_request_body:Value;
-    if &body_mode == "form-data" {
-        new_request_body = get_request_form_data(request_form_data).await;
+    let form_data = if &body_mode == "form-data" {
+        get_request_form_data(request_form_data).await
     } else {
-        new_request_body = match request_body {
-            Some(x) => {
-                x.into_inner()
-            }
-            None => Value::Null
-        };
-    }
+        Value::Null
+    };
+
+    let request_body = match request_body {
+        Some(x) => {
+            x.into_inner()
+        }
+        None => Value::Null
+    };
 
     let request_query = match request_query {
         Some(x) => x.into_inner(),
         None => Value::Null
     };
 
-    find_response_data(&req, body_mode, new_request_body, request_query, db_data)
+    find_response_data(&req, body_mode, request_body, request_query, form_data, db_data)
 }
-
 
 
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, form_data:Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
     let api_data = &db_data.api_data;
     let req_path = req.path();
@@ -271,7 +271,7 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
 
                     if let Some(v) = test_case_data.get("form-data") {
-                        if !is_value_equal(&request_body, v) {
+                        if !is_value_equal(&form_data, v) {
                             is_all_match = false;
                         }
                     }
@@ -445,7 +445,6 @@ async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
     }
     Value::Object(form_data)
 }
-
 
 
 /// 获取请求的request_body
