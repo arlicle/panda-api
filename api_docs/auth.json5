@@ -78,7 +78,7 @@
         method:"GET",
         url:"/logout/",
         query:{
-            id:{name:"user id"},
+            id:{name:"user id", type: "int"},
             username:{}
         },
         response:{
