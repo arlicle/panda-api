@@ -303,6 +303,7 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
 /// 判断两个serde value的值是否相等
 /// 只要value2中要求的每个字段，value1中都有，就表示相等, 也就是说value1的字段可能会比value2多
+/// 改为两个value1，value2中的字段必须完全相等
 fn is_value_equal(value1: &Value, value2: &Value) -> bool {
     if value1.is_null() & &value2.is_null() {
         return true;
@@ -313,6 +314,9 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                 Some(value2_a) => {
                     if value1_a.is_empty() & &value2_a.is_empty() {
                         return true;
+                    }
+                    if value1_a.len() != value2_a.len() {
+                        return false;
                     }
                     for (k, v) in value2_a {
                         match value1_a.get(k) {
