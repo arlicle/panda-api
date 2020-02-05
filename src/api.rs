@@ -2,6 +2,7 @@ use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web::dev::ResourceDef;
 use std::time::{Duration, Instant, SystemTime};
 use std::collections::{HashMap, HashSet};
+use actix_files;
 
 use rand::{thread_rng, Rng};
 
@@ -90,8 +91,9 @@ pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResp
 }
 
 
-/// api docs 在线浏览文档 前端服务
-pub async fn theme_view(req: HttpRequest) -> HttpResponse {
+/// api docs 在线浏览文档
+/// 前端相关静态皮肤文件展示服务
+pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
     let req_path = req.path();
 
     // for api documents homepage
@@ -106,17 +108,7 @@ pub async fn theme_view(req: HttpRequest) -> HttpResponse {
 
     let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
 
-    let d = match fs::read_to_string(&theme_filepath) {
-        Ok(x) => x,
-        Err(_) => {
-            println!("no panda api doc theme file: {}", theme_filepath);
-            return HttpResponse::Found()
-                .header(http::header::LOCATION, "/__api_docs/")
-                .finish();
-        }
-    };
-//    HttpResponse::Ok().content_type("text/css").body(d)
-    HttpResponse::Ok().body(d)
+    return Ok(actix_files::NamedFile::open(theme_filepath)?);
 }
 
 
