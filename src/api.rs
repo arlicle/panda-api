@@ -184,7 +184,7 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, form_data:Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, form_data: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
     let api_data = &db_data.api_data;
     let req_path = req.path();
@@ -255,32 +255,36 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         }
                     }
 
-                    if let Some(v) = test_case_data.get("body") {
-                        if !is_value_equal(&request_body, v) {
-                            is_all_match = false;
-                        }
+                    let v = match test_case_data.get("body") {
+                        Some(v) => v,
+                        None => &Value::Null
+                    };
+                    if !is_value_equal(&request_body, v) {
+                        is_all_match = false;
+                    }
+
+                    let v = match test_case_data.get("form-data") {
+                        Some(v) => v,
+                        None => &Value::Null
+                    };
+                    if !is_value_equal(&form_data, v) {
+                        is_all_match = false;
                     }
 
 
-                    if let Some(v) = test_case_data.get("form-data") {
-                        if !is_value_equal(&form_data, v) {
-                            is_all_match = false;
-                        }
+                    let v = match test_case_data.get("query") {
+                        Some(v) => v,
+                        None => &Value::Null
+                    };
+                    let request_query = parse_request_query_to_api_query_format(&request_query, &a_api_data.query);
+                    if !is_value_equal(&request_query, v) {
+                        is_all_match = false;
                     }
-
-
-                    if let Some(v) = test_case_data.get("query") {
-                        if !is_value_equal(&request_query, v) {
-                            is_all_match = false;
-                        }
-                    }
-
 
                     let case_response = match test_case_data.get("response") {
                         Some(v) => v,
                         None => &Value::Null
                     };
-
 
                     if is_all_match {
                         return HttpResponse::Ok().json(case_response);
@@ -301,18 +305,67 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 }
 
 
+/// 把request_query 转换为api query的格式
+fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Value) -> Value {
+    if api_query.is_null() {
+        return request_query.clone();
+    }
+    if let Some(api_query_data) = api_query.as_object() {
+        if let Some(request_query) = request_query.as_object() {
+            let mut result: Map<String, Value> = Map::new();
+            for (field_key, field_value) in api_query_data {
+                if let Some(request_query_value) = request_query.get(field_key) {
+                    if let Some(field_value) = field_value.as_object() {
+                        let mut field_type = "string";
+                        if let Some(f_type) = field_value.get("type") {
+                            if let Some(f_type) = f_type.as_str() {
+                                field_type = f_type;
+                            }
+                        }
+                        let field_type = field_type.to_lowercase();
+                        let field_type = field_type.as_str();
+
+                        if let Some(request_query_value_str) = request_query_value.as_str() {
+                            match field_type {
+                                "number" | "int" | "posint" | "negint" | "timestamp" => {
+                                    if let Ok(v) = request_query_value_str.parse::<i64>() {
+                                        result.insert(field_key.to_string(), json!(v));
+                                    }
+                                }
+                                "float" | "posfloat" | "negfloat" => {
+                                    if let Ok(v) = request_query_value_str.parse::<f64>() {
+                                        result.insert(field_key.to_string(), json!(v));
+                                    }
+                                }
+                                _ => {
+                                    result.insert(field_key.to_string(), json!(request_query_value_str));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return Value::Object(result);
+        }
+    }
+
+    request_query.clone()
+}
+
+
 /// 判断两个serde value的值是否相等
 /// 只要value2中要求的每个字段，value1中都有，就表示相等, 也就是说value1的字段可能会比value2多
 /// 改为两个value1，value2中的字段必须完全相等
 fn is_value_equal(value1: &Value, value2: &Value) -> bool {
-    if value1.is_null() & &value2.is_null() {
+    if value1.is_null() && value2.is_null() {
         return true;
     }
     match value1 {
         Value::Object(value1_a) => {
             match value2.as_object() {
                 Some(value2_a) => {
-                    if value1_a.is_empty() & &value2_a.is_empty() {
+                    if value1_a.is_empty() && value2_a.is_empty() {
                         return true;
                     }
                     if value1_a.len() != value2_a.len() {
