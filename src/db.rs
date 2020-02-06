@@ -11,8 +11,8 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct Database {
     pub basic_data: BasicData,
-    pub api_docs: HashMap<String, ApiDoc>,
-    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, // {url:{"GET":a_api_doc, "POST":a_api_doc}}
+    pub api_docs: HashMap<String, ApiDoc>, // {fileanme:api_doc}
+    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, // {url:{"GET":a_api_doc, "POST":a_api_data}}
     pub fileindex_data: HashMap<String, HashSet<String>>,
     // ref和相关文件的索引，当文件更新后，要找到所有ref他的地方，然后进行更新
     pub websocket_api: Arc<Mutex<ApiData>>,
@@ -275,16 +275,17 @@ impl Database {
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) -> bool {
+    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) -> i32 {
         if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5")) || doc_file == "_settings.json" || doc_file == "_settings.json5" || doc_file.contains("_data/") || doc_file.starts_with(".") || doc_file.contains("/.") {
-            return false;
+            return -1;
         }
 
         let d = match fs::read_to_string(doc_file) {
             Ok(d) => d,
             Err(e) => {
-                println!("Unable to read file: {} {:?}", doc_file, e);
-                return false;
+                // println!("Unable to read file: {} {:?}", doc_file, e);
+                // 文件被删除
+                return -2;
             }
         };
 
@@ -293,13 +294,13 @@ impl Database {
             Ok(v) => v,
             Err(e) => {
                 println!("Parse json file {} error : {:?}", doc_file, e);
-                return false;
+                return -3;
             }
         };
 
         let doc_file_obj = match json_value.as_object() {
             Some(doc_file_obj) => doc_file_obj,
-            None => return false
+            None => return -4
         };
 
         let mut doc_name = match doc_file_obj.get("name") {
@@ -496,7 +497,7 @@ impl Database {
         let api_doc = ApiDoc { name: doc_name, desc: doc_desc, order: doc_order, filename: doc_file.to_string(), apis: api_vec };
         api_docs.insert(doc_file.to_string(), api_doc);
 
-        true
+        1
     }
 }
 
