@@ -21,9 +21,9 @@ Why Panda Api：
 
 ### Install
 
-[Mac下的安装包](https://github.com/arlicle/panda-api/releases/download/0.5/mac_install_0.5.zip)
-[Linux下的安装包](https://github.com/arlicle/panda-api/releases/download/v0.5/linux_install_0.5.zip)
-[Panda Api for Windows 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_windows_0.2.tar)    
+- [Mac下的安装包](https://github.com/arlicle/panda-api/releases/download/0.5/mac_install_0.5.zip)
+- [Linux下的安装包](https://github.com/arlicle/panda-api/releases/download/v0.5/linux_install_0.5.zip)
+- [Panda Api for Windows 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_windows_0.2.tar)
 
 ### A auth api docus
 
@@ -135,8 +135,8 @@ If false, the field is optional. Default is true.
 
 
 ### Panda Api 如何使用
-[快速简单的写好第一个接口文档 使用说明(一)](/p/2020/1/15/Panda-api%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
-[接口文档的高级配置 使用说明(二)](/p/2020/1/15/Panda-api%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
-[相关字段说明](/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
-[test_data使用说明](/p/2020/1/27/Panda-api-test_data%E5%8C%B9%E9%85%8D%E8%AF%B4%E6%98%8E/)
-[Auth接口权限配置说明](/p/2020/2/2/Panda-api接口权限配置说明/)
+- [快速简单的写好第一个接口文档 使用说明(一)](/p/2020/1/15/Panda-api%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
+- [接口文档的高级配置 使用说明(二)](/p/2020/1/15/Panda-api%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
+- [相关字段说明](/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
+- [test_data使用说明](/p/2020/1/27/Panda-api-test_data%E5%8C%B9%E9%85%8D%E8%AF%B4%E6%98%8E/)
+- [Auth接口权限配置说明](/p/2020/2/2/Panda-api接口权限配置说明/)
