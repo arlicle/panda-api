@@ -23,7 +23,7 @@ Why Panda Api：
 
 [Mac下的安装包](https://github.com/arlicle/panda-api/releases/download/0.5/mac_install_0.5.zip)
 [Linux下的安装包](https://github.com/arlicle/panda-api/releases/download/v0.5/linux_install_0.5.zip)
-[Panda Api for Windows 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_windows_0.2.tar)
+[Panda Api for Windows 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_windows_0.2.tar)    
 
 ### A auth api docus
 
