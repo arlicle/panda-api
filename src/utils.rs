@@ -65,8 +65,9 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     let mut parse_error_code = 0;
 
     if filename == "README.md" {
-        let basic_data = db::load_basic_data();
+        let (basic_data, settings_value) = db::load_basic_data();
         data.basic_data = basic_data;
+        data.settings = settings_value;
     } else if !filepath.ends_with(".json5") && !filepath.ends_with(".json") {
         return;
     } else if filename == "_settings.json" || filename == "_settings.json5" {
