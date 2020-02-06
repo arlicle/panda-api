@@ -302,7 +302,7 @@ impl Database {
             None => return false
         };
 
-        let doc_name = match doc_file_obj.get("name") {
+        let mut doc_name = match doc_file_obj.get("name") {
             Some(name) => {
                 match name.as_str() {
                     Some(v) => v.to_string(),
@@ -311,6 +311,10 @@ impl Database {
             }
             None => doc_file.to_string()
         };
+        if &doc_name == "" {
+            // 如果接口文档name为空，那么就用文件名作为文档名称
+            doc_name = doc_file.to_string();
+        }
 
         let doc_desc = match doc_file_obj.get("desc") {
             Some(desc) => desc.as_str().unwrap(),
