@@ -10,10 +10,9 @@ use actix_web::web;
 use std::sync::mpsc::channel;
 use std::env;
 
-use chrono::{Local};
+use chrono::Local;
 
 use crate::db;
-
 
 
 /// 建立异步线程，监控文件改动，当改动的时候，就重新生成文件
@@ -54,7 +53,6 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 /// 发生文件改动/新增时，更新接口文档数据
 /// README.md, json数据
 fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::Database>>) {
-
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
     let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<db::ApiData>>>> = HashMap::new();
     let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
@@ -63,12 +61,13 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     let mut data = data.lock().unwrap();
     let filename = filepath.trim_start_matches(&format!("{}/", current_dir));
 
-    let mut is_parse_error = false;
+    let mut delete_files: Vec<String> = Vec::new();
+    let mut parse_error_code = 0;
 
     if filename == "README.md" {
         let basic_data = db::load_basic_data();
         data.basic_data = basic_data;
-    } else if !filepath.ends_with(".json5") &&  !filepath.ends_with(".json") {
+    } else if !filepath.ends_with(".json5") && !filepath.ends_with(".json") {
         return;
     } else if filename == "_settings.json" || filename == "_settings.json5" {
         // 全局重新加载
@@ -87,18 +86,44 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
             Some(ref_files) => {
                 // 把找到的文件全部重新load一遍
                 for ref_file in ref_files {
-                    let x = db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
-                    if !x {
-                        is_parse_error = true;
+                    parse_error_code = db::Database::load_a_api_json_file(ref_file, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+                    if parse_error_code == -2 {
+                        delete_files.push(ref_file.to_string());
                     }
                 }
             }
             None => ()
         }
     } else {
-        let x= db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
-        if !x {
-            is_parse_error = true;
+        parse_error_code = db::Database::load_a_api_json_file(filename, &data.basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+        if parse_error_code == -2 {
+            delete_files.push(filename.to_string());
+        }
+    }
+
+
+    if parse_error_code < 0 {
+        // 没有解析错误，才会打印解析完成
+        for delete_file in &delete_files {
+            // 发生删除文件，要分别删除api_docs和api_data中的数据
+            let mut urls:Vec<String> = Vec::new();
+            if let Some(api_doc) = &data.api_docs.get(delete_file) {
+                // 删除 api_data中 api_doc包含的url
+                for api in api_doc.apis.iter() {
+                    let url = &api.lock().unwrap().url;
+                    urls.push(url.to_string());
+                }
+            }
+
+            // 删除api_doc
+            data.api_docs.remove(delete_file);
+            // 删除api_data中的url
+            for url in &urls {
+                data.api_data.remove(url);
+            }
+            if parse_error_code == -2 {
+                println!("deleted file {} {}", delete_file, Local::now());
+            }
         }
     }
 
@@ -125,10 +150,5 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
                 }
             }
         }
-    }
-
-    if !is_parse_error {
-        // 没有解析错误，才会打印解析完成
-        println!("{} data update done. {}", filepath, Local::now());
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "panda-api"
-version = "0.1.0"
+version = "0.5.1"
 authors = ["edison <arlicle@gmail.com>"]
 edition = "2018"
 
