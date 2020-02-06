@@ -45,6 +45,20 @@ pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web:
     let data = data.lock().unwrap();
     let api_docs = &data.api_docs;
 
+    if req_get.filename == "_auth.json5" {
+        if let Some(auth_doc) = &data.auth_doc {
+            return HttpResponse::Ok().json(auth_doc);
+        } else {
+            return HttpResponse::Ok().body("");
+        }
+    } else if req_get.filename == "_settings.json5" {
+        if let Some(settings) = &data.settings {
+            return HttpResponse::Ok().json(settings);
+        } else {
+            return HttpResponse::Ok().body("");
+        }
+    }
+
     for (_, doc) in api_docs {
         if doc.filename == req_get.filename {
             let mut apis = Vec::new();
@@ -78,8 +92,14 @@ pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResp
     let api_docs = &data.api_docs;
 
     let mut docs = Vec::new();
+    if let Some(auth_doc) = &data.auth_doc {
+        docs.push(json!({"name":auth_doc.name, "desc":auth_doc.desc, "order":0, "filename":"_auth.json5"}));
+    }
+    if let Some(settings) = &data.settings {
+        docs.push(json!({"name":"Settings", "desc":"", "order":0, "filename":"_settings.json5"}));
+    }
     for (_, doc) in api_docs {
-        docs.push(DocSummary { name: doc.name.clone(), desc: doc.desc.clone(), order: doc.order, filename: doc.filename.clone() });
+        docs.push(json!({ "name": doc.name, "desc": doc.desc, "order": doc.order, "filename": doc.filename }));
     }
 
     HttpResponse::Ok().json(json!({
