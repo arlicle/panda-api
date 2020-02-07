@@ -54,7 +54,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 /// README.md, json数据
 fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::Database>>) {
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
-    let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<db::ApiData>>>> = HashMap::new();
+    let mut api_data: HashMap<String, Vec<Arc<Mutex<db::ApiData>>>> = HashMap::new();
     let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
     let websocket_api = Arc::new(Mutex::new(db::ApiData::default()));
 

@@ -81,6 +81,8 @@
             id:{name:"user id", type: "int"},
             username:{}
         },
+        request_headers:{},
+        response_headers:{},
         response:{
             code:{name:"response result code", type:"number", desc:"success is 1"},
             msg:{name:"response result message", type:"string", desc:""}
