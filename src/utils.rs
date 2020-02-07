@@ -73,13 +73,13 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     } else if filename == "_settings.json" || filename == "_settings.json5" {
         // 全局重新加载
         *data = db::Database::load();
-        println!("{} data update done. {}", filepath, Local::now());
+        println!("{} data update done. {}", filename, Local::now());
         return;
     } else if filename == "_auth.json" || filename == "_auth.json5" {
         // 加载auth
         let auth_data = db::load_auth_data(&data.api_docs);
         data.auth_doc = auth_data;
-        println!("{} data update done. {}", filepath, Local::now());
+        println!("{} data update done. {}", filename, Local::now());
         return;
     } else if filename.contains("_data/") {
         // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
@@ -123,7 +123,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
                 data.api_data.remove(url);
             }
             if parse_error_code == -2 {
-                println!("deleted file {} {}", delete_file, Local::now());
+                println!("deleted file {} {}", filename, Local::now());
             }
         }
     }
@@ -151,5 +151,10 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
                 }
             }
         }
+    }
+
+    if parse_error_code == 1 {
+        println!("{} data update done. {}", filename, Local::now());
+
     }
 }
