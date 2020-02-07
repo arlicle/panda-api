@@ -202,7 +202,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     let req_method = req.method().as_str();
     let req_headers = req.headers();
 
-    println!("{:?}", req.headers());
 
     let api_data_list = match db_api_data.get(req_path) {
         Some(v) => Some(v),
@@ -255,6 +254,41 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         }
                     }
                 }
+
+
+                let mut status_code = 200;
+                let mut content_type = "application/json";
+                if !a_api_data.response_headers.is_null() {
+                    if let Some(api_headers) = a_api_data.response_headers.as_object() {
+                        if let Some(s) = api_headers.get("status_code") {
+                            if s.is_u64() {
+                                status_code = s.as_u64().unwrap();
+                            } else if s.is_object() {
+                                if let Some(s) = s.as_object() {
+                                    if let Some(v) = s.get("value") {
+                                        status_code = v.as_u64().unwrap();
+                                    }
+                                }
+                            }
+                        }
+
+                        if let Some(s) = api_headers.get("content_type") {
+                            if s.is_string() {
+                                content_type = s.as_str().unwrap();
+                            } else if s.is_object() {
+                                if let Some(s) = s.as_object() {
+                                    if let Some(v) = s.get("value") {
+                                        content_type = v.as_str().unwrap();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if status_code < 100 || status_code >= 600 {
+                    status_code = 200;
+                }
+                let status_code = http::StatusCode::from_u16(status_code as u16).unwrap();
 
                 // 开始匹配 test_data
                 if let Some(test_data) = a_api_data.test_data.as_array() {
@@ -312,13 +346,17 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         };
 
                         if is_all_match {
-                            return HttpResponse::Ok().json(case_response);
+                            let serialized = serde_json::to_string(case_response).unwrap();
+                            return HttpResponse::build(status_code).content_type(content_type).body(serialized);
+//                            return HttpResponse::Ok().json(case_response);
                         }
                     }
                 }
 
                 let x = create_mock_response(&a_api_data.response);
-                return HttpResponse::Ok().json(x);
+                let serialized = serde_json::to_string(&x).unwrap();
+                return HttpResponse::build(status_code).content_type(content_type).body(serialized);
+//                return HttpResponse::Ok().json(x);
             }
         }
         return HttpResponse::Ok().json(json!({
@@ -339,6 +377,7 @@ fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Va
     if api_query.is_null() {
         return request_query.clone();
     }
+
     if let Some(api_query_data) = api_query.as_object() {
         if let Some(request_query) = request_query.as_object() {
             let mut result: Map<String, Value> = Map::new();
