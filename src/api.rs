@@ -217,7 +217,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
         }
     };
 
-    println!("request_body {:?}", request_body);
     if let Some(api_data_list) = api_data_list {
         for a_api_data in api_data_list {
             let a_api_data = a_api_data.lock().unwrap();
@@ -241,8 +240,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                                 continue;
                             }
                         }
-
-                        println!("test {:?}", test_case_data);
 
                         if let Some(method) = test_case_data.get("method") {
                             if method.is_string() {
@@ -271,7 +268,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                                 }
                             }
                         }
-                        println!("is_all_match4 {}", is_all_match);
 
                         let v = match test_case_data.get("body") {
                             Some(v) => v,
@@ -281,7 +277,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             is_all_match = false;
                             continue;
                         }
-                        println!("is_all_match3 {}", is_all_match);
 
                         let v = match test_case_data.get("form-data") {
                             Some(v) => v,
@@ -291,8 +286,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             is_all_match = false;
                             continue;
                         }
-                        println!("is_all_match2 {}", is_all_match);
-
 
                         let v = match test_case_data.get("query") {
                             Some(v) => v,
@@ -309,7 +302,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             None => &Value::Null
                         };
 
-                        println!("is_all_match1 {}", is_all_match);
                         if is_all_match {
                             return HttpResponse::Ok().json(case_response);
                         }
