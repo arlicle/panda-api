@@ -200,7 +200,9 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     let db_api_data = &db_data.api_data;
     let req_path = req.path();
     let req_method = req.method().as_str();
+    let req_headers = req.headers();
 
+    println!("{:?}", req.headers());
 
     let api_data_list = match db_api_data.get(req_path) {
         Some(v) => Some(v),
@@ -218,12 +220,39 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     };
 
     if let Some(api_data_list) = api_data_list {
-        for a_api_data in api_data_list {
+        'a: for a_api_data in api_data_list {
             let a_api_data = a_api_data.lock().unwrap();
             if a_api_data.method.contains(&req_method.to_string()) || a_api_data.method.contains(&"*".to_string()) {
                 if a_api_data.auth { // 权限检查
                     if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
                         return HttpResponse::Ok().json(auth_valid_errors);
+                    }
+                }
+
+                // 首先判断在api接口中是否对request_headers有要求，如果有要求，那么就按照api接口定义匹配
+                // 像url, 级别的接口匹配
+                // 在api层面匹配成功后，才会有test_data层级的匹配
+                // request_headers的匹配规则是，只判断test_case中的request_headers字段中的值在request_headers中是否有, 如果有就表示通过
+                if !a_api_data.request_headers.is_null() {
+                    if let Some(api_headers) = a_api_data.request_headers.as_object() {
+                        for (header_key, header_field) in api_headers {
+                            let mut header_value = "";
+                            if let Some(header_field) = header_field.as_object() {
+                                if let Some(v) = header_field.get("value") {
+                                    header_value = v.as_str().unwrap();
+                                }
+                            } else {
+                                header_value = header_field.as_str().unwrap();
+                            }
+
+                            if let Some(v) = req_headers.get(header_key) {
+                                if let Ok(v_str) = v.to_str() {
+                                    if v_str != header_value {
+                                        continue 'a;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -240,20 +269,14 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             }
                         }
 
+
                         if let Some(method) = test_case_data.get("method") {
                             // method属于有就匹配，没有就不匹配
-                            if !is_request_method_match_test_case(req_method, method){
+                            if !is_request_method_match_test_case(req_method, method) {
                                 is_all_match = false;
                                 continue;
                             }
                         }
-
-                        // 首先判断在api接口中是否对request_headers有要求，如果有要求，那么就按照api接口定义匹配
-                        // request_headers的匹配规则是，只判断test_case中的request_headers字段中的值在request_headers中是否有, 如果有就表示通过
-                        if let Some(v) = test_case_data.get("request_headers") {
-
-                        };
-
 
                         let v = match test_case_data.get("body") {
                             Some(v) => v,
@@ -360,7 +383,7 @@ fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Va
 }
 
 
-fn is_request_method_match_test_case(request_method:&str, test_case_method:&Value) -> bool {
+fn is_request_method_match_test_case(request_method: &str, test_case_method: &Value) -> bool {
     if test_case_method.is_string() {
         if let Some(test_case_method) = test_case_method.as_str() {
             if test_case_method == request_method || test_case_method == "*" {
