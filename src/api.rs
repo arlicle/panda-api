@@ -26,15 +26,6 @@ use crate::{int, float, timestamp};
 
 
 #[derive(Serialize, Deserialize, Debug)]
-struct DocSummary {
-    pub name: String,
-    pub desc: String,
-    pub order: i64,
-    pub filename: String,
-}
-
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDocDataRequest {
     filename: String,
 }
@@ -206,117 +197,134 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
 ///
 fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, form_data: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
-    let api_data = &db_data.api_data;
+    let db_api_data = &db_data.api_data;
     let req_path = req.path();
     let req_method = req.method().as_str();
 
-    for (api_url, a_api_data) in api_data {
-        // 匹配
-        let res = ResourceDef::new(api_url);
-        if res.is_match(req_path) {
-            let a_api_data = match a_api_data.get(req_method) {
-                Some(v) => v,
-                None => {
-                    match a_api_data.get("*") {
-                        Some(v) => v,
-                        None => {
-                            return HttpResponse::Ok().json(json!({
-                        "code": - 1,
-                        "msg": format ! ("this api address {} not defined method {}", req_path, req_method)
-                    }));
-                        }
-                    }
-                }
-            };
 
-            let a_api_data = a_api_data.lock().unwrap();
-            if a_api_data.auth {
-                if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
-                    return HttpResponse::Ok().json(auth_valid_errors);
+    let api_data_list = match db_api_data.get(req_path) {
+        Some(v) => Some(v),
+        None => {
+            let mut r = None;
+            for (api_url, api_data_list) in db_api_data {
+                let res = ResourceDef::new(api_url);
+                if res.is_match(req_path) {
+                    r = Some(api_data_list);
+                    break;
                 }
             }
-
-            let test_data = &a_api_data.test_data;
-
-            if let Some(test_data) = test_data.as_array() {
-                for test_case_data in test_data {
-                    // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
-                    let mut is_all_match = true;
-
-                    if let Some(url) = test_case_data.get("url") {
-                        if url != req_path {
-                            is_all_match = false;
-                        }
-                    }
-
-                    if let Some(method) = test_case_data.get("method") {
-                        if method.is_string() {
-                            if let Some(test_case_method) = method.as_str() {
-                                if test_case_method != req_method {
-                                    is_all_match = false;
-                                }
-                            }
-                        } else if method.is_array() {
-                            // 如果method是一个数组
-                            if let Some(method_list) = method.as_array() {
-                                let mut has_equal = false;
-                                for method in method_list {
-                                    if let Some(test_case_method) = method.as_str() {
-                                        if test_case_method == req_method {
-                                            has_equal = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if !has_equal {
-                                    is_all_match = false;
-                                }
-                            }
-                        }
-                    }
-
-                    let v = match test_case_data.get("body") {
-                        Some(v) => v,
-                        None => &Value::Null
-                    };
-                    if !is_value_equal(&request_body, v) {
-                        is_all_match = false;
-                    }
-
-                    let v = match test_case_data.get("form-data") {
-                        Some(v) => v,
-                        None => &Value::Null
-                    };
-                    if !is_value_equal(&form_data, v) {
-                        is_all_match = false;
-                    }
-
-
-                    let v = match test_case_data.get("query") {
-                        Some(v) => v,
-                        None => &Value::Null
-                    };
-                    let request_query = parse_request_query_to_api_query_format(&request_query, &a_api_data.query);
-                    if !is_value_equal(&request_query, v) {
-                        is_all_match = false;
-                    }
-
-                    let case_response = match test_case_data.get("response") {
-                        Some(v) => v,
-                        None => &Value::Null
-                    };
-
-                    if is_all_match {
-                        return HttpResponse::Ok().json(case_response);
-                    }
-                }
-            }
-
-            let x = create_mock_response(&a_api_data.response);
-            return HttpResponse::Ok().json(x);
+            r
         }
     };
 
+    println!("request_body {:?}", request_body);
+    if let Some(api_data_list) = api_data_list {
+        for a_api_data in api_data_list {
+            let a_api_data = a_api_data.lock().unwrap();
+            if a_api_data.method.contains(&req_method.to_string()) || a_api_data.method.contains(&"*".to_string()) {
+
+                if a_api_data.auth { // 权限检查
+                    if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
+                        return HttpResponse::Ok().json(auth_valid_errors);
+                    }
+                }
+
+                // 开始匹配 test_data
+                if let Some(test_data) = a_api_data.test_data.as_array() {
+                    for test_case_data in test_data {
+                        // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
+                        let mut is_all_match = true;
+
+                        if let Some(url) = test_case_data.get("url") {
+                            if url != req_path {
+                                is_all_match = false;
+                                continue;
+                            }
+                        }
+
+                        println!("test {:?}", test_case_data);
+
+                        if let Some(method) = test_case_data.get("method") {
+                            if method.is_string() {
+                                if let Some(test_case_method) = method.as_str() {
+                                    if test_case_method != req_method {
+                                        is_all_match = false;
+                                        continue;
+                                    }
+                                }
+                            } else if method.is_array() {
+                                // 如果method是一个数组
+                                if let Some(method_list) = method.as_array() {
+                                    let mut has_equal = false;
+                                    for method in method_list {
+                                        if let Some(test_case_method) = method.as_str() {
+                                            if test_case_method == req_method {
+                                                has_equal = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if !has_equal {
+                                        is_all_match = false;
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                        println!("is_all_match4 {}", is_all_match);
+
+                        let v = match test_case_data.get("body") {
+                            Some(v) => v,
+                            None => &Value::Null
+                        };
+                        if !is_value_equal(&request_body, v) {
+                            is_all_match = false;
+                            continue;
+                        }
+                        println!("is_all_match3 {}", is_all_match);
+
+                        let v = match test_case_data.get("form-data") {
+                            Some(v) => v,
+                            None => &Value::Null
+                        };
+                        if !is_value_equal(&form_data, v) {
+                            is_all_match = false;
+                            continue;
+                        }
+                        println!("is_all_match2 {}", is_all_match);
+
+
+                        let v = match test_case_data.get("query") {
+                            Some(v) => v,
+                            None => &Value::Null
+                        };
+                        let request_query = parse_request_query_to_api_query_format(&request_query, &a_api_data.query);
+                        if !is_value_equal(&request_query, v) {
+                            is_all_match = false;
+                            continue;
+                        }
+
+                        let case_response = match test_case_data.get("response") {
+                            Some(v) => v,
+                            None => &Value::Null
+                        };
+
+                        println!("is_all_match1 {}", is_all_match);
+                        if is_all_match {
+                            return HttpResponse::Ok().json(case_response);
+                        }
+                    }
+                }
+
+                let x = create_mock_response(&a_api_data.response);
+                return HttpResponse::Ok().json(x);
+            }
+        }
+        return HttpResponse::Ok().json(json!({
+            "code": - 1,
+            "msg": format ! ("this api address {} not match method {}", req_path, req_method)
+        }));
+    }
 
     HttpResponse::Ok().json(json!({
         "code": - 1,

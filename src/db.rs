@@ -11,8 +11,10 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct Database {
     pub basic_data: BasicData,
-    pub api_docs: HashMap<String, ApiDoc>, // {fileanme:api_doc}
-    pub api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, // {url:{"GET":a_api_doc, "POST":a_api_data}}
+    pub api_docs: HashMap<String, ApiDoc>,
+    // {fileanme:api_doc}
+    pub api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>>,
+    // {url:[a_api_doc1, a_api_data2]}
     pub fileindex_data: HashMap<String, HashSet<String>>,
     // ref和相关文件的索引，当文件更新后，要找到所有ref他的地方，然后进行更新
     pub websocket_api: Arc<Mutex<ApiData>>,
@@ -119,7 +121,7 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
                     }
                     Err(e) => {
                         println!("Parse json file {} error : {:?}", file, e);
-                        return None
+                        return None;
                     }
                 }
             }
@@ -203,7 +205,7 @@ pub fn load_basic_data() -> (BasicData, Option<Value>) {
     let settings_files = ["_settings.json5", "_settings.json"];
 
     let mut setting_value = json!({});
-    let mut return_value:Option<Value> = None;
+    let mut return_value: Option<Value> = None;
     for settings_file in settings_files.iter() {
         match fs::read_to_string(settings_file) {
             Ok(v) => {
@@ -261,7 +263,7 @@ impl Database {
         let (basic_data, settings) = load_basic_data();
 
         let mut api_docs = HashMap::new();
-        let mut api_data: HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>> = HashMap::new();
+        let mut api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
         let mut websocket_api = Arc::new(Mutex::new(ApiData::default()));
@@ -273,13 +275,13 @@ impl Database {
         }
 
         let auth_doc = load_auth_data(&api_docs);
-        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc, settings}
+        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc, settings }
     }
 
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, HashMap<String, Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) -> i32 {
+    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, Vec<Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) -> i32 {
         if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5")) || doc_file == "_settings.json" || doc_file == "_settings.json5" || doc_file == "_auth.json" || doc_file == "_auth.json5" || doc_file.contains("_data/") || doc_file.starts_with(".") || doc_file.contains("/.") {
             return -1;
         }
@@ -481,16 +483,11 @@ impl Database {
                 // 形成 { url: {method:api} }
                 match api_data.get_mut(&url) {
                     Some(data) => {
-                        for m in &method {
-                            data.insert(m.clone(), a_api_data.clone());
-                        }
+                        data.push(a_api_data.clone());
                     }
                     None => {
-                        let mut x = HashMap::new();
-                        for m in &method {
-                            x.insert(m.clone(), a_api_data.clone());
-                        }
-
+                        let mut x = Vec::new();
+                        x.push(a_api_data.clone());
                         api_data.insert(url.clone(), x);
                     }
                 }
