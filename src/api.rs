@@ -744,7 +744,7 @@ macro_rules! get_mock_enum_value {
     let v = &list[n];
     match v {
         Value::Object(v2) => {
-            if let Some(v3) = v2.get("-value") {
+            if let Some(v3) = v2.get("$value") {
                 $result.insert($field_key.clone(), v3.clone());
             } else {
                 $result.insert($field_key.clone(), v.clone());
