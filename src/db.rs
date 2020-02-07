@@ -796,12 +796,12 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                 continue;
             } else if field_key == "$ref" || field_key == "$exclude" || field_key == "$include" {
                 continue;
-            } else if field_key == "enum" {
+            } else if field_key == "enum" && !field_attrs.is_object() {
                 let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
 
                 if let Some(enum_array) = field_value.as_array() {
-                    let mut new_enum:Vec<Value> = Vec::new();
+                    let mut new_enum: Vec<Value> = Vec::new();
 
                     // 判断第一个是不是$desc, 如果是，那么表示里面的就是[value, desc]组成的元素
                     let mut is_desc_format = false;
@@ -821,7 +821,6 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                             }
                             new_item.insert("$value".to_string(), Value::String(v.to_string()));
                             new_enum.push(Value::Object(new_item));
-
                         } else if enum_item.is_array() {
                             let enum_item2 = enum_item.as_array().unwrap();
                             if is_desc_format {
@@ -829,7 +828,7 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                                     println!("doc file {} field {} enum value length error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
                                     continue;
                                 }
-                                for (i,v) in enum_item2.iter().enumerate() {
+                                for (i, v) in enum_item2.iter().enumerate() {
                                     if i == 0 {
                                         new_item.insert("$value".to_string(), v.clone());
                                     } else if i == 1 {
@@ -840,7 +839,6 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                                     new_enum.push(Value::Object(new_item));
                                 }
                             }
-
                         } else {
                             if is_desc_format {
                                 println!("doc file {} field {} enum value format error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
