@@ -221,7 +221,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
         for a_api_data in api_data_list {
             let a_api_data = a_api_data.lock().unwrap();
             if a_api_data.method.contains(&req_method.to_string()) || a_api_data.method.contains(&"*".to_string()) {
-
                 if a_api_data.auth { // 权限检查
                     if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
                         return HttpResponse::Ok().json(auth_valid_errors);
@@ -242,32 +241,19 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         }
 
                         if let Some(method) = test_case_data.get("method") {
-                            if method.is_string() {
-                                if let Some(test_case_method) = method.as_str() {
-                                    if test_case_method != req_method {
-                                        is_all_match = false;
-                                        continue;
-                                    }
-                                }
-                            } else if method.is_array() {
-                                // 如果method是一个数组
-                                if let Some(method_list) = method.as_array() {
-                                    let mut has_equal = false;
-                                    for method in method_list {
-                                        if let Some(test_case_method) = method.as_str() {
-                                            if test_case_method == req_method {
-                                                has_equal = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    if !has_equal {
-                                        is_all_match = false;
-                                        continue;
-                                    }
-                                }
+                            // method属于有就匹配，没有就不匹配
+                            if !is_request_method_match_test_case(req_method, method){
+                                is_all_match = false;
+                                continue;
                             }
                         }
+
+                        // 首先判断在api接口中是否对request_headers有要求，如果有要求，那么就按照api接口定义匹配
+                        // request_headers的匹配规则是，只判断test_case中的request_headers字段中的值在request_headers中是否有, 如果有就表示通过
+                        if let Some(v) = test_case_data.get("request_headers") {
+
+                        };
+
 
                         let v = match test_case_data.get("body") {
                             Some(v) => v,
@@ -373,6 +359,28 @@ fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Va
     request_query.clone()
 }
 
+
+fn is_request_method_match_test_case(request_method:&str, test_case_method:&Value) -> bool {
+    if test_case_method.is_string() {
+        if let Some(test_case_method) = test_case_method.as_str() {
+            if test_case_method == request_method || test_case_method == "*" {
+                return true;
+            }
+        }
+    } else if test_case_method.is_array() {
+        // 如果method是一个数组
+        if let Some(method_list) = test_case_method.as_array() {
+            for method in method_list {
+                if let Some(test_case_method) = method.as_str() {
+                    if test_case_method == request_method || test_case_method == "*" {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
 
 /// 判断两个serde value的值是否相等
 /// 只要value2中要求的每个字段，value1中都有，就表示相等, 也就是说value1的字段可能会比value2多

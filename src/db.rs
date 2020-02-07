@@ -52,6 +52,8 @@ pub struct ApiData {
     pub body_mode: String,
     pub body: Value,
     pub query: Value,
+    pub request_headers: Value,
+    pub response_headers: Value,
     pub response: Value,
     pub test_data: Value,
 }
@@ -405,6 +407,33 @@ impl Database {
                 let (mut ref_files2, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
 
+
+                let request_headers = match api.get("request_headers") {
+                    Some(request_headers) => request_headers.clone(),
+                    None => {
+                        match ref_data.get("request_headers") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
+                };
+                let (mut ref_files2, request_headers) = parse_attribute_ref_value(request_headers, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
+
+
+                let response_headers = match api.get("response_headers") {
+                    Some(response_headers) => response_headers.clone(),
+                    None => {
+                        match ref_data.get("response_headers") {
+                            Some(v) => v.clone(),
+                            None => Value::Null
+                        }
+                    }
+                };
+                let (mut ref_files2, response_headers) = parse_attribute_ref_value(response_headers, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
+
+
                 let query = match api.get("query") {
                     Some(query) => query.clone(),
                     None => {
@@ -473,7 +502,7 @@ impl Database {
                     }
                 };
 
-                let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, url_param, auth: auth, url: url.clone(), method: method.clone() };
+                let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, url_param, request_headers, response_headers, auth: auth, url: url.clone(), method: method.clone() };
                 let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
 
                 if method.contains(&"WEBSOCKET".to_string()) {
