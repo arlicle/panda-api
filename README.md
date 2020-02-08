@@ -6,10 +6,10 @@ Panda api encourages test driven development. it takes care of much of the hassl
 
 Why Panda Api：
 
-1. A better online read api docs.   
+1. A better online read api docs.
 2. Use json or json5 to write the api docs，eazy to lean and write.
 3. Manage you api docs change as your code with git.
-4. You can use Panda api as a back end api service with out backend develop. 
+4. You can use Panda api as a back end api service with out backend develop.
 5. Panda api takes test data helps developers auto test back end and front end
 6. Suport define test case data
 7. Mork data auto created
@@ -135,8 +135,8 @@ If false, the field is optional. Default is true.
 
 
 ### Panda Api 如何使用
-- [快速简单的写好第一个接口文档 使用说明(一)](/p/2020/1/15/Panda-api%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
-- [接口文档的高级配置 使用说明(二)](/p/2020/1/15/Panda-api%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
-- [相关字段说明](/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
-- [test_data使用说明](/p/2020/1/27/Panda-api-test_data%E5%8C%B9%E9%85%8D%E8%AF%B4%E6%98%8E/)
-- [Auth接口权限配置说明](/p/2020/2/2/Panda-api接口权限配置说明/)
+- [快速简单的写好第一个接口文档 使用说明(一)](https://www.debugmyself.com/p/2020/1/15/Panda-api%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
+- [接口文档的高级配置 使用说明(二)](https://www.debugmyself.com/p/2020/1/15/Panda-api%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
+- [相关字段说明](https://www.debugmyself.com/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
+- [test_data使用说明](https://www.debugmyself.com/p/2020/1/27/Panda-api-test_data%E5%8C%B9%E9%85%8D%E8%AF%B4%E6%98%8E/)
+- [Auth接口权限配置说明](https://www.debugmyself.com/p/2020/2/2/Panda-api接口权限配置说明/)
