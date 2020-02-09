@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use walkdir::WalkDir;
 use std::path::Path;
-use json5::to_string;
+
 
 #[derive(Debug)]
 pub struct Database {
@@ -291,7 +291,7 @@ impl Database {
 
         let d = match fs::read_to_string(doc_file) {
             Ok(d) => d,
-            Err(e) => {
+            Err(_e) => {
                 // println!("Unable to read file: {} {:?}", doc_file, e);
                 // 文件被删除
                 return -2;

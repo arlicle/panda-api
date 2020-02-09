@@ -86,7 +86,7 @@ pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResp
     if let Some(auth_doc) = &data.auth_doc {
         docs.push(json!({"name":auth_doc.name, "desc":auth_doc.desc, "order":0, "filename":"_auth.json5"}));
     }
-    if let Some(settings) = &data.settings {
+    if let Some(_) = &data.settings {
         docs.push(json!({"name":"Settings", "desc":"", "order":0, "filename":"_settings.json5"}));
     }
     for (_, doc) in api_docs {
@@ -163,7 +163,6 @@ pub async fn chat_route(
 /// 处理post、put、delete 请求
 ///
 pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
-    let req_path = req.path();
     let body_mode = get_request_body_mode(&req);
     let req_method = req.method().as_str();
 
@@ -294,11 +293,9 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                 if let Some(test_data) = a_api_data.test_data.as_array() {
                     for test_case_data in test_data {
                         // 如果在test_data中设置了url，那么就要进行url匹配，如果不设置就不进行
-                        let mut is_all_match = true;
 
                         if let Some(url) = test_case_data.get("url") {
                             if url != req_path {
-                                is_all_match = false;
                                 continue;
                             }
                         }
@@ -307,7 +304,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         if let Some(method) = test_case_data.get("method") {
                             // method属于有就匹配，没有就不匹配
                             if !is_request_method_match_test_case(req_method, method) {
-                                is_all_match = false;
                                 continue;
                             }
                         }
@@ -317,7 +313,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             None => &Value::Null
                         };
                         if !is_value_equal(&request_body, v) {
-                            is_all_match = false;
                             continue;
                         }
 
@@ -326,7 +321,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             None => &Value::Null
                         };
                         if !is_value_equal(&form_data, v) {
-                            is_all_match = false;
                             continue;
                         }
 
@@ -336,7 +330,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         };
                         let request_query = parse_request_query_to_api_query_format(&request_query, &a_api_data.query);
                         if !is_value_equal(&request_query, v) {
-                            is_all_match = false;
                             continue;
                         }
 
@@ -345,11 +338,9 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             None => &Value::Null
                         };
 
-                        if is_all_match {
-                            let serialized = serde_json::to_string(case_response).unwrap();
-                            return HttpResponse::build(status_code).content_type(content_type).body(serialized);
-//                            return HttpResponse::Ok().json(case_response);
-                        }
+                        let serialized = serde_json::to_string(case_response).unwrap();
+                        return HttpResponse::build(status_code).content_type(content_type).body(serialized);
+//                      return HttpResponse::Ok().json(case_response);
                     }
                 }
 

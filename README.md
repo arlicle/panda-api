@@ -21,9 +21,23 @@ Why Panda Api：
 
 ### Install
 
-- [Mac下的安装包](https://github.com/arlicle/panda-api/releases/download/v0.6/mac_install_0.6.zip)
-- [Linux下的安装包](https://github.com/arlicle/panda-api/releases/download/v0.6/linux_install_0.6.zip)
-- [Panda Api for Windows 0.2](https://github.com/arlicle/panda-api/releases/download/0.2/panda-api_windows_0.2.tar)
+#### use installer (Recommended)
+
+It looks like you’re running macOS, Linux, or another Unix-like OS. To download installer and install Panda api.
+
+- [Mac installer](https://github.com/arlicle/panda-api/releases/download/v0.6/mac_install_0.6.zip)
+- [Linux installer](https://github.com/arlicle/panda-api/releases/download/v0.6/linux_install_0.6.zip)
+
+#### Source code
+**Get the latest development version**
+``` shell
+git clone https://github.com/arlicle/panda-api.git
+```
+build and run panda api use `cargo`
+``` shell
+cargo run
+```
+
 
 ### A auth api docus
 
