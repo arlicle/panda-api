@@ -12,6 +12,7 @@ Cargo.lock
 .DS_Store
 .idea/
 _upload/
-
+$0\ aaa
+$1\ 开发前必读
 _settings.json5
 auth.json5

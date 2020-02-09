@@ -338,13 +338,15 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             None => &Value::Null
                         };
 
-                        let serialized = serde_json::to_string(case_response).unwrap();
+                        let case_response = parse_test_case_response(case_response, "", &a_api_data.response);
+                        println!("x is {:?}", case_response);
+                        let serialized = serde_json::to_string(&case_response).unwrap();
                         return HttpResponse::build(status_code).content_type(content_type).body(serialized);
 //                      return HttpResponse::Ok().json(case_response);
                     }
                 }
 
-                let x = create_mock_response(&a_api_data.response);
+                let x = create_mock_value(&a_api_data.response);
                 let serialized = serde_json::to_string(&x).unwrap();
                 return HttpResponse::build(status_code).content_type(content_type).body(serialized);
 //                return HttpResponse::Ok().json(x);
@@ -360,6 +362,66 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
         "code": - 1,
         "msg": format ! ("this api address {} no api url match", req_path)
     }))
+}
+
+
+/// 处理test_case response中的部分$mock字段
+fn parse_test_case_response(test_case_response: &Value, field_path: &str, response_model: &Value) -> Value {
+    if test_case_response.is_null() {
+        return Value::Null;
+    }
+    let mut result = Map::new();
+    if let Some(response) = test_case_response.as_object() {
+        for (field_key, field) in response {
+            match field {
+                Value::Object(field_obj) => {
+                    if let Some(v) = field_obj.get("$mock") {
+                        if let Some(v2) = v.as_bool() {
+                            if v2 == true {
+                                let pointer = format!("{}/{}", field_path, field_key);
+                                if let Some(model_field) = response_model.pointer(&pointer) {
+                                    let mut new_model_field_attr: Map<String, Value> = Map::new();
+                                    if let Some(model_field_obj) = model_field.as_object() {
+                                        new_model_field_attr = model_field_obj.clone();
+                                        for (k2, v2) in field_obj {
+                                            if k2 == "$mock" {
+                                                continue;
+                                            }
+                                            new_model_field_attr.insert(k2.to_string(), v2.clone());
+                                        }
+                                    }
+
+                                    let mut m = Map::new();
+                                    m.insert(field_key.to_string(), Value::Object(new_model_field_attr));
+                                    let v = create_mock_value(&Value::Object(m));
+                                    for (k, v2) in v {
+                                        result.insert(k, v2);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        let pointer = format!("{}/{}", field_path, field_key);
+                        let v = parse_test_case_response(field, &pointer, response_model);
+                        result.insert(field_key.to_string(), v);
+                    }
+                },
+                Value::Array(field_array) => {
+                    if field_array.len() >= 1 {
+                        let v = &field_array[0];
+                        let pointer = format!("{}/{}/0", field_path, field_key);
+                        let v = parse_test_case_response(v, &pointer, response_model);
+                        result.insert(field_key.to_string(), v);
+                    }
+                },
+                _ => {
+                    result.insert(field_key.to_string(), field.clone());
+                }
+            }
+        }
+    }
+
+    Value::Object(result)
 }
 
 
@@ -822,7 +884,7 @@ macro_rules! get_string_value {
 
 /// 根据response定义生成返回给前端的mock数据
 ///
-pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
+pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
         let response_model = response_model.as_object().unwrap();
@@ -1079,7 +1141,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                     result.insert(field_key.clone(), Value::String(mock::basic::image(size, foreground, background, format, text)));
                 }
                 "object" => {
-                    let v = create_mock_response(field_attr);
+                    let v = create_mock_value(field_attr);
                     result.insert(field_key.clone(), Value::Object(v));
                 }
                 "array" => {
@@ -1117,7 +1179,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                                 "object" => {
                                     let mut vec = Vec::with_capacity(length as usize);
                                     while length > 0 {
-                                        let v = create_mock_response(field_attr_one);
+                                        let v = create_mock_value(field_attr_one);
                                         vec.push(Value::Object(v));
                                         length -= 1;
                                     }
@@ -1128,7 +1190,7 @@ pub fn create_mock_response(response_model: &Value) -> Map<String, Value> {
                                     result2.insert("key".to_string(), field_attr_one.clone());
                                     let mut vec = Vec::with_capacity(length as usize);
                                     while length > 0 {
-                                        let v = create_mock_response(&Value::Object({ &result2 }.clone()));
+                                        let v = create_mock_value(&Value::Object({ &result2 }.clone()));
                                         if v.contains_key("key") {
                                             vec.push(v["key"].clone());
                                         }
