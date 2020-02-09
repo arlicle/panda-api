@@ -1,4 +1,4 @@
-use actix_web::{middleware, web, App, HttpServer, http};
+use actix_web::{middleware, web, App, HttpServer};
 use actix_files::Files;
 
 use dotenv::dotenv;
