@@ -1,9 +1,0 @@
-{
-  project_name: "Panda Api",
-  project_desc: "Panda Api is a simple api manage tool",
-  global: {
-    api: {
-      auth:true
-    }
-  }
-}

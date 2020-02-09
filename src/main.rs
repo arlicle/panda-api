@@ -11,6 +11,7 @@ mod websocket;
 mod server;
 
 mod mock;
+mod client;
 
 use structopt::StructOpt;
 use actix::Actor;
@@ -38,6 +39,7 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
+
 
     let conf = Config::from_args();
     if let Some(token_length) = conf.token_length {

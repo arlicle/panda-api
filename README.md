@@ -27,9 +27,10 @@ It looks like you’re running macOS, Linux, or another Unix-like OS. To downloa
 
 - [Mac installer](https://github.com/arlicle/panda-api/releases/download/v0.6/mac_install_0.6.zip)
 - [Linux installer](https://github.com/arlicle/panda-api/releases/download/v0.6/linux_install_0.6.zip)
+- [Windows installer] waiting a windows ...
 
-#### Source code
-**Get the latest development version**
+#### Install by Source code
+Get the latest development version
 ``` shell
 git clone https://github.com/arlicle/panda-api.git
 ```
