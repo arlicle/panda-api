@@ -1,5 +1,7 @@
 # panda-api | <a href="https://www.debugmyself.com/p/2020/1/24/panda_api_read_me/">中文文档</a>
 
+大量使用说明，教程在中文文档中，请大家先看看中文文档和相关例子，忙于开发，等时间充足再写英文文档。
+
 Panda api makes it easier to build better api docs more quickly and easy for front end and back end.
 
 Panda api encourages test driven development. it takes care of much of the hassle of web development between front end and back end, when you write done your api docs, you can focus on writing front end without needing to finish the backend. It’s free and open source.
