@@ -17,38 +17,30 @@ use structopt::StructOpt;
 use actix::Actor;
 
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "basic")]
-pub struct Config {
-    /// Listen ip
-    #[structopt(short, long, default_value = "127.0.0.1", env = "PANDA_API_HOST")]
-    host: String,
-
-    /// Listen port
-    #[structopt(short, long, default_value = "9000", env = "PANDA_API_PORT")]
-    port: usize,
-
-    /// create auth token length
-    #[structopt(short, long, env = "PANDA_API_PORT")]
-    token_length: Option<usize>,
-}
-
-
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+
     std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
 
+    let conf = ApplicationArguments::from_args();
 
-    let conf = Config::from_args();
-    if let Some(token_length) = conf.token_length {
-        // create token
-        for _ in 0..10 {
-            println!("{}", mock::basic::string(token_length as u64, 0, 0));
+    if let Some(command) = conf.command {
+        match command {
+            Command::Test(t) => {
+                println!("run test {:?}", t);
+            },
+            Command::Token(t) => {
+                // generate token
+                for _ in 0..t.num {
+                    println!("{}", mock::basic::string(t.length as u64, 0, 0));
+                }
+                return Ok(());
+            }
         }
-        return Ok(());
     }
+
 
     match dirs::home_dir() {
         Some(path) => {
@@ -99,4 +91,58 @@ async fn main() -> std::io::Result<()> {
         .bind(format!("{}:{}", conf.host, conf.port))?
         .run()
         .await
+}
+
+
+
+#[derive(Debug, StructOpt)]
+pub struct Token {
+    /// token num
+    #[structopt(short, long, default_value = "10")]
+    pub num: usize,
+
+    /// token length
+    #[structopt(short, long, default_value = "64")]
+    pub length: usize,
+}
+
+
+#[derive(Debug, StructOpt)]
+pub struct Test {
+    /// test server
+    #[structopt(short, long)]
+    pub server: String,
+
+    /// api url
+    #[structopt(short, long)]
+    pub url: String,
+
+    /// api doc
+    #[structopt(short, long, default_value = "")]
+    pub docs: Vec<String>,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum Command {
+    /// generate random auth token
+    #[structopt(name = "token")]
+    Token(Token),
+    /// Run the tests
+    Test(Test),
+}
+
+/// Panda api command
+#[derive(Debug, StructOpt)]
+#[structopt(name = "classify")]
+pub struct ApplicationArguments {
+    /// Listen ip
+    #[structopt(short, long, default_value = "127.0.0.1", env = "PANDA_API_HOST")]
+    host: String,
+
+    /// Listen port
+    #[structopt(short, long, default_value = "9000", env = "PANDA_API_PORT")]
+    port: usize,
+
+    #[structopt(subcommand)]
+    pub command: Option<Command>,
 }
