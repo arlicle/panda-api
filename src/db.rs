@@ -132,6 +132,10 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
         };
     }
 
+    if filename == "" {
+        return None;
+    }
+
     let obj = auth_value.as_object().unwrap();
 
     let name = match obj.get("name") {
@@ -797,7 +801,7 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                 continue;
             } else if field_key == "$ref" || field_key == "$exclude" || field_key == "$include" {
                 continue;
-            } else if (field_key == "enum" || field_key == "$enum") {
+            } else if field_key == "enum" || field_key == "$enum" {
                 // --- start 处理 enum
                 // 处理enum, enum不是数组，也不是对象，那么就会忽略这个字段
                 let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
@@ -896,12 +900,51 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
 
 
 /// auth文件里面，可能是按文件加载接口地址
-fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file: &str, methods: HashSet<String>, api_docs: &HashMap<String, ApiDoc>) {
+fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file: &str, methods: HashSet<String>, api_docs: &HashMap<String, ApiDoc>, exclude:&HashMap<String, HashSet<String>> ) {
+    let mut all_methods:HashSet<String> = HashSet::with_capacity(7);
+    for v in &["POST", "GET", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"] {
+        all_methods.insert(v.to_string());
+    }
+
     let doc_file = doc_file.trim_start_matches("$");
     if let Some(api_doc) = api_docs.get(doc_file) {
         for a in &api_doc.apis {
             let api = a.lock().unwrap();
-            result.insert(api.url.clone(), methods.clone());
+            // 如果exclude 排除这个url，并且排除所有方法，那么就没有任何这个url的权限
+            if let Some(exclude_methods) = exclude.get(&api.url) {
+                if exclude_methods.is_empty() {
+                    result.insert(api.url.clone(), methods.clone());
+                    continue;
+                }
+
+                if exclude_methods.contains("*") {
+                    continue;
+                }
+
+                let mut new_methods:HashSet<String> = HashSet::new();
+                if methods.contains("*") {
+                    new_methods = all_methods.clone();
+                } else {
+                    new_methods = methods.clone();
+                }
+
+                for m in exclude_methods {
+                    new_methods.remove(&m.to_uppercase());
+                }
+
+                if new_methods.len() > 0 {
+                    if new_methods == all_methods {
+                        let mut m = HashSet::new();
+                        m.insert("*".to_string());
+                        result.insert(api.url.clone(), m);
+                    } else {
+                        result.insert(api.url.clone(), new_methods);
+                    }
+                }
+
+            } else {
+                result.insert(api.url.clone(), methods.clone());
+            }
         }
     }
 }
@@ -913,63 +956,72 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
     if let Some(perms) = perms_data {
         if let Some(perms) = perms.as_array() {
             for perm in perms {
-                if perm.is_string() {
-                    let mut methods = HashSet::new();
-                    methods.insert("*".to_string());
-                    let url = perm.as_str().unwrap().trim();
-                    if url.starts_with("$") {
-                        // 按接口文件加载urls
-                        load_all_api_docs_url(&mut result, url, methods, api_docs);
-                    } else {
-                        result.insert(url.to_string(), methods);
-                    }
-                } else if perm.is_array() {
-                    let perms = perm.as_array().unwrap();
-                    let mut url = "";
-                    let mut methods = HashSet::new();
-                    for (i, perm) in perms.iter().enumerate() {
-                        if i == 0 {
-                            url = perm.as_str().unwrap();
-                        } else {
-                            let perm = perm.as_str().unwrap();
-                            methods.insert(perm.to_string());
-                        }
-                    }
-                    // 如果没有设置methods，默认就是所有方法
-                    if url.starts_with("$") {
-                        // 按接口文件加载urls
-                        load_all_api_docs_url(&mut result, url, methods, api_docs);
-                    } else {
-                        result.insert(url.to_string(), methods);
-                    }
-                } else if perm.is_object() {
-                    let perm = perm.as_object().unwrap();
-                    let url = match perm.get("url") {
-                        Some(url) => url.as_str().unwrap(),
-                        None => continue
-                    };
+                let mut methods = HashSet::new();
+                let mut url = "";
+                let mut exclude:HashMap<String, HashSet<String>> = HashMap::new();
 
-                    let mut methods = HashSet::new();
-
-                    if let Some(m) = perm.get("methods") {
-                        if m.is_string() {
-                            let m = m.as_str().unwrap();
-                            methods.insert(m.to_string());
-                        } else if m.is_array() {
-                            let m = m.as_array().unwrap();
-                            for i in m {
-                                let i = i.as_str().unwrap();
-                                methods.insert(i.to_string());
+                match perm {
+                    Value::String(perm_str) => {
+                        // 如果直接是一个字符串，表示字符串就是接口，然后拥有所有请求方法
+                        methods.insert("*".to_string());
+                        url = perm_str;
+                    }
+                    Value::Array(perm_array) => {
+                        for (i, p) in perm_array.iter().enumerate() {
+                            match p {
+                                Value::String(perm_str) => {
+                                    if i == 0 {
+                                        url = perm_str;
+                                    } else {
+                                        methods.insert(perm_str.to_uppercase());
+                                    }
+                                }
+                                _ => continue
                             }
                         }
+                    },
+                    Value::Object(perm_obj) => {
+                        exclude = parse_auth_perms(perm_obj.get("$exclude"), api_docs);
+                        if let Some(m) = perm_obj.get("methods") {
+                            if m.is_string() {
+                                let m = m.as_str().unwrap();
+                                methods.insert(m.to_uppercase());
+                            } else if m.is_array() {
+                                let m = m.as_array().unwrap();
+                                for i in m {
+                                    let i = i.as_str().unwrap();
+                                    methods.insert(i.to_uppercase());
+                                }
+                            }
+                        } else {
+                            methods.insert("*".to_string());
+                        }
+
+                        // 如果是一个对象，那么可能是{$ref:"auth.json5", $exclude:["/login/", ["/logout/", "GET", "POST"]]}
+                        if let Some(perm_str) = perm_obj.get("$ref") {
+                            if let Some(perm_str) = perm_str.as_str() {
+                                load_all_api_docs_url(&mut result, perm_str, methods, api_docs, &exclude);
+                            }
+
+                            continue;
+                        }
+
+                        let url = match perm_obj.get("url") {
+                            Some(url) => url.as_str().unwrap(),
+                            None => continue
+                        };
                     }
-                    // 如果没有设置methods，默认就是所有方法
-                    if url.starts_with("$") {
-                        // 按接口文件加载urls
-                        load_all_api_docs_url(&mut result, url, methods, api_docs);
-                    } else {
-                        result.insert(url.to_string(), methods);
+                    _ => {
+                        continue;
                     }
+                }
+
+                // 如果没有设置methods，默认就是所有方法
+                if url.starts_with("$") {
+                    // 按接口文件加载urls
+                    load_all_api_docs_url(&mut result, url, methods, api_docs, &exclude);
+                } else {
+                    result.insert(url.to_string(), methods);
                 }
             }
         } else if perms.is_string() {
@@ -978,7 +1030,8 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
             methods.insert("*".to_string());
             if url.starts_with("$") {
                 // 按接口文件加载urls
-                load_all_api_docs_url(&mut result, url, methods, api_docs);
+                let mut exclude:HashMap<String, HashSet<String>> = HashMap::new();
+                load_all_api_docs_url(&mut result, url, methods, api_docs, &exclude);
             } else {
                 result.insert(url.to_string(), methods);
             }
