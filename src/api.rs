@@ -113,6 +113,8 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
     let theme_file;
     if req_path == "/" {
         theme_file = "/index.html";
+    } else if req_path == "favicon.ico" {
+        theme_file = "/static/favicon.ico";
     } else {
         theme_file = req_path;
     }
