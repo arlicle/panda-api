@@ -101,6 +101,27 @@ async fn main() -> std::io::Result<()> {
 }
 
 
+
+#[derive(Debug, StructOpt)]
+pub struct TimeInfo {
+    /// minute (0 - 59)
+    #[structopt(default_value="5")]
+    pub minute: usize,
+
+    /// hour (0 - 23)
+    #[structopt(default_value="0")]
+    pub hour: usize,
+
+    /// day of month (1 - 31)
+    #[structopt(default_value="0")]
+    pub day: usize,
+
+    /// month (1 - 12)
+    #[structopt(default_value = "0")]
+    pub month: usize,
+
+}
+
 #[derive(Debug, StructOpt)]
 pub struct Token {
     /// token num
@@ -120,13 +141,27 @@ pub struct Test {
     pub server: String,
 
     /// api url
-    #[structopt(short, long)]
+    #[structopt(short, long, default_value = "")]
     pub url: String,
+
+    /// all api url
+    #[structopt(short="A", long)]
+    pub all: bool,
+
+    /// run cron job
+    #[structopt(short, long)]
+    pub cron: bool,
 
     /// api doc
     #[structopt(short, long, default_value = "")]
     pub docs: Vec<String>,
+
+    #[structopt(flatten)]
+    pub timeinfo: TimeInfo,
 }
+
+
+
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
@@ -143,11 +178,11 @@ pub enum Command {
 pub struct ApplicationArguments {
     /// Listen ip
     #[structopt(short, long, default_value = "127.0.0.1", env = "PANDA_API_HOST")]
-    host: String,
+    pub host: String,
 
     /// Listen port
     #[structopt(short, long, default_value = "9000", env = "PANDA_API_PORT")]
-    port: usize,
+    pub port: usize,
 
     #[structopt(subcommand)]
     pub command: Option<Command>,
