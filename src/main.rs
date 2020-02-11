@@ -20,13 +20,10 @@ use actix::Actor;
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "info");
-    dotenv().ok();
     pretty_env_logger::init();
 
     let conf = ApplicationArguments::from_args();
-
     let mut test_conf: Option<Test> = None;
-    let mut test_api_url: Option<String> = None;
     if let Some(command) = conf.command {
         match command {
             Command::Test(t) => {
@@ -41,7 +38,6 @@ async fn main() -> std::io::Result<()> {
             }
         }
     }
-
 
     match dirs::home_dir() {
         Some(path) => {
@@ -63,8 +59,7 @@ async fn main() -> std::io::Result<()> {
     let web_db = web::Data::new(Mutex::new(db));
 
     if let Some(test_conf) = test_conf {
-        log::warn!("run test server {:?}", test_conf);
-        client::test::run_test(test_conf, web_db.clone());
+        client::test::run_test(test_conf, web_db.clone()).await;
         return Ok(());
     }
 
@@ -84,7 +79,6 @@ async fn main() -> std::io::Result<()> {
                 .header("Access-Control-Allow-Headers", "*")
                 .header("Access-Control-Allow-Origin", "*")
                 .header("Access-Control-Allow-Methods", "*"))
-
             .service(web::resource("/__api_docs/").route(web::get().to(api::get_api_doc_basic)))
             .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
@@ -92,8 +86,6 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
             .service(web::resource("/favicon.ico").route(web::get().to(api::theme_view)))
             .service(web::resource("/_upload/").route(web::get().to(api::upload_file_view)))
-//            .service(Files::new("/_upload", "_data/_upload"))
-
             .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(web::resource("/*").to(api::action_handle))
     })
