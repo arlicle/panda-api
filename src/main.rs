@@ -19,20 +19,18 @@ use actix::Actor;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
+//    std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
 
     let conf = ApplicationArguments::from_args();
 
-    let mut test_server: Option<String> = None;
+    let mut test_conf: Option<Test> = None;
     let mut test_api_url: Option<String> = None;
     if let Some(command) = conf.command {
         match command {
             Command::Test(t) => {
-                println!("run test {:?}", t);
-                test_server = Some(t.server.clone());
-                test_api_url = Some(t.url.clone());
+                test_conf = Some(t);
             }
             Command::Token(t) => {
                 // generate token
@@ -64,8 +62,10 @@ async fn main() -> std::io::Result<()> {
     let websocket_uri = w.url.clone();
     let web_db = web::Data::new(Mutex::new(db));
 
-    if let Some(server) = test_server {
-        println!("run test server");
+    if let Some(test_conf) = test_conf {
+        println!("run test server {:?}", test_conf);
+        client::test::run_test(test_conf, web_db.clone());
+        return Ok(());
     }
 
     utils::watch_api_docs_change(web_db.clone());
@@ -90,7 +90,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
             .service(web::resource("/").route(web::get().to(api::theme_view)))
             .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
-            .service(Files::new("/_upload", "_data/_upload"))
+            .service(web::resource("/_upload/*").route(web::get().to(api::upload_file_view)))
 
             .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(web::resource("/*").to(api::action_handle))
@@ -101,19 +101,18 @@ async fn main() -> std::io::Result<()> {
 }
 
 
-
 #[derive(Debug, StructOpt)]
 pub struct TimeInfo {
     /// minute (0 - 59)
-    #[structopt(default_value="5")]
+    #[structopt(default_value = "5")]
     pub minute: usize,
 
     /// hour (0 - 23)
-    #[structopt(default_value="0")]
+    #[structopt(default_value = "0")]
     pub hour: usize,
 
     /// day of month (1 - 31)
-    #[structopt(default_value="0")]
+    #[structopt(default_value = "0")]
     pub day: usize,
 
     /// month (1 - 12)
@@ -145,7 +144,7 @@ pub struct Test {
     pub url: String,
 
     /// all api url
-    #[structopt(short="A", long)]
+    #[structopt(short = "A", long)]
     pub all: bool,
 
     /// run cron job
@@ -159,8 +158,6 @@ pub struct Test {
     #[structopt(flatten)]
     pub timeinfo: TimeInfo,
 }
-
-
 
 
 #[derive(Debug, StructOpt)]

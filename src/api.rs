@@ -122,6 +122,14 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
     return Ok(actix_files::NamedFile::open(theme_filepath)?);
 }
 
+/// 查看上传的 图片或文件
+pub async fn upload_file_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
+    let req_path = req.path();
+    let mut file_path = "_data".to_string() +  req_path;
+    return Ok(actix_files::NamedFile::open(file_path)?);
+}
+
+
 
 /// 获取_data目录中的数据, models数据 或者其它加载数据
 pub async fn get_api_doc_schema_data(req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
