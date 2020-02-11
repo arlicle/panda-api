@@ -707,6 +707,7 @@ fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_dat
 
 /// parse $ref引用数据
 /// 第一个参数表示获取到的值，body, query, resonse 等, 判断是否有引用值 或者 全局值
+/// 对不满足要求的数据会全部进行过滤
 fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, doc_file: &str) -> (Vec<String>, Value) {
     let mut ref_files: Vec<String> = Vec::new();
     if value.is_null() {
@@ -796,63 +797,80 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                 continue;
             } else if field_key == "$ref" || field_key == "$exclude" || field_key == "$include" {
                 continue;
-            } else if field_key == "enum" && !field_attrs.is_object() {
+            } else if (field_key == "enum" || field_key == "$enum") {
+                // --- start 处理 enum
+                // 处理enum, enum不是数组，也不是对象，那么就会忽略这个字段
                 let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
+
+                // 判断第一个是不是$desc, 或$符号开头，如果是，那么表示里面的就是[value, desc]组成的元素
+                let mut is_desc_format = false;
+                if field_key == "$enum" {
+                    new_value.remove(field_key);
+                    is_desc_format = true;
+                }
 
                 if let Some(enum_array) = field_value.as_array() {
                     let mut new_enum: Vec<Value> = Vec::new();
 
-                    // 判断第一个是不是$desc, 如果是，那么表示里面的就是[value, desc]组成的元素
-                    let mut is_desc_format = false;
+                    if enum_array.len() == 0 {
+                        // 如果数组长度为空，那么忽略这个enum
+                        new_value.remove(field_key);
+                        continue;
+                    }
+
                     for enum_item in enum_array {
+                        // 取出枚举的值，重组为[{$value:1,$desc:""}]的形式
                         let mut new_item = Map::new();
-                        if enum_item.is_string() {
+                        if is_desc_format || enum_item.is_array() {
                             if is_desc_format {
-                                // 只允许第一次是$desc，如果第二次还是，就报错
-                                println!("Error: doc file {} field {} enum value format error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
-                                new_item.insert("$value".to_string(), enum_item.clone());
-                                continue;
-                            }
-                            let v = enum_item.as_str().unwrap();
-                            if v == "$desc" {
-                                is_desc_format = true;
-                                continue;
-                            }
-                            new_item.insert("$value".to_string(), Value::String(v.to_string()));
-                            new_enum.push(Value::Object(new_item));
-                        } else if enum_item.is_array() {
-                            let enum_item2 = enum_item.as_array().unwrap();
-                            if is_desc_format {
-                                if enum_item2.len() < 1 {
-                                    println!("doc file {} field {} enum value length error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
+                                // 如果是有注释模式
+                                if let Some(enum_item2) = enum_item.as_array() {
+                                    if enum_item2.len() < 1 {
+                                        println!("doc file {} field {} enum value length error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
+                                        continue;
+                                    }
+                                    for (i, v) in enum_item2.iter().enumerate() {
+                                        if i == 0 {
+                                            new_item.insert("$value".to_string(), v.clone());
+                                        } else if i == 1 {
+                                            new_item.insert("$desc".to_string(), v.clone());
+                                        }
+                                    }
+                                    if new_item.len() > 0 {
+                                        new_enum.push(Value::Object(new_item));
+                                    }
                                     continue;
                                 }
-                                for (i, v) in enum_item2.iter().enumerate() {
-                                    if i == 0 {
-                                        new_item.insert("$value".to_string(), v.clone());
-                                    } else if i == 1 {
-                                        new_item.insert("$desc".to_string(), v.clone());
-                                    }
-                                }
-                                if new_item.len() > 0 {
-                                    new_enum.push(Value::Object(new_item));
-                                }
+                                // 如果不是数组，忽略
+                                continue;
                             }
-                        } else {
-                            if is_desc_format {
-                                println!("doc file {} field {} enum value format error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
-                            }
-                            new_item.insert("$value".to_string(), enum_item.clone());
-                            new_enum.push(Value::Object(new_item));
                         }
+
+                        if enum_item.is_object() {
+                            if let Some(enum_item2) = enum_item.as_object() {
+                                if let Some(v) = enum_item2.get("$value") {
+                                    continue;
+                                }
+                            }
+                        }
+                        new_item.insert("$value".to_string(), enum_item.clone());
+                        new_enum.push(Value::Object(new_item));
                     }
-                    new_value.insert(field_key.to_string(), Value::Array(new_enum));
+                    if new_enum.len() > 1 {
+                        new_value.insert(field_key.trim_start_matches("$").to_string(), Value::Array(new_enum));
+                    }
+                } else {
+                    // 如果不是数组，那么直接删除 enum属性
+                    new_value.remove(field_key);
+                    continue;
                 }
+
+                // --- end 处理 enum
             } else {
                 let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
-                new_value.insert(field_key.to_string(), field_value);
+                new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
             }
         }
 
