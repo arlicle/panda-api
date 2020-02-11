@@ -19,18 +19,21 @@ use actix::Actor;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-
     std::env::set_var("RUST_LOG", "actix_web=info");
     dotenv().ok();
     pretty_env_logger::init();
 
     let conf = ApplicationArguments::from_args();
 
+    let mut test_server: Option<String> = None;
+    let mut test_api_url: Option<String> = None;
     if let Some(command) = conf.command {
         match command {
             Command::Test(t) => {
                 println!("run test {:?}", t);
-            },
+                test_server = Some(t.server.clone());
+                test_api_url = Some(t.url.clone());
+            }
             Command::Token(t) => {
                 // generate token
                 for _ in 0..t.num {
@@ -49,7 +52,7 @@ async fn main() -> std::io::Result<()> {
                 println!("You can not run panda api on double click, you need run it on shell with command at api docs folder. ex: ./panda , the more at https://github.com/arlicle/panda-api");
                 return Ok(());
             }
-        },
+        }
         None => println!("Impossible to get your home dir!"),
     }
 
@@ -60,6 +63,10 @@ async fn main() -> std::io::Result<()> {
 
     let websocket_uri = w.url.clone();
     let web_db = web::Data::new(Mutex::new(db));
+
+    if let Some(server) = test_server {
+        println!("run test server");
+    }
 
     utils::watch_api_docs_change(web_db.clone());
 
@@ -92,7 +99,6 @@ async fn main() -> std::io::Result<()> {
         .run()
         .await
 }
-
 
 
 #[derive(Debug, StructOpt)]

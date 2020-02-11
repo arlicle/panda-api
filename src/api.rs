@@ -376,6 +376,7 @@ fn parse_test_case_response(test_case_response: &Value, field_path: &str, respon
             match field {
                 Value::Object(field_obj) => {
                     if let Some(v) = field_obj.get("$mock") {
+                        println!("{:?}", field_obj);
                         if let Some(v2) = v.as_bool() {
                             if v2 == true {
                                 let pointer = format!("{}/{}", field_path, field_key);
@@ -792,9 +793,12 @@ pub fn get_field_type(field_attr: &Value) -> String {
 
 macro_rules! get_mock_enum_value {
     ( $enum_data:expr, $rng:expr, $result:expr, $field_key:expr ) => {
+        println!("6666 {:?}", $enum_data);
+
     let list = $enum_data.as_array().unwrap();
     let n = $rng.gen_range(0, list.len());
     let v = &list[n];
+    println!("6666 {:?}", v);
     match v {
         Value::Object(v2) => {
             if let Some(v3) = v2.get("$value") {
@@ -891,7 +895,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
         let mut rng = thread_rng();
 
         for (field_key, field_attr) in response_model {
-            if field_key == "-type" || field_key == "-name" || field_key == "-desc" || field_key == "-length" || field_key == "-min_length" || field_key == "-max_length" {
+            if field_key == "$type" || field_key == "$name" || field_key == "$desc" || field_key == "$length" || field_key == "$min_length" || field_key == "$max_length" {
                 continue;
             }
 
@@ -926,7 +930,28 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
             }
             if let Some(enum_data) = field_attr.get("enum") {
                 // 如果设置了枚举值，那么就只使用枚举值
-                get_mock_enum_value!(enum_data, rng, result, field_key);
+                println!("开始mock数据");
+//                get_mock_enum_value!(enum_data, rng, result, field_key);
+
+                let list = enum_data.as_array().unwrap();
+
+                let n = rng.gen_range(0, list.len());
+                let v = &list[n];
+                println!("6666 {:?}", v);
+                match v {
+                    Value::Object(v2) => {
+                        if let Some(v3) = v2.get("$value") {
+                            result.insert(field_key.clone(), v3.clone());
+                        } else {
+                            result.insert(field_key.clone(), v.clone());
+                        }
+                    }
+                    _ => {
+                        result.insert(field_key.clone(), v.clone());
+                    }
+                }
+
+                println!("jjjjj");
                 continue;
             }
 
@@ -1154,19 +1179,19 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                             let mut min_length = 3;
                             let mut max_length = 10;
                             // 可以设定数组要展示多少个元素
-                            if let Some(v) = field_attr_one.get("-length") {
+                            if let Some(v) = field_attr_one.get("$length") {
                                 if let Some(v) = v.as_u64() {
                                     length = v;
                                 }
                             }
 
-                            if let Some(v) = field_attr_one.get("-min_length") {
+                            if let Some(v) = field_attr_one.get("$min_length") {
                                 if let Some(v) = v.as_u64() {
                                     min_length = v;
                                 }
                             }
 
-                            if let Some(v) = field_attr_one.get("-max_length") {
+                            if let Some(v) = field_attr_one.get("$max_length") {
                                 if let Some(v) = v.as_u64() {
                                     max_length = v;
                                 }
