@@ -19,7 +19,7 @@ use actix::Actor;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-//    std::env::set_var("RUST_LOG", "actix_web=info");
+    std::env::set_var("RUST_LOG", "info");
     dotenv().ok();
     pretty_env_logger::init();
 
@@ -47,11 +47,11 @@ async fn main() -> std::io::Result<()> {
         Some(path) => {
             let current_dir = std::env::current_dir().expect("Failed to determine current directory");
             if path == current_dir {
-                println!("You can not run panda api on double click, you need run it on shell with command at api docs folder. ex: ./panda , the more at https://github.com/arlicle/panda-api");
+                log::error!("You can not run panda api on double click, you need run it on shell with command at api docs folder. ex: ./panda , the more at https://github.com/arlicle/panda-api");
                 return Ok(());
             }
         }
-        None => println!("Impossible to get your home dir!"),
+        None => log::error!("Impossible to get your home dir!"),
     }
 
     let db = db::Database::load();
@@ -63,7 +63,7 @@ async fn main() -> std::io::Result<()> {
     let web_db = web::Data::new(Mutex::new(db));
 
     if let Some(test_conf) = test_conf {
-        println!("run test server {:?}", test_conf);
+        log::warn!("run test server {:?}", test_conf);
         client::test::run_test(test_conf, web_db.clone());
         return Ok(());
     }
@@ -72,7 +72,7 @@ async fn main() -> std::io::Result<()> {
 
     let server = server::ChatServer::default();
     let server = server.start();
-    println!("Starting service on http://{}:{}", conf.host, conf.port);
+
     HttpServer::new(move || {
         App::new()
             .data(server.clone())
@@ -90,7 +90,9 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
             .service(web::resource("/").route(web::get().to(api::theme_view)))
             .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
-            .service(web::resource("/_upload/*").route(web::get().to(api::upload_file_view)))
+            .service(web::resource("/favicon.ico").route(web::get().to(api::theme_view)))
+            .service(web::resource("/_upload/").route(web::get().to(api::upload_file_view)))
+//            .service(Files::new("/_upload", "_data/_upload"))
 
             .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(web::resource("/*").to(api::action_handle))
