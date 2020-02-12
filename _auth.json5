@@ -8,7 +8,7 @@
     {
         name: "token列表对用权限组或者用户角色的名称",
         desc:"相关权限描述",
-         // 表示token列表，在这个token列表里面的token拥有has_perm中的权限，排除no_perm中的权限
+        url: "/login/", // 用户登录的接口地址
         users:[ // 拥有权限的用户列表
         {
             id:1,

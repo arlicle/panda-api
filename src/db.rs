@@ -12,8 +12,7 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct Database {
     pub basic_data: BasicData,
-    pub api_docs: HashMap<String, ApiDoc>,
-    // {fileanme:api_doc}
+    pub api_docs: HashMap<String, ApiDoc>,    // {fileanme:api_doc}
     pub api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>>,
     // {url:[a_api_doc1, a_api_data2]}
     pub fileindex_data: HashMap<String, HashSet<String>>,

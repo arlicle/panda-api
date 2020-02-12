@@ -133,9 +133,6 @@ pub struct Token {
 }
 
 
-
-
-
 #[derive(Debug, StructOpt)]
 pub struct Test {
     /// test server
@@ -155,8 +152,8 @@ pub struct Test {
     pub cron: bool,
 
     /// api doc
-    #[structopt(short, long, default_value = "")]
-    pub docs: Vec<String>,
+    #[structopt(short, long)]
+    pub docs: Option<Vec<String>>,
 
     #[structopt(flatten)]
     pub timeinfo: TimeInfo,
