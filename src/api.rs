@@ -1107,7 +1107,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                     if r == "" {
                         result.insert(field_key.clone(), Value::String("".to_string()));
                     } else {
-                        result.insert(field_key.clone(), Value::String(mock::basic::regex_string(r)));
+                        result.insert(field_key.clone(), Value::String(mock::basic::string_from_regex(r)));
                     }
                 }
                 "image" => {
