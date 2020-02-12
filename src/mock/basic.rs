@@ -1,19 +1,32 @@
 use rand::{thread_rng, Rng};
 use std::time::{Duration, SystemTime};
 use chrono::{TimeZone, Utc};
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use uuid::Uuid;
 use regex_generate::{DEFAULT_MAX_REPEAT, Generator};
+use actix_web::dev::ResourceDef;
 
 const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789)(*&^%$#@!~";
 const CHARSET2: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 
+pub fn url_from_regex(regex_string: &str) {
+    let url = r"/foo/{name}/{id:\d+}/";
+    let res = ResourceDef::new(url);
+    println!("res {:?}", res);
+    println!("pattern {:?}", res.pattern());
+}
+
+
 /// 根据正则regx生成字符串
-pub fn regex_string(regex_pattern: &str) -> String {
-//    let mut gen = Generator::new(r"(?x) (?P<year>[0-9]{4}) - (?P<month>[0-9]{2}) - (?P<day>[0-9]{2})", rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
-//    let mut gen = Generator::new(regex_pattern, rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
-    let mut gen = Generator::new(r"\w{3}", rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
+pub fn string_from_regex(regex_string: &str) -> String {
+    let regex_string = regex_string.replace(r"\d", "[0-9]")
+        .replace(r"\D", "[^0-9]")
+        .replace(r"\w", "[A-Za-z0-9_]")
+        .replace(r"\W", "[^A-Za-z0-9_]")
+        .replace(r"\w", "[A-Za-z0-9_]");
+
+    let mut gen = Generator::new(&regex_string, rand::thread_rng(), DEFAULT_MAX_REPEAT).unwrap();
     let mut buffer = vec![];
     gen.generate(&mut buffer).unwrap();
     let output = String::from_utf8(buffer).unwrap();

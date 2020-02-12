@@ -30,10 +30,16 @@ async fn main() -> std::io::Result<()> {
                 test_conf = Some(t);
             }
             Command::Token(t) => {
+                // 测试正则生成字符串
                 // generate token
                 for _ in 0..t.num {
                     println!("{}", mock::basic::string(t.length as u64, 0, 0));
                 }
+                return Ok(());
+            }
+            Command::StringGenerator(t) => {
+                let s = mock::basic::string_from_regex(&t.regex_string);
+                println!("{}", s);
                 return Ok(());
             }
         }
@@ -127,6 +133,9 @@ pub struct Token {
 }
 
 
+
+
+
 #[derive(Debug, StructOpt)]
 pub struct Test {
     /// test server
@@ -155,12 +164,27 @@ pub struct Test {
 
 
 #[derive(Debug, StructOpt)]
+pub struct StringGenerator {
+    /// regular expressions
+    #[structopt(default_value = "1")]
+    pub regex_string: String,
+
+    /// generate num of text
+    #[structopt(default_value = "1")]
+    pub num: usize,
+}
+
+
+#[derive(Debug, StructOpt)]
 pub enum Command {
     /// generate random auth token
     #[structopt(name = "token")]
     Token(Token),
     /// Run the tests
     Test(Test),
+    /// Use regular expressions to generate text
+    #[structopt(name = "regex")]
+    StringGenerator(StringGenerator),
 }
 
 /// Panda api command
