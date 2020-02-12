@@ -12,46 +12,31 @@ use crate::Test;
 
 /// 执行测试后端接口
 pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
-    log::info!("start run test job");
+    log::info!("start run test job {:?}", conf);
     let db_data = db_data.lock().unwrap();
     let db_api_data = &db_data.api_data;
+    let db_api_docs = &db_data.api_docs;
 
     // 获取服务器信息，如果获取不到就报错
     let server_url = "http://localhost:9000";
+    if let Some(docs) = &conf.docs {
+        // 执行整个文档接口测试
+        for doc_filename in docs {
+            if let Some(a_api_doc) = db_api_docs.get(doc_filename) {
+                for api in &a_api_doc.apis {
+                    do_a_api_test(api, server_url).await;
+                }
+            }
+        }
+    }
+
+
     if &conf.url != "" {
         // 执行单个url测试
         if let Some(apis) = db_api_data.get(&conf.url) {
             // 获取到url对应的接口文档列表
             for api in apis {
-                let api = api.lock().unwrap();
-
-                let api_url = format!("{}{}", server_url, &api.url);
-                if let Some(test_data) = api.test_data.as_array() {
-                    for a_data in test_data {
-                        let mut body_data: &Value = &Value::Null;
-                        if let Some(b) = a_data.get("body") {
-                            body_data = b;
-                        }
-
-                        let mut query: &Value = &Value::Null;
-                        if let Some(b) = a_data.get("query") {
-                            query = b;
-                        }
-
-                        let mut response: &Value = &Value::Null;
-                        if let Some(b) = a_data.get("response") {
-                            response = b;
-                        }
-
-                        if is_has_method(&api.method, "POST") {
-                            post(&api_url, body_data, response).await;
-                        }
-
-                        if is_has_method(&api.method, "GET") {
-                            get(&api_url, query, response).await;
-                        }
-                    }
-                }
+                do_a_api_test(api, server_url).await;
             }
         } else {
             // 如果获取不到，那么就报错
@@ -59,6 +44,39 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
         }
     }
 }
+
+async fn do_a_api_test(api:&Arc<Mutex<db::ApiData>>, server_url:&str) {
+    let api = api.lock().unwrap();
+
+    let api_url = format!("{}{}", server_url, &api.url);
+    if let Some(test_data) = api.test_data.as_array() {
+        for a_data in test_data {
+            let mut body_data: &Value = &Value::Null;
+            if let Some(b) = a_data.get("body") {
+                body_data = b;
+            }
+
+            let mut query: &Value = &Value::Null;
+            if let Some(b) = a_data.get("query") {
+                query = b;
+            }
+
+            let mut response: &Value = &Value::Null;
+            if let Some(b) = a_data.get("response") {
+                response = b;
+            }
+
+            if is_has_method(&api.method, "POST") {
+                post(&api_url, body_data, response).await;
+            }
+
+            if is_has_method(&api.method, "GET") {
+                get(&api_url, query, response).await;
+            }
+        }
+    }
+}
+
 
 
 fn is_has_method(methods: &Vec<String>, method: &str) -> bool {
