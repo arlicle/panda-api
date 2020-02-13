@@ -27,8 +27,8 @@ Why Panda Api：
 
 It looks like you’re running macOS, Linux, or another Unix-like OS. To download installer and install Panda api.
 
-- [Mac installer](https://github.com/arlicle/panda-api/releases/download/v0.6/mac_install_0.6.zip)
-- [Linux installer](https://github.com/arlicle/panda-api/releases/download/v0.6/linux_install_0.6.zip)
+- [Mac installer](https://github.com/arlicle/panda-api/releases/download/v0.6.5/mac_install_0.6.5.zip)
+- [Linux installer](https://github.com/arlicle/panda-api/releases/download/v0.6.5/linux_install_0.6.5.zip)
 - [Windows installer] waiting a windows ...
 
 #### Install by Source code
