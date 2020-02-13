@@ -1,7 +1,7 @@
 use rand::{thread_rng, Rng};
 use std::time::{Duration, SystemTime};
 use chrono::{TimeZone, Utc};
-use regex::{Regex, RegexSet};
+use regex::{Regex};
 use uuid::Uuid;
 use regex_generate::{DEFAULT_MAX_REPEAT, Generator};
 use actix_web::dev::ResourceDef;

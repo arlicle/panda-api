@@ -1,7 +1,6 @@
 use actix_web::{middleware, web, App, HttpServer};
-use actix_files::Files;
+use actix::Actor;
 
-use dotenv::dotenv;
 use std::sync::Mutex;
 
 mod db;
@@ -14,7 +13,6 @@ mod mock;
 mod client;
 
 use structopt::StructOpt;
-use actix::Actor;
 
 
 #[actix_rt::main]
@@ -35,11 +33,6 @@ async fn main() -> std::io::Result<()> {
                 for _ in 0..t.num {
                     println!("{}", mock::basic::string(t.length as u64, 0, 0));
                 }
-                return Ok(());
-            }
-            Command::StringGenerator(t) => {
-                let s = mock::basic::string_from_regex(&t.regex_string);
-                println!("{}", s);
                 return Ok(());
             }
         }
@@ -160,17 +153,6 @@ pub struct Test {
 }
 
 
-#[derive(Debug, StructOpt)]
-pub struct StringGenerator {
-    /// regular expressions
-    #[structopt(default_value = "1")]
-    pub regex_string: String,
-
-    /// generate num of text
-    #[structopt(default_value = "1")]
-    pub num: usize,
-}
-
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
@@ -179,9 +161,6 @@ pub enum Command {
     Token(Token),
     /// Run the tests
     Test(Test),
-    /// Use regular expressions to generate text
-    #[structopt(name = "regex")]
-    StringGenerator(StringGenerator),
 }
 
 /// Panda api command

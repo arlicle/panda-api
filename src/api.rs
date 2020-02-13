@@ -127,7 +127,7 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
 /// 查看上传的 图片或文件
 pub async fn upload_file_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
     let req_path = req.path();
-    let mut file_path = "_data".to_string() +  req_path;
+    let file_path = "_data".to_string() +  req_path;
     return Ok(actix_files::NamedFile::open(file_path)?);
 }
 

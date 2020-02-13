@@ -17,8 +17,25 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
     let db_api_data = &db_data.api_data;
     let db_api_docs = &db_data.api_docs;
 
+    let mut server_url_tmp: Option<&str> = None;
+    if let Some(db_api_settings) = &db_data.settings {
+        let pointer_str = format!("/servers/{}/url", conf.server);
+        if let Some(url) = db_api_settings.pointer(&pointer_str) {
+            server_url_tmp = url.as_str();
+        }
+    } else {
+        log::error!("not found server set in _settings.json5");
+        return;
+    }
+
+    let server_url = if let Some(url) = server_url_tmp {
+        url
+    } else {
+        log::error!("not found server {} with url set in _settings.json5", conf.server);
+        return;
+    };
+
     // 获取服务器信息，如果获取不到就报错
-    let server_url = "http://localhost:9000";
     if let Some(docs) = &conf.docs {
         // 执行整个文档接口测试
         for doc_filename in docs {
@@ -45,7 +62,7 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
     }
 }
 
-async fn do_a_api_test(api:&Arc<Mutex<db::ApiData>>, server_url:&str) {
+async fn do_a_api_test(api: &Arc<Mutex<db::ApiData>>, server_url: &str) {
     let api = api.lock().unwrap();
 
     let api_url = format!("{}{}", server_url, &api.url);
@@ -78,7 +95,6 @@ async fn do_a_api_test(api:&Arc<Mutex<db::ApiData>>, server_url:&str) {
 }
 
 
-
 fn is_has_method(methods: &Vec<String>, method: &str) -> bool {
     if methods.contains(&"*".to_string()) || methods.contains(&method.to_string()) {
         return true;
@@ -88,7 +104,7 @@ fn is_has_method(methods: &Vec<String>, method: &str) -> bool {
 
 /// 执行单个url接口测试
 pub async fn get(url: &str, query_data: &Value, response: &Value) {
-    let mut queries:Vec<String> = vec![];
+    let mut queries: Vec<String> = vec![];
 
     if let Some(q) = query_data.as_object() {
         for (k, v) in q {
@@ -98,7 +114,7 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
                 Value::Bool(v2) => "bool".to_string(),
                 _ | Value::Null => "".to_string()
             };
-            queries.push(format!("{}={}", k,v2));
+            queries.push(format!("{}={}", k, v2));
         }
     }
 
@@ -133,7 +149,6 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
         }
     };
 }
-
 
 
 pub async fn post(url: &str, body_data: &Value, response: &Value) {
