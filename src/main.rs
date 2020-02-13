@@ -128,9 +128,13 @@ pub struct Token {
 
 #[derive(Debug, StructOpt)]
 pub struct Test {
-    /// test server
-    #[structopt(short, long)]
+    /// test server name, config in _settings.json
+    #[structopt(short, long, default_value = "")]
     pub server: String,
+
+    /// test server address, config in _settings.json
+    #[structopt(long, default_value = "")]
+    pub server_url: String,
 
     /// api url
     #[structopt(short, long, default_value = "")]

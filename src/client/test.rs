@@ -17,23 +17,31 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
     let db_api_data = &db_data.api_data;
     let db_api_docs = &db_data.api_docs;
 
-    let mut server_url_tmp: Option<&str> = None;
-    if let Some(db_api_settings) = &db_data.settings {
-        let pointer_str = format!("/servers/{}/url", conf.server);
-        if let Some(url) = db_api_settings.pointer(&pointer_str) {
-            server_url_tmp = url.as_str();
+    let mut server_url = "";
+    if &conf.server_url != "" {
+        server_url = &conf.server_url;
+    } else if &conf.server != ""{
+        let mut server_url_tmp: Option<&str> = None;
+        if let Some(db_api_settings) = &db_data.settings {
+            let pointer_str = format!("/servers/{}/url", conf.server);
+            if let Some(url) = db_api_settings.pointer(&pointer_str) {
+                server_url_tmp = url.as_str();
+            }
+        } else {
+            log::error!("not found server set in _settings.json5");
+            return;
+        }
+
+        if let Some(url) = server_url_tmp {
+            server_url = url;
+        } else {
+            log::error!("not found server {} with url set in _settings.json5", conf.server);
+            return;
         }
     } else {
-        log::error!("not found server set in _settings.json5");
+        log::error!("required arguments server or server_url were not provided");
         return;
     }
-
-    let server_url = if let Some(url) = server_url_tmp {
-        url
-    } else {
-        log::error!("not found server {} with url set in _settings.json5", conf.server);
-        return;
-    };
 
     // 获取服务器信息，如果获取不到就报错
     if let Some(docs) = &conf.docs {
@@ -121,15 +129,13 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
     let mut new_url = url.to_string();
     let s = queries.join("&");
     if queries.len() > 0 {
-        println!("query: {:?}", query_data);
-
         if url.contains("?") {
             new_url = new_url + "&" + &s;
         } else {
             new_url = new_url + "?" + &s;
         }
     }
-
+    println!("request query: {:?}", query_data);
     let resp = match reqwest::get(&new_url)
         .await {
         Ok(r) => {
@@ -153,7 +159,7 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
 
 pub async fn post(url: &str, body_data: &Value, response: &Value) {
     // url, method, body, json requet_data，response
-    println!("body: {:?}", body_data);
+    println!("request body: {:?}", body_data);
     let resp = match reqwest::Client::new().post(url).json(&json!(body_data)).send().await {
         Ok(r) => {
             if let Ok(s) = r.text().await {
