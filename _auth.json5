@@ -9,6 +9,7 @@
         name: "token列表对用权限组或者用户角色的名称",
         desc:"相关权限描述",
         url: "/login/", // 用户登录的接口地址
+        body: {username: "$user.username", password: "$user.password"},
         users:[ // 拥有权限的用户列表
         {
             id:1,
@@ -19,12 +20,7 @@
         }
         ],
         has_perms:[{$ref:"auth.json5", methods: ["get", "post"], $exclude: [["/logout/", "POST"]]}], // *星号表示拥有所有接口的全部权限
-//        no_perms:[{$ref:"auth.json5", $exclude: ["/logout/"], methods: ["GET", "POST"]}], // *星号表示拥有所有接口的全部权限
         no_perms:["$auth.json5"], // 表示没有权限的列表，没有权限列表优先
-//        no_perms:[{
-//            url:"admin/user/",
-//            methods:["GET", "POST", "PUT"]
-//        }], // 表示没有权限的列表，没有权限列表优先
         no_perm_response: {
             code: -1,
             msg: "没有权限非法操作"

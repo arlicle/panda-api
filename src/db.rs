@@ -272,7 +272,7 @@ impl Database {
         let mut api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
-        let mut websocket_api = Arc::new(Mutex::new(ApiData::default()));
+        let websocket_api = Arc::new(Mutex::new(ApiData::default()));
 
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
@@ -852,7 +852,7 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
 
                         if enum_item.is_object() {
                             if let Some(enum_item2) = enum_item.as_object() {
-                                if let Some(v) = enum_item2.get("$value") {
+                                if let Some(_v) = enum_item2.get("$value") {
                                     continue;
                                 }
                             }
@@ -920,7 +920,7 @@ fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file
                     continue;
                 }
 
-                let mut new_methods:HashSet<String> = HashSet::new();
+                let mut new_methods:HashSet<String>;
                 if methods.contains("*") {
                     new_methods = all_methods.clone();
                 } else {
@@ -1005,7 +1005,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
                             continue;
                         }
 
-                        let url = match perm_obj.get("url") {
+                        url = match perm_obj.get("url") {
                             Some(url) => url.as_str().unwrap(),
                             None => continue
                         };
@@ -1029,7 +1029,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
             methods.insert("*".to_string());
             if url.starts_with("$") {
                 // 按接口文件加载urls
-                let mut exclude:HashMap<String, HashSet<String>> = HashMap::new();
+                let exclude:HashMap<String, HashSet<String>> = HashMap::new();
                 load_all_api_docs_url(&mut result, url, methods, api_docs, &exclude);
             } else {
                 result.insert(url.to_string(), methods);
