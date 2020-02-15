@@ -1,16 +1,13 @@
 use std::collections::{HashMap, HashSet};
+use std::env;
+use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
-
 use actix_web::web;
-
-use std::env;
-use std::sync::mpsc::channel;
-
 use chrono::Local;
+use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::db;
 

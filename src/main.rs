@@ -1,18 +1,14 @@
 use actix::Actor;
 use actix_web::{middleware, web, App, HttpServer};
-
 use std::sync::Mutex;
-
+use structopt::StructOpt;
 mod api;
+mod client;
 mod db;
+mod mock;
 mod server;
 mod utils;
 mod websocket;
-
-mod client;
-mod mock;
-
-use structopt::StructOpt;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
