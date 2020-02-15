@@ -886,11 +886,8 @@ fn parse_attribute_ref_value(
                 }
             }
 
-            //            if !has_include {
             // 移除exclude中的字段
             if let Some(e) = value_obj.get("$exclude") {
-                println!("有exclude");
-                println!("new_value: {:?}", new_value);
                 for v2 in e.as_array().unwrap() {
                     let key_str = v2.as_str().unwrap();
                     if key_str.contains("/") {
@@ -902,7 +899,6 @@ fn parse_attribute_ref_value(
                     }
                 }
             }
-            //            }
         }
 
         for (field_key, field_attrs) in value_obj {
