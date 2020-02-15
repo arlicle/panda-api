@@ -886,21 +886,23 @@ fn parse_attribute_ref_value(
                 }
             }
 
-            if !has_include {
-                // 移除exclude中的字段
-                if let Some(e) = value_obj.get("$exclude") {
-                    for v2 in e.as_array().unwrap() {
-                        let key_str = v2.as_str().unwrap();
-                        if key_str.contains("/") {
-                            // 如果exclude中含有/斜杠，表示要嵌套的去移除字段
-                            let v = remove_val_from_value(Value::Object(new_value), key_str);
-                            new_value = v.as_object().unwrap().clone();
-                        } else {
-                            new_value.remove(key_str);
-                        }
+            //            if !has_include {
+            // 移除exclude中的字段
+            if let Some(e) = value_obj.get("$exclude") {
+                println!("有exclude");
+                println!("new_value: {:?}", new_value);
+                for v2 in e.as_array().unwrap() {
+                    let key_str = v2.as_str().unwrap();
+                    if key_str.contains("/") {
+                        // 如果exclude中含有/斜杠，表示要嵌套的去移除字段
+                        let v = remove_val_from_value(Value::Object(new_value), key_str);
+                        new_value = v.as_object().unwrap().clone();
+                    } else {
+                        new_value.remove(key_str);
                     }
                 }
             }
+            //            }
         }
 
         for (field_key, field_attrs) in value_obj {
@@ -1206,13 +1208,13 @@ fn remove_val_from_value(mut value: Value, pointer: &str) -> Value {
                 }
             }
             Value::Array(ref mut list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
-            _ => return Value::Null,
+            _ => break,
         };
 
         if let Some(t) = target_opt {
             target = t;
         } else {
-            return Value::Null;
+            break;
         }
     }
 
