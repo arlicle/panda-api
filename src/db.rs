@@ -12,7 +12,8 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct Database {
     pub basic_data: BasicData,
-    pub api_docs: HashMap<String, ApiDoc>,    // {fileanme:api_doc}
+    pub api_docs: HashMap<String, ApiDoc>,
+    // {fileanme:api_doc}
     pub api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>>,
     // {url:[a_api_doc1, a_api_data2]}
     pub fileindex_data: HashMap<String, HashSet<String>>,
@@ -793,12 +794,11 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
             }
         }
 
-
         for (field_key, field_attrs) in value_obj {
             if field_attrs.is_string() && field_attrs.as_str().unwrap() == "$del" {
                 new_value.remove(field_key);
                 continue;
-            } else if field_key == "$ref" || field_key == "$exclude" || field_key == "$include" {
+            } else if field_key == "$del" || field_key == "$ref" || field_key == "$exclude" || field_key == "$include" {
                 continue;
             } else if field_key == "enum" || field_key == "$enum" {
                 // --- start 处理 enum
@@ -870,11 +870,19 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                 }
 
                 // --- end 处理 enum
-            } else {
-                let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
-                new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
             }
+
+            if let Some(is_del) = field_attrs.pointer("/$del") {
+                // 处理当字段设置了{$del:true}属性,那么就不显示这个字段
+                if let Some(true) = is_del.as_bool() {
+                    new_value.remove(field_key);
+                    continue;
+                }
+            }
+
+            let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+            new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
         }
 
         return (ref_files, Value::Object(new_value));
@@ -899,8 +907,8 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
 
 
 /// auth文件里面，可能是按文件加载接口地址
-fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file: &str, methods: HashSet<String>, api_docs: &HashMap<String, ApiDoc>, exclude:&HashMap<String, HashSet<String>> ) {
-    let mut all_methods:HashSet<String> = HashSet::with_capacity(7);
+fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file: &str, methods: HashSet<String>, api_docs: &HashMap<String, ApiDoc>, exclude: &HashMap<String, HashSet<String>>) {
+    let mut all_methods: HashSet<String> = HashSet::with_capacity(7);
     for v in &["POST", "GET", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"] {
         all_methods.insert(v.to_string());
     }
@@ -920,7 +928,7 @@ fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file
                     continue;
                 }
 
-                let mut new_methods:HashSet<String>;
+                let mut new_methods: HashSet<String>;
                 if methods.contains("*") {
                     new_methods = all_methods.clone();
                 } else {
@@ -940,7 +948,6 @@ fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file
                         result.insert(api.url.clone(), new_methods);
                     }
                 }
-
             } else {
                 result.insert(api.url.clone(), methods.clone());
             }
@@ -957,7 +964,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
             for perm in perms {
                 let mut methods = HashSet::new();
                 let mut url = "";
-                let mut exclude:HashMap<String, HashSet<String>> = HashMap::new();
+                let mut exclude: HashMap<String, HashSet<String>> = HashMap::new();
 
                 match perm {
                     Value::String(perm_str) => {
@@ -978,7 +985,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
                                 _ => continue
                             }
                         }
-                    },
+                    }
                     Value::Object(perm_obj) => {
                         exclude = parse_auth_perms(perm_obj.get("$exclude"), api_docs);
                         if let Some(m) = perm_obj.get("methods") {
@@ -1029,7 +1036,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
             methods.insert("*".to_string());
             if url.starts_with("$") {
                 // 按接口文件加载urls
-                let exclude:HashMap<String, HashSet<String>> = HashMap::new();
+                let exclude: HashMap<String, HashSet<String>> = HashMap::new();
                 load_all_api_docs_url(&mut result, url, methods, api_docs, &exclude);
             } else {
                 result.insert(url.to_string(), methods);
