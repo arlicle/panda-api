@@ -1,14 +1,13 @@
-use std::collections::HashMap;
-use serde_json::{json, Value, Map};
-use serde::{Deserialize, Serialize};
 use json5;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
+use std::collections::HashMap;
 
 use crate::db;
 use actix_web::web;
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use crate::Test;
-
 
 /// 执行测试后端接口
 pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
@@ -20,7 +19,7 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
     let mut server_url = "";
     if &conf.server_url != "" {
         server_url = &conf.server_url;
-    } else if &conf.server != ""{
+    } else if &conf.server != "" {
         let mut server_url_tmp: Option<&str> = None;
         if let Some(db_api_settings) = &db_data.settings {
             let pointer_str = format!("/servers/{}/url", conf.server);
@@ -35,7 +34,10 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
         if let Some(url) = server_url_tmp {
             server_url = url;
         } else {
-            log::error!("not found server {} with url set in _settings.json5", conf.server);
+            log::error!(
+                "not found server {} with url set in _settings.json5",
+                conf.server
+            );
             return;
         }
     } else {
@@ -54,7 +56,6 @@ pub async fn run_test(conf: Test, db_data: web::Data<Mutex<db::Database>>) {
             }
         }
     }
-
 
     if &conf.url != "" {
         // 执行单个url测试
@@ -102,7 +103,6 @@ async fn do_a_api_test(api: &Arc<Mutex<db::ApiData>>, server_url: &str) {
     }
 }
 
-
 fn is_has_method(methods: &Vec<String>, method: &str) -> bool {
     if methods.contains(&"*".to_string()) || methods.contains(&method.to_string()) {
         return true;
@@ -120,7 +120,7 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
                 Value::String(v2) => v2.to_string(),
                 Value::Number(v2) => json!(v2).to_string(),
                 Value::Bool(v2) => "bool".to_string(),
-                _ | Value::Null => "".to_string()
+                _ | Value::Null => "".to_string(),
             };
             queries.push(format!("{}={}", k, v2));
         }
@@ -136,8 +136,7 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
         }
     }
     println!("request query: {:?}", query_data);
-    let resp = match reqwest::get(&new_url)
-        .await {
+    let resp = match reqwest::get(&new_url).await {
         Ok(r) => {
             if let Ok(s) = r.text().await {
                 let y = match json5::from_str::<Value>(&s) {
@@ -156,11 +155,15 @@ pub async fn get(url: &str, query_data: &Value, response: &Value) {
     };
 }
 
-
 pub async fn post(url: &str, body_data: &Value, response: &Value) {
     // url, method, body, json requet_data，response
     println!("request body: {:?}", body_data);
-    let resp = match reqwest::Client::new().post(url).json(&json!(body_data)).send().await {
+    let resp = match reqwest::Client::new()
+        .post(url)
+        .json(&json!(body_data))
+        .send()
+        .await
+    {
         Ok(r) => {
             if let Ok(s) = r.text().await {
                 let y = match json5::from_str::<Value>(&s) {

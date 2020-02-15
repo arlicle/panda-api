@@ -1,13 +1,12 @@
-use serde_json::{json, Value, Map};
-use serde::{Deserialize, Serialize};
 use json5;
-use std::fs;
-use std::sync::{Mutex, Arc};
-use std::collections::{HashMap, HashSet};
 use regex::Regex;
-use walkdir::WalkDir;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
+use std::collections::{HashMap, HashSet};
+use std::fs;
 use std::path::Path;
-
+use std::sync::{Arc, Mutex};
+use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub struct Database {
@@ -22,7 +21,6 @@ pub struct Database {
     pub auth_doc: Option<AuthDoc>,
     pub settings: Option<Value>,
 }
-
 
 #[derive(Debug)]
 pub struct BasicData {
@@ -41,7 +39,6 @@ pub struct ApiDoc {
     pub apis: Vec<Arc<Mutex<ApiData>>>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiData {
     pub name: String,
@@ -58,7 +55,6 @@ pub struct ApiData {
     pub response: Value,
     pub test_data: Value,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 /// auth认证中心文档
@@ -77,7 +73,6 @@ pub struct AuthDoc {
     pub no_perm_response: Value,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AuthData {
     pub name: String,
@@ -87,7 +82,6 @@ pub struct AuthData {
     pub no_perms: HashMap<String, HashSet<String>>,
     pub no_perm_response: Value,
 }
-
 
 fn fix_json(org_string: String) -> String {
     let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap(); // 把多换行变为一个
@@ -104,7 +98,6 @@ fn fix_json(org_string: String) -> String {
     let new_string = re3.replace_all(&new_string, "").to_string();
     new_string
 }
-
 
 /// 加载auth认证的相关数据
 pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
@@ -128,7 +121,7 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
                     }
                 }
             }
-            Err(_) => return None
+            Err(_) => return None,
         };
     }
 
@@ -140,27 +133,27 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
 
     let name = match obj.get("name") {
         Some(name) => name.as_str().unwrap(),
-        None => "Panda api auth"
+        None => "Panda api auth",
     };
 
     let desc = match obj.get("desc") {
         Some(name) => name.as_str().unwrap(),
-        None => "Panda api desc"
+        None => "Panda api desc",
     };
 
     let auth_type = match obj.get("auth_type") {
         Some(name) => name.as_str().unwrap(),
-        None => "Bearer"
+        None => "Bearer",
     };
 
     let auth_place = match obj.get("auth_place") {
         Some(v) => v.as_str().unwrap(),
-        None => "headers"
+        None => "headers",
     };
 
     let no_perm_response = match obj.get("no_perm_response") {
         Some(v) => v.clone(),
-        None => json!({"code":-1, "error":"no perm to visit"})
+        None => json!({"code":-1, "error":"no perm to visit"}),
     };
 
     let mut groups: Vec<AuthData> = Vec::new();
@@ -170,11 +163,11 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
             for data in items {
                 let test_data_name = match data.get("name") {
                     Some(v) => v.as_str().unwrap(),
-                    None => ""
+                    None => "",
                 };
                 let test_data_desc = match data.get("desc") {
                     Some(v) => v.as_str().unwrap(),
-                    None => ""
+                    None => "",
                 };
 
                 let mut users: HashMap<String, Value> = HashMap::new();
@@ -199,14 +192,28 @@ pub fn load_auth_data(api_docs: &HashMap<String, ApiDoc>) -> Option<AuthDoc> {
                     None => no_perm_response.clone(),
                 };
 
-                groups.push(AuthData { name: test_data_name.to_string(), desc: test_data_desc.to_string(), users: users, has_perms: has_perms, no_perms: no_perms, no_perm_response: test_data_no_perm_response })
+                groups.push(AuthData {
+                    name: test_data_name.to_string(),
+                    desc: test_data_desc.to_string(),
+                    users: users,
+                    has_perms: has_perms,
+                    no_perms: no_perms,
+                    no_perm_response: test_data_no_perm_response,
+                })
             }
         }
     }
 
-    Some(AuthDoc { name: name.to_string(), desc: desc.to_string(), auth_type: auth_type.to_string(), auth_place: auth_place.to_string(), filename: filename.to_string(), groups: groups, no_perm_response: no_perm_response })
+    Some(AuthDoc {
+        name: name.to_string(),
+        desc: desc.to_string(),
+        auth_type: auth_type.to_string(),
+        auth_place: auth_place.to_string(),
+        filename: filename.to_string(),
+        groups: groups,
+        no_perm_response: no_perm_response,
+    })
 }
-
 
 pub fn load_basic_data() -> (BasicData, Option<Value>) {
     let settings_files = ["_settings.json5", "_settings.json"];
@@ -228,7 +235,7 @@ pub fn load_basic_data() -> (BasicData, Option<Value>) {
                     }
                 }
             }
-            Err(_) => ()
+            Err(_) => (),
         };
     }
 
@@ -236,33 +243,42 @@ pub fn load_basic_data() -> (BasicData, Option<Value>) {
 
     let project_name = match obj.get("project_name") {
         Some(name) => name.as_str().unwrap(),
-        None => "Panda api docs"
+        None => "Panda api docs",
     };
     let project_name = project_name.to_string();
 
     let project_desc = match obj.get("project_desc") {
         Some(name) => name.as_str().unwrap(),
-        None => ""
+        None => "",
     };
     let project_desc = project_desc.to_string();
 
     let read_me = match fs::read_to_string("README.md") {
         Ok(x) => x,
-        Err(_) => if &project_desc == "" {
-            "Panda api docs".to_string()
-        } else {
-            project_desc.clone()
+        Err(_) => {
+            if &project_desc == "" {
+                "Panda api docs".to_string()
+            } else {
+                project_desc.clone()
+            }
         }
     };
 
     let global_value = match obj.get("global") {
         Some(v) => v.clone(),
-        None => Value::Null
+        None => Value::Null,
     };
 
-    (BasicData { read_me, project_name, project_desc, global_value }, return_value)
+    (
+        BasicData {
+            read_me,
+            project_name,
+            project_desc,
+            global_value,
+        },
+        return_value,
+    )
 }
-
 
 impl Database {
     /// 加载api docs 接口的json数据、配置、相关文档
@@ -278,18 +294,47 @@ impl Database {
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap().trim_start_matches("./");
-            Self::load_a_api_json_file(doc_file, &basic_data, &mut api_data, &mut api_docs, websocket_api.clone(), &mut fileindex_data);
+            Self::load_a_api_json_file(
+                doc_file,
+                &basic_data,
+                &mut api_data,
+                &mut api_docs,
+                websocket_api.clone(),
+                &mut fileindex_data,
+            );
         }
 
         let auth_doc = load_auth_data(&api_docs);
-        Database { basic_data, api_data, api_docs, fileindex_data, websocket_api, auth_doc, settings }
+        Database {
+            basic_data,
+            api_data,
+            api_docs,
+            fileindex_data,
+            websocket_api,
+            auth_doc,
+            settings,
+        }
     }
-
 
     /// 只加载一个api_doc文件的数据
     ///
-    pub fn load_a_api_json_file(doc_file: &str, basic_data: &BasicData, api_data: &mut HashMap<String, Vec<Arc<Mutex<ApiData>>>>, api_docs: &mut HashMap<String, ApiDoc>, websocket_api: Arc<Mutex<ApiData>>, fileindex_data: &mut HashMap<String, HashSet<String>>) -> i32 {
-        if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5")) || doc_file == "_settings.json" || doc_file == "_settings.json5" || doc_file == "_auth.json" || doc_file == "_auth.json5" || doc_file.contains("_data/") || doc_file.starts_with(".") || doc_file.contains("/.") {
+    pub fn load_a_api_json_file(
+        doc_file: &str,
+        basic_data: &BasicData,
+        api_data: &mut HashMap<String, Vec<Arc<Mutex<ApiData>>>>,
+        api_docs: &mut HashMap<String, ApiDoc>,
+        websocket_api: Arc<Mutex<ApiData>>,
+        fileindex_data: &mut HashMap<String, HashSet<String>>,
+    ) -> i32 {
+        if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5"))
+            || doc_file == "_settings.json"
+            || doc_file == "_settings.json5"
+            || doc_file == "_auth.json"
+            || doc_file == "_auth.json5"
+            || doc_file.contains("_data/")
+            || doc_file.starts_with(".")
+            || doc_file.contains("/.")
+        {
             return -1;
         }
 
@@ -313,17 +358,15 @@ impl Database {
 
         let doc_file_obj = match json_value.as_object() {
             Some(doc_file_obj) => doc_file_obj,
-            None => return -4
+            None => return -4,
         };
 
         let mut doc_name = match doc_file_obj.get("name") {
-            Some(name) => {
-                match name.as_str() {
-                    Some(v) => v.to_string(),
-                    None => format!("{}", name)
-                }
-            }
-            None => doc_file.to_string()
+            Some(name) => match name.as_str() {
+                Some(v) => v.to_string(),
+                None => format!("{}", name),
+            },
+            None => doc_file.to_string(),
         };
         if &doc_name == "" {
             // 如果接口文档name为空，那么就用文件名作为文档名称
@@ -332,18 +375,18 @@ impl Database {
 
         let doc_desc = match doc_file_obj.get("desc") {
             Some(desc) => desc.as_str().unwrap(),
-            None => ""
+            None => "",
         };
         let doc_desc = doc_desc.to_string();
 
         let doc_order: i64 = match doc_file_obj.get("order") {
             Some(order) => order.as_i64().expect("order is not number"),
-            None => 0
+            None => 0,
         };
 
         let apis = match doc_file_obj.get("apis") {
             Some(api) => api.clone(),
-            None => { json!([]) }
+            None => json!([]),
         };
 
         let mut api_vec = Vec::new();
@@ -374,91 +417,117 @@ impl Database {
                             ref_data = value;
                         }
                     }
-                    None => ()
+                    None => (),
                 }
 
-                let name = get_api_field_string_value("name", doc_file.to_string(), api, &ref_data, &basic_data.global_value);
-                let desc = get_api_field_string_value("desc", "".to_string(), api, &ref_data, &basic_data.global_value);
-                let url = get_api_field_string_value("url", "".to_string(), api, &ref_data, &basic_data.global_value);
+                let name = get_api_field_string_value(
+                    "name",
+                    doc_file.to_string(),
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
+                let desc = get_api_field_string_value(
+                    "desc",
+                    "".to_string(),
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
+                let url = get_api_field_string_value(
+                    "url",
+                    "".to_string(),
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
 
-                let mut method = get_api_field_array_value("method", vec!["GET".to_string()], api, &ref_data, &basic_data.global_value);
+                let mut method = get_api_field_array_value(
+                    "method",
+                    vec!["GET".to_string()],
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
                 for m in method.iter_mut() {
                     *m = m.to_uppercase();
                 }
 
-                let body_mode = get_api_field_string_value("body_mode", "json".to_string(), api, &ref_data, &basic_data.global_value);
-                let auth = get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
+                let body_mode = get_api_field_string_value(
+                    "body_mode",
+                    "json".to_string(),
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
+                let auth = get_api_field_bool_value(
+                    "auth",
+                    false,
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
 
                 let url_param = match api.get("url_param") {
                     Some(url_param) => url_param.clone(),
-                    None => {
-                        match ref_data.get("url_param") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
-                        }
-                    }
+                    None => match ref_data.get("url_param") {
+                        Some(v) => v.clone(),
+                        None => Value::Null,
+                    },
                 };
-                let (mut ref_files, url_param) = parse_attribute_ref_value(url_param, doc_file_obj, doc_file);
+                let (mut ref_files, url_param) =
+                    parse_attribute_ref_value(url_param, doc_file_obj, doc_file);
 
                 let body = match api.get("body") {
                     Some(body) => body.clone(),
-                    None => {
-                        match ref_data.get("body") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
-                        }
-                    }
+                    None => match ref_data.get("body") {
+                        Some(v) => v.clone(),
+                        None => Value::Null,
+                    },
                 };
-                let (mut ref_files2, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
+                let (mut ref_files2, body) =
+                    parse_attribute_ref_value(body, doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
-
 
                 let request_headers = match api.get("request_headers") {
                     Some(request_headers) => request_headers.clone(),
-                    None => {
-                        match ref_data.get("request_headers") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
-                        }
-                    }
+                    None => match ref_data.get("request_headers") {
+                        Some(v) => v.clone(),
+                        None => Value::Null,
+                    },
                 };
-                let (mut ref_files2, request_headers) = parse_attribute_ref_value(request_headers, doc_file_obj, doc_file);
+                let (mut ref_files2, request_headers) =
+                    parse_attribute_ref_value(request_headers, doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
-
 
                 let response_headers = match api.get("response_headers") {
                     Some(response_headers) => response_headers.clone(),
-                    None => {
-                        match ref_data.get("response_headers") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
-                        }
-                    }
+                    None => match ref_data.get("response_headers") {
+                        Some(v) => v.clone(),
+                        None => Value::Null,
+                    },
                 };
-                let (mut ref_files2, response_headers) = parse_attribute_ref_value(response_headers, doc_file_obj, doc_file);
+                let (mut ref_files2, response_headers) =
+                    parse_attribute_ref_value(response_headers, doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
-
 
                 let query = match api.get("query") {
                     Some(query) => query.clone(),
-                    None => {
-                        match ref_data.get("query") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
-                        }
-                    }
+                    None => match ref_data.get("query") {
+                        Some(v) => v.clone(),
+                        None => Value::Null,
+                    },
                 };
-                let (mut ref_files2, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
+                let (mut ref_files2, query) =
+                    parse_attribute_ref_value(query, doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
 
                 // 最后查询global_value
-                let mut response: Map<String, Value> = match basic_data.global_value.pointer("/api/response") {
-                    Some(v) => {
-                        v.as_object().unwrap().clone()
-                    }
-                    None => json!({}).as_object().unwrap().clone()
-                };
-
+                let mut response: Map<String, Value> =
+                    match basic_data.global_value.pointer("/api/response") {
+                        Some(v) => v.as_object().unwrap().clone(),
+                        None => json!({}).as_object().unwrap().clone(),
+                    };
 
                 if let Some(r) = ref_data.get("response") {
                     if let Some(rm) = r.as_object() {
@@ -477,7 +546,8 @@ impl Database {
                 }
 
                 // 处理response中的$ref
-                let (mut ref_files2, response) = parse_attribute_ref_value(Value::Object(response), doc_file_obj, doc_file);
+                let (mut ref_files2, response) =
+                    parse_attribute_ref_value(Value::Object(response), doc_file_obj, doc_file);
 
                 ref_files.append(&mut ref_files2);
                 for ref_file in ref_files {
@@ -496,18 +566,28 @@ impl Database {
                 }
 
                 let test_data = match api.get("test_data") {
-                    Some(test_data) => {
-                        test_data.clone()
-                    }
-                    None => {
-                        match ref_data.get("test_data") {
-                            Some(v) => v.clone(),
-                            None => Value::Null
-                        }
-                    }
+                    Some(test_data) => test_data.clone(),
+                    None => match ref_data.get("test_data") {
+                        Some(v) => v.clone(),
+                        None => Value::Null,
+                    },
                 };
 
-                let o_api_data = ApiData { name, desc, body_mode, body, query, response, test_data, url_param, request_headers, response_headers, auth: auth, url: url.clone(), method: method.clone() };
+                let o_api_data = ApiData {
+                    name,
+                    desc,
+                    body_mode,
+                    body,
+                    query,
+                    response,
+                    test_data,
+                    url_param,
+                    request_headers,
+                    response_headers,
+                    auth: auth,
+                    url: url.clone(),
+                    method: method.clone(),
+                };
                 let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
 
                 if method.contains(&"WEBSOCKET".to_string()) {
@@ -529,13 +609,18 @@ impl Database {
             }
         }
 
-        let api_doc = ApiDoc { name: doc_name, desc: doc_desc, order: doc_order, filename: doc_file.to_string(), apis: api_vec };
+        let api_doc = ApiDoc {
+            name: doc_name,
+            desc: doc_desc,
+            order: doc_order,
+            filename: doc_file.to_string(),
+            apis: api_vec,
+        };
         api_docs.insert(doc_file.to_string(), api_doc);
 
         1
     }
 }
-
 
 fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
@@ -545,7 +630,11 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
             let mut file_path;
             if filename.starts_with("./_data") {
                 let path = Path::new(doc_file).parent().unwrap();
-                file_path = format!("{}/{}", path.to_str().unwrap(), filename.trim_start_matches("./"));
+                file_path = format!(
+                    "{}/{}",
+                    path.to_str().unwrap(),
+                    filename.trim_start_matches("./")
+                );
             } else if filename.starts_with("/_data") {
                 file_path = filename.trim_start_matches("/").to_string();
             } else {
@@ -573,11 +662,10 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
                 return (file_path, None);
             }
         }
-        None => ()
+        None => (),
     };
     ("".to_string(), None)
 }
-
 
 /// 从value中获取array
 fn get_array_from_value(key: &str, value: &Value) -> Option<Vec<String>> {
@@ -603,11 +691,15 @@ fn get_array_from_value(key: &str, value: &Value) -> Option<Vec<String>> {
     None
 }
 
-
 /// 获取值可能是数组的字段值
 /// 例如method，可能填写是字符串，也可能是数组
-fn get_api_field_array_value(key: &str, default_value: Vec<String>, api: &Value, ref_data: &Value, global_data: &Value) -> Vec<String> {
-
+fn get_api_field_array_value(
+    key: &str,
+    default_value: Vec<String>,
+    api: &Value,
+    ref_data: &Value,
+    global_data: &Value,
+) -> Vec<String> {
     // 如果直接在api接口上有设置值
     if let Some(v) = get_array_from_value(key, api) {
         return v;
@@ -627,10 +719,15 @@ fn get_api_field_array_value(key: &str, default_value: Vec<String>, api: &Value,
     default_value
 }
 
-
 /// 获取api里面字段的数据
 /// 如 url, name等
-fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref_data: &Value, global_data: &Value) -> String {
+fn get_api_field_string_value(
+    key: &str,
+    default_value: String,
+    api: &Value,
+    ref_data: &Value,
+    global_data: &Value,
+) -> String {
     match api.get(key) {
         Some(d) => {
             if let Some(v) = d.as_str() {
@@ -639,7 +736,7 @@ fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref
                 return format!("{}", d);
             }
         }
-        None => ()
+        None => (),
     }
 
     if let Some(d) = ref_data.get(key) {
@@ -652,25 +749,28 @@ fn get_api_field_string_value(key: &str, default_value: String, api: &Value, ref
 
     // 最后查询global_value
     match global_data.get("apis") {
-        Some(v) => {
-            match v.get(key) {
-                Some(v2) => {
-                    if let Some(d) = v2.as_str() {
-                        return d.to_owned();
-                    } else {
-                        return format!("{}", v2);
-                    }
+        Some(v) => match v.get(key) {
+            Some(v2) => {
+                if let Some(d) = v2.as_str() {
+                    return d.to_owned();
+                } else {
+                    return format!("{}", v2);
                 }
-                None => ()
             }
-        }
-        None => ()
+            None => (),
+        },
+        None => (),
     }
     default_value
 }
 
-
-fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_data: &Value, global_data: &Value) -> bool {
+fn get_api_field_bool_value(
+    key: &str,
+    default_value: bool,
+    api: &Value,
+    ref_data: &Value,
+    global_data: &Value,
+) -> bool {
     match api.get(key) {
         Some(d) => {
             if let Some(v) = d.as_bool() {
@@ -679,7 +779,7 @@ fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_dat
                 println!("{} value is not a bool", key)
             }
         }
-        None => ()
+        None => (),
     }
 
     if let Some(d) = ref_data.get(key) {
@@ -691,19 +791,17 @@ fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_dat
     }
 
     match global_data.get("apis") {
-        Some(v) => {
-            match v.get(key) {
-                Some(d) => {
-                    if let Some(v2) = d.as_bool() {
-                        return v2;
-                    } else {
-                        println!("{} value is not a bool", key)
-                    }
+        Some(v) => match v.get(key) {
+            Some(d) => {
+                if let Some(v2) = d.as_bool() {
+                    return v2;
+                } else {
+                    println!("{} value is not a bool", key)
                 }
-                None => ()
             }
-        }
-        None => ()
+            None => (),
+        },
+        None => (),
     }
 
     default_value
@@ -712,7 +810,11 @@ fn get_api_field_bool_value(key: &str, default_value: bool, api: &Value, ref_dat
 /// parse $ref引用数据
 /// 第一个参数表示获取到的值，body, query, resonse 等, 判断是否有引用值 或者 全局值
 /// 对不满足要求的数据会全部进行过滤
-fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, doc_file: &str) -> (Vec<String>, Value) {
+fn parse_attribute_ref_value(
+    value: Value,
+    doc_file_obj: &Map<String, Value>,
+    doc_file: &str,
+) -> (Vec<String>, Value) {
     let mut ref_files: Vec<String> = Vec::new();
     if value.is_null() {
         return (ref_files, value);
@@ -735,15 +837,19 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                                 let m_str = &v_str[m.start() + 1..m.end()];
                                 match defined.get(m_str) {
                                     Some(v3) => {
-                                        new_v_str = format!("{}{}", v3.as_str().unwrap(), &v_str[m.end()..]);
+                                        new_v_str = format!(
+                                            "{}{}",
+                                            v3.as_str().unwrap(),
+                                            &v_str[m.end()..]
+                                        );
                                     }
-                                    None => ()
+                                    None => (),
                                 }
                             }
-                            None => ()
+                            None => (),
                         };
                     }
-                    None => ()
+                    None => (),
                 }
             }
             if new_v_str != "".to_string() {
@@ -798,12 +904,17 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
             if field_attrs.is_string() && field_attrs.as_str().unwrap() == "$del" {
                 new_value.remove(field_key);
                 continue;
-            } else if field_key == "$del" || field_key == "$ref" || field_key == "$exclude" || field_key == "$include" {
+            } else if field_key == "$del"
+                || field_key == "$ref"
+                || field_key == "$exclude"
+                || field_key == "$include"
+            {
                 continue;
             } else if field_key == "enum" || field_key == "$enum" {
                 // --- start 处理 enum
                 // 处理enum, enum不是数组，也不是对象，那么就会忽略这个字段
-                let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
+                let (mut ref_files2, field_value) =
+                    parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
                 ref_files.append(&mut ref_files2);
 
                 // 判断第一个是不是$desc, 或$符号开头，如果是，那么表示里面的就是[value, desc]组成的元素
@@ -861,7 +972,10 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                         new_enum.push(Value::Object(new_item));
                     }
                     if new_enum.len() > 1 {
-                        new_value.insert(field_key.trim_start_matches("$").to_string(), Value::Array(new_enum));
+                        new_value.insert(
+                            field_key.trim_start_matches("$").to_string(),
+                            Value::Array(new_enum),
+                        );
                     }
                 } else {
                     // 如果不是数组，那么直接删除 enum属性
@@ -880,7 +994,8 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
                 }
             }
 
-            let (mut ref_files2, field_value) = parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
+            let (mut ref_files2, field_value) =
+                parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
             ref_files.append(&mut ref_files2);
             new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
         }
@@ -891,7 +1006,8 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
         if let Some(value_array) = value.as_array() {
             if value_array.len() == 1 {
                 if let Some(value_array_one) = value_array.get(0) {
-                    let (ref_files, array_item_value) = parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
+                    let (ref_files, array_item_value) =
+                        parse_attribute_ref_value(value_array_one.clone(), doc_file_obj, doc_file);
                     return (ref_files, Value::Array(vec![array_item_value]));
                 } else {
                     println!(" file array value empty '{}' got {:?}", doc_file, value);
@@ -905,9 +1021,14 @@ fn parse_attribute_ref_value(value: Value, doc_file_obj: &Map<String, Value>, do
     (ref_files, value)
 }
 
-
 /// auth文件里面，可能是按文件加载接口地址
-fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file: &str, methods: HashSet<String>, api_docs: &HashMap<String, ApiDoc>, exclude: &HashMap<String, HashSet<String>>) {
+fn load_all_api_docs_url(
+    result: &mut HashMap<String, HashSet<String>>,
+    doc_file: &str,
+    methods: HashSet<String>,
+    api_docs: &HashMap<String, ApiDoc>,
+    exclude: &HashMap<String, HashSet<String>>,
+) {
     let mut all_methods: HashSet<String> = HashSet::with_capacity(7);
     for v in &["POST", "GET", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"] {
         all_methods.insert(v.to_string());
@@ -955,9 +1076,11 @@ fn load_all_api_docs_url(result: &mut HashMap<String, HashSet<String>>, doc_file
     }
 }
 
-
 /// 把权限解析为一个map
-fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDoc>) -> HashMap<String, HashSet<String>> {
+fn parse_auth_perms(
+    perms_data: Option<&Value>,
+    api_docs: &HashMap<String, ApiDoc>,
+) -> HashMap<String, HashSet<String>> {
     let mut result: HashMap<String, HashSet<String>> = HashMap::new();
     if let Some(perms) = perms_data {
         if let Some(perms) = perms.as_array() {
@@ -982,7 +1105,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
                                         methods.insert(perm_str.to_uppercase());
                                     }
                                 }
-                                _ => continue
+                                _ => continue,
                             }
                         }
                     }
@@ -1006,7 +1129,13 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
                         // 如果是一个对象，那么可能是{$ref:"auth.json5", $exclude:["/login/", ["/logout/", "GET", "POST"]]}
                         if let Some(perm_str) = perm_obj.get("$ref") {
                             if let Some(perm_str) = perm_str.as_str() {
-                                load_all_api_docs_url(&mut result, perm_str, methods, api_docs, &exclude);
+                                load_all_api_docs_url(
+                                    &mut result,
+                                    perm_str,
+                                    methods,
+                                    api_docs,
+                                    &exclude,
+                                );
                             }
 
                             continue;
@@ -1014,7 +1143,7 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
 
                         url = match perm_obj.get("url") {
                             Some(url) => url.as_str().unwrap(),
-                            None => continue
+                            None => continue,
                         };
                     }
                     _ => {
@@ -1045,7 +1174,6 @@ fn parse_auth_perms(perms_data: Option<&Value>, api_docs: &HashMap<String, ApiDo
     };
     result
 }
-
 
 /// 可以嵌套的删除Value里面的某一个字段数据
 fn remove_value_attribute_field(_key_str: &str, _value: Value) {}
