@@ -152,6 +152,8 @@ If false, the field is optional. Default is true.
 
 
 ### Panda Api 如何使用
+- [Panda Api的说明视频 https://www.bilibili.com/video/av88926940?p=1](https://www.bilibili.com/video/av88926940?p=1)
+- [Panda Api的快速简易视频教程 https://www.bilibili.com/video/av88926940?p=2](https://www.bilibili.com/video/av88926940?p=2)
 - [快速简单的写好第一个接口文档 使用说明(一)](https://www.debugmyself.com/p/2020/1/15/Panda-api%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
 - [接口文档的高级配置 使用说明(二)](https://www.debugmyself.com/p/2020/1/15/Panda-api%E9%AB%98%E7%BA%A7%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E/)
 - [相关字段说明](https://www.debugmyself.com/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
