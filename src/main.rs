@@ -1,19 +1,18 @@
-use actix_web::{middleware, web, App, HttpServer};
 use actix::Actor;
+use actix_web::{middleware, web, App, HttpServer};
 
 use std::sync::Mutex;
 
-mod db;
 mod api;
+mod db;
+mod server;
 mod utils;
 mod websocket;
-mod server;
 
-mod mock;
 mod client;
+mod mock;
 
 use structopt::StructOpt;
-
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -40,7 +39,8 @@ async fn main() -> std::io::Result<()> {
 
     match dirs::home_dir() {
         Some(path) => {
-            let current_dir = std::env::current_dir().expect("Failed to determine current directory");
+            let current_dir =
+                std::env::current_dir().expect("Failed to determine current directory");
             if path == current_dir {
                 log::error!("You can not run panda api on double click, you need run it on shell with command at api docs folder. ex: ./panda , the more at https://github.com/arlicle/panda-api");
                 return Ok(());
@@ -73,14 +73,21 @@ async fn main() -> std::io::Result<()> {
             .app_data(web_db.clone())
             .wrap(middleware::Logger::default())
             .wrap(middleware::Logger::new("%a %{User-Agent}i"))
-            .wrap(middleware::DefaultHeaders::new()
-                .header("Panda-Api", "0.5")
-                .header("Access-Control-Allow-Headers", "*")
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Methods", "*"))
+            .wrap(
+                middleware::DefaultHeaders::new()
+                    .header("Panda-Api", "0.5")
+                    .header("Access-Control-Allow-Headers", "*")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "*"),
+            )
             .service(web::resource("/__api_docs/").route(web::get().to(api::get_api_doc_basic)))
-            .service(web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)))
-            .service(web::resource("/__api_docs/_data/").route(web::get().to(api::get_api_doc_schema_data)))
+            .service(
+                web::resource("/__api_docs/api_data/").route(web::get().to(api::get_api_doc_data)),
+            )
+            .service(
+                web::resource("/__api_docs/_data/")
+                    .route(web::get().to(api::get_api_doc_schema_data)),
+            )
             .service(web::resource("/").route(web::get().to(api::theme_view)))
             .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
             .service(web::resource("/favicon.ico").route(web::get().to(api::theme_view)))
@@ -88,11 +95,10 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(web::resource("/*").to(api::action_handle))
     })
-        .bind(format!("{}:{}", conf.host, conf.port))?
-        .run()
-        .await
+    .bind(format!("{}:{}", conf.host, conf.port))?
+    .run()
+    .await
 }
-
 
 #[derive(Debug, StructOpt)]
 pub struct TimeInfo {
@@ -111,7 +117,6 @@ pub struct TimeInfo {
     /// month (1 - 12)
     #[structopt(default_value = "0")]
     pub month: usize,
-
 }
 
 #[derive(Debug, StructOpt)]
@@ -124,7 +129,6 @@ pub struct Token {
     #[structopt(short, long, default_value = "64")]
     pub length: usize,
 }
-
 
 #[derive(Debug, StructOpt)]
 pub struct Test {
@@ -155,8 +159,6 @@ pub struct Test {
     #[structopt(flatten)]
     pub timeinfo: TimeInfo,
 }
-
-
 
 #[derive(Debug, StructOpt)]
 pub enum Command {

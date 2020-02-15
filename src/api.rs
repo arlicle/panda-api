@@ -1,8 +1,8 @@
-use actix_web::{http, web, Error, HttpRequest, HttpResponse};
-use actix_web::dev::ResourceDef;
-use std::time::{Duration, Instant, SystemTime};
-use std::collections::{HashMap, HashSet};
 use actix_files;
+use actix_web::dev::ResourceDef;
+use actix_web::{http, web, Error, HttpRequest, HttpResponse};
+use std::collections::{HashMap, HashSet};
+use std::time::{Duration, Instant, SystemTime};
 
 use rand::{thread_rng, Rng};
 
@@ -10,29 +10,30 @@ use actix_multipart::Multipart;
 use futures::StreamExt;
 use regex::Regex;
 
+use actix_web_actors::ws;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value, Map};
+use serde_json::{json, Map, Value};
 use std::fs;
 use std::io::prelude::*;
 use std::sync::Mutex;
-use actix_web_actors::ws;
 
 use crate::db;
-use crate::websocket::WsChatSession;
-use crate::server;
-use actix::*;
 use crate::mock;
-use crate::{int, float, timestamp};
-
+use crate::server;
+use crate::websocket::WsChatSession;
+use crate::{float, int, timestamp};
+use actix::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiDocDataRequest {
     filename: String,
 }
 
-
 /// 根据接口文件路径获取接口文档详情
-pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn get_api_doc_data(
+    req_get: web::Query<ApiDocDataRequest>,
+    data: web::Data<Mutex<db::Database>>,
+) -> HttpResponse {
     let data = data.lock().unwrap();
     let api_docs = &data.api_docs;
 
@@ -57,8 +58,7 @@ pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web:
                 let api = api.lock().unwrap();
                 apis.push({ &*api }.clone());
             }
-            return HttpResponse::Ok().json(
-                json!({
+            return HttpResponse::Ok().json(json!({
                     "name": doc.name,
                     "desc": doc.desc,
                     "order": doc.order,
@@ -72,7 +72,6 @@ pub async fn get_api_doc_data(req_get: web::Query<ApiDocDataRequest>, data: web:
       "msg": "没有该接口文档文件"
     }))
 }
-
 
 /// 获取项目接口的基本信息
 /// 返回项目名称，介绍，项目接口简要列表
@@ -101,7 +100,6 @@ pub async fn get_api_doc_basic(data: web::Data<Mutex<db::Database>>) -> HttpResp
     }))
 }
 
-
 /// api docs 在线浏览文档
 /// 前端相关静态皮肤文件展示服务
 pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
@@ -109,7 +107,10 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
 
     // for api documents homepage
     let home_dir = dirs::home_dir().unwrap();
-    let theme_home_dir = format!("{}/.panda_api/theme", home_dir.to_str().unwrap().trim_end_matches("/"));
+    let theme_home_dir = format!(
+        "{}/.panda_api/theme",
+        home_dir.to_str().unwrap().trim_end_matches("/")
+    );
     let theme_file;
     if req_path == "/" {
         theme_file = "/index.html";
@@ -127,28 +128,26 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
 /// 查看上传的 图片或文件
 pub async fn upload_file_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
     let req_path = req.path();
-    let file_path = "_data".to_string() +  req_path;
+    let file_path = "_data".to_string() + req_path;
     return Ok(actix_files::NamedFile::open(file_path)?);
 }
-
-
 
 /// 获取_data目录中的数据, models数据 或者其它加载数据
 pub async fn get_api_doc_schema_data(req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
     let read_me = match fs::read_to_string(&req_get.filename) {
         Ok(x) => x,
-        Err(_) => "no data file".to_string()
+        Err(_) => "no data file".to_string(),
     };
 
-    HttpResponse::Ok().content_type("application/json").body(read_me)
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(read_me)
 }
-
 
 #[derive(Deserialize, Debug)]
 pub struct FormData {
     username: String,
 }
-
 
 pub async fn chat_route(
     req: HttpRequest,
@@ -169,10 +168,15 @@ pub async fn chat_route(
     )
 }
 
-
 /// 处理post、put、delete 请求
 ///
-pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Value>>, request_query: Option<web::Query<Value>>, request_form_data: Option<Multipart>, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+pub async fn action_handle(
+    req: HttpRequest,
+    request_body: Option<web::Json<Value>>,
+    request_query: Option<web::Query<Value>>,
+    request_form_data: Option<Multipart>,
+    db_data: web::Data<Mutex<db::Database>>,
+) -> HttpResponse {
     let body_mode = get_request_body_mode(&req);
     let req_method = req.method().as_str();
 
@@ -187,30 +191,40 @@ pub async fn action_handle(req: HttpRequest, request_body: Option<web::Json<Valu
     };
 
     let request_body = match request_body {
-        Some(x) => {
-            x.into_inner()
-        }
-        None => Value::Null
+        Some(x) => x.into_inner(),
+        None => Value::Null,
     };
 
     let request_query = match request_query {
         Some(x) => x.into_inner(),
-        None => Value::Null
+        None => Value::Null,
     };
 
-    find_response_data(&req, body_mode, request_body, request_query, form_data, db_data)
+    find_response_data(
+        &req,
+        body_mode,
+        request_body,
+        request_query,
+        form_data,
+        db_data,
+    )
 }
-
 
 /// 找到对应url 对应请求的数据
 ///
-fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value, request_query: Value, form_data: Value, db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
+fn find_response_data(
+    req: &HttpRequest,
+    body_mode: String,
+    request_body: Value,
+    request_query: Value,
+    form_data: Value,
+    db_data: web::Data<Mutex<db::Database>>,
+) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
     let db_api_data = &db_data.api_data;
     let req_path = req.path();
     let req_method = req.method().as_str();
     let req_headers = req.headers();
-
 
     let api_data_list = match db_api_data.get(req_path) {
         Some(v) => Some(v),
@@ -230,9 +244,14 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     if let Some(api_data_list) = api_data_list {
         'a: for a_api_data in api_data_list {
             let a_api_data = a_api_data.lock().unwrap();
-            if a_api_data.method.contains(&req_method.to_string()) || a_api_data.method.contains(&"*".to_string()) {
-                if a_api_data.auth { // 权限检查
-                    if let Some(auth_valid_errors) = auth_validator(&req, &a_api_data.url, &db_data.auth_doc) {
+            if a_api_data.method.contains(&req_method.to_string())
+                || a_api_data.method.contains(&"*".to_string())
+            {
+                if a_api_data.auth {
+                    // 权限检查
+                    if let Some(auth_valid_errors) =
+                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                    {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }
                 }
@@ -263,7 +282,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                         }
                     }
                 }
-
 
                 let mut status_code = 200;
                 let mut content_type = "application/json";
@@ -310,7 +328,6 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
                             }
                         }
 
-
                         if let Some(method) = test_case_data.get("method") {
                             // method属于有就匹配，没有就不匹配
                             if !is_request_method_match_test_case(req_method, method) {
@@ -320,7 +337,7 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
                         let v = match test_case_data.get("body") {
                             Some(v) => v,
-                            None => &Value::Null
+                            None => &Value::Null,
                         };
                         if !is_value_equal(&request_body, v) {
                             continue;
@@ -328,7 +345,7 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
                         let v = match test_case_data.get("form-data") {
                             Some(v) => v,
-                            None => &Value::Null
+                            None => &Value::Null,
                         };
                         if !is_value_equal(&form_data, v) {
                             continue;
@@ -336,29 +353,37 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
 
                         let v = match test_case_data.get("query") {
                             Some(v) => v,
-                            None => &Value::Null
+                            None => &Value::Null,
                         };
-                        let request_query = parse_request_query_to_api_query_format(&request_query, &a_api_data.query);
+                        let request_query = parse_request_query_to_api_query_format(
+                            &request_query,
+                            &a_api_data.query,
+                        );
                         if !is_value_equal(&request_query, v) {
                             continue;
                         }
 
                         let case_response = match test_case_data.get("response") {
                             Some(v) => v,
-                            None => &Value::Null
+                            None => &Value::Null,
                         };
 
-                        let case_response = parse_test_case_response(case_response, "", &a_api_data.response);
+                        let case_response =
+                            parse_test_case_response(case_response, "", &a_api_data.response);
                         let serialized = serde_json::to_string(&case_response).unwrap();
-                        return HttpResponse::build(status_code).content_type(content_type).body(serialized);
-//                      return HttpResponse::Ok().json(case_response);
+                        return HttpResponse::build(status_code)
+                            .content_type(content_type)
+                            .body(serialized);
+                        //                      return HttpResponse::Ok().json(case_response);
                     }
                 }
 
                 let x = create_mock_value(&a_api_data.response);
                 let serialized = serde_json::to_string(&x).unwrap();
-                return HttpResponse::build(status_code).content_type(content_type).body(serialized);
-//                return HttpResponse::Ok().json(x);
+                return HttpResponse::build(status_code)
+                    .content_type(content_type)
+                    .body(serialized);
+                //                return HttpResponse::Ok().json(x);
             }
         }
         return HttpResponse::Ok().json(json!({
@@ -373,9 +398,12 @@ fn find_response_data(req: &HttpRequest, body_mode: String, request_body: Value,
     }))
 }
 
-
 /// 处理test_case response中的部分$mock字段
-fn parse_test_case_response(test_case_response: &Value, field_path: &str, response_model: &Value) -> Value {
+fn parse_test_case_response(
+    test_case_response: &Value,
+    field_path: &str,
+    response_model: &Value,
+) -> Value {
     if test_case_response.is_null() {
         return Value::Null;
     }
@@ -401,7 +429,10 @@ fn parse_test_case_response(test_case_response: &Value, field_path: &str, respon
                                     }
 
                                     let mut m = Map::new();
-                                    m.insert(field_key.to_string(), Value::Object(new_model_field_attr));
+                                    m.insert(
+                                        field_key.to_string(),
+                                        Value::Object(new_model_field_attr),
+                                    );
                                     let v = create_mock_value(&Value::Object(m));
                                     for (k, v2) in v {
                                         result.insert(k, v2);
@@ -414,7 +445,7 @@ fn parse_test_case_response(test_case_response: &Value, field_path: &str, respon
                         let v = parse_test_case_response(field, &pointer, response_model);
                         result.insert(field_key.to_string(), v);
                     }
-                },
+                }
                 Value::Array(field_array) => {
                     if field_array.len() >= 1 {
                         let v = &field_array[0];
@@ -422,7 +453,7 @@ fn parse_test_case_response(test_case_response: &Value, field_path: &str, respon
                         let v = parse_test_case_response(v, &pointer, response_model);
                         result.insert(field_key.to_string(), v);
                     }
-                },
+                }
                 _ => {
                     result.insert(field_key.to_string(), field.clone());
                 }
@@ -432,7 +463,6 @@ fn parse_test_case_response(test_case_response: &Value, field_path: &str, respon
 
     Value::Object(result)
 }
-
 
 /// 把request_query 转换为api query的格式
 fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Value) -> Value {
@@ -468,7 +498,10 @@ fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Va
                                     }
                                 }
                                 _ => {
-                                    result.insert(field_key.to_string(), json!(request_query_value_str));
+                                    result.insert(
+                                        field_key.to_string(),
+                                        json!(request_query_value_str),
+                                    );
                                 }
                             }
                         }
@@ -482,7 +515,6 @@ fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Va
 
     request_query.clone()
 }
-
 
 fn is_request_method_match_test_case(request_method: &str, test_case_method: &Value) -> bool {
     if test_case_method.is_string() {
@@ -547,21 +579,19 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
                 }
             }
         }
-        Value::Array(value1_array) => {
-            match value2.as_array() {
-                Some(value2_array) => {
-                    if value1_array == value2_array {
-                        return true;
-                    }
-                }
-                None => {
-                    if value1_array.is_empty() && value2.is_null() {
-                        return true;
-                    }
-                    return false;
+        Value::Array(value1_array) => match value2.as_array() {
+            Some(value2_array) => {
+                if value1_array == value2_array {
+                    return true;
                 }
             }
-        }
+            None => {
+                if value1_array.is_empty() && value2.is_null() {
+                    return true;
+                }
+                return false;
+            }
+        },
         Value::Null => {
             // 让null 和 empty一样的相等
             match value2.as_object() {
@@ -581,7 +611,6 @@ fn is_value_equal(value1: &Value, value2: &Value) -> bool {
     }
     false
 }
-
 
 /// 从请求中获取form_data里面的数据以及文件上传
 async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
@@ -625,8 +654,14 @@ async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
                         let data = chunk.unwrap();
 
                         if let Ok(_) = f.write_all(&data) {
-                            form_data.insert(field_name.to_string(), Value::String(filename.to_string()));
-                            form_data.insert(format!("__{}", field_name), Value::String(format!("/_upload/{}", filename)));
+                            form_data.insert(
+                                field_name.to_string(),
+                                Value::String(filename.to_string()),
+                            );
+                            form_data.insert(
+                                format!("__{}", field_name),
+                                Value::String(format!("/_upload/{}", filename)),
+                            );
                         } else {
                             println!("create file error {}", filepath2);
                         }
@@ -646,7 +681,6 @@ async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
     }
     Value::Object(form_data)
 }
-
 
 /// 获取请求的request_body
 fn get_request_body_mode(req: &HttpRequest) -> String {
@@ -692,7 +726,6 @@ fn is_websocket_connect(req: &HttpRequest) -> bool {
     false
 }
 
-
 fn get_token_from_request(req: &HttpRequest) -> String {
     let headers = req.headers();
     let mut token = "";
@@ -703,7 +736,6 @@ fn get_token_from_request(req: &HttpRequest) -> String {
     }
     token.to_string()
 }
-
 
 /// 判断是否有某个url的权限
 fn is_has_perm(url: &str, method: &str, perms: &HashMap<String, HashSet<String>>) -> bool {
@@ -721,15 +753,18 @@ fn is_has_perm(url: &str, method: &str, perms: &HashMap<String, HashSet<String>>
                 return true;
             }
         }
-        None => return false
+        None => return false,
     }
 
     false
 }
 
-
 /// 判断用户是否有当前接口访问权限，如果有权限返回None，如果没有权限 返回报错信息
-fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db::AuthDoc>) -> Option<&'a Value> {
+fn auth_validator<'a>(
+    req: &HttpRequest,
+    api_url: &str,
+    auth_doc: &'a Option<db::AuthDoc>,
+) -> Option<&'a Value> {
     let token = get_token_from_request(req);
 
     if let Some(auth_data) = auth_doc {
@@ -764,14 +799,13 @@ fn auth_validator<'a>(req: &HttpRequest, api_url: &str, auth_doc: &'a Option<db:
     None
 }
 
-
 pub fn get_field_type(field_attr: &Value) -> String {
     let field_type = match field_attr.get("type") {
         Some(v) => v.as_str().unwrap(),
         None => {
-//            if let Some(v) = field_attr.get("-type") {
-//                v.as_str().unwrap()
-//            } else
+            //            if let Some(v) = field_attr.get("-type") {
+            //                v.as_str().unwrap()
+            //            } else
             if field_attr.is_array() {
                 "array"
             } else if field_attr.is_object() {
@@ -795,9 +829,6 @@ pub fn get_field_type(field_attr: &Value) -> String {
 
     field_type.to_lowercase()
 }
-
-
-
 
 macro_rules! get_string_value {
     ($field_key:expr, $field_type:ident, $field_attr:expr, $result:expr) => {
@@ -831,45 +862,85 @@ macro_rules! get_string_value {
         }
 
         match $field_type {
-            "cword"|"cw" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::cword(length as usize, min_length, max_length)));
-            },
+            "cword" | "cw" => {
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::cword(length as usize, min_length, max_length)),
+                );
+            }
             "ctitle" | "ct" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::ctitle(length, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::ctitle(length, min_length, max_length)),
+                );
+            }
             "csentence" | "cs" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::csentence(length, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::csentence(length, min_length, max_length)),
+                );
+            }
             "csummary" | "cm" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::csummary(length, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::csummary(length, min_length, max_length)),
+                );
+            }
             "cparagraph" | "cp" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::cparagraph(length, min_length, max_length, content_type)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::cparagraph(
+                        length,
+                        min_length,
+                        max_length,
+                        content_type,
+                    )),
+                );
+            }
             "word" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::word(length as usize, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::word(length as usize, min_length, max_length)),
+                );
+            }
             "title" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::title(length, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::title(length, min_length, max_length)),
+                );
+            }
             "sentence" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::sentence(length, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::sentence(length, min_length, max_length)),
+                );
+            }
             "summary" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::summary(length, min_length, max_length)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::summary(length, min_length, max_length)),
+                );
+            }
             "paragraph" => {
-                $result.insert($field_key.clone(), Value::String(mock::text::paragraph(length, min_length, max_length, content_type)));
-            },
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::text::paragraph(
+                        length,
+                        min_length,
+                        max_length,
+                        content_type,
+                    )),
+                );
+            }
             "string" | _ => {
-                $result.insert($field_key.clone(), Value::String(mock::basic::string(length, min_length, max_length)));
+                $result.insert(
+                    $field_key.clone(),
+                    Value::String(mock::basic::string(length, min_length, max_length)),
+                );
             }
         }
-    }
+    };
 }
-
-
-
 
 /// 根据response定义生成返回给前端的mock数据
 ///
@@ -880,7 +951,13 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
         let mut rng = thread_rng();
 
         for (field_key, field_attr) in response_model {
-            if field_key == "$type" || field_key == "$name" || field_key == "$desc" || field_key == "$length" || field_key == "$min_length" || field_key == "$max_length" {
+            if field_key == "$type"
+                || field_key == "$name"
+                || field_key == "$desc"
+                || field_key == "$length"
+                || field_key == "$min_length"
+                || field_key == "$max_length"
+            {
                 continue;
             }
 
@@ -895,7 +972,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                         required = v;
                     }
                 }
-                None => ()
+                None => (),
             }
 
             if !required {
@@ -954,7 +1031,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                         "negfloat" => {
                             max_value = 0.0;
                         }
-                        _ => ()
+                        _ => (),
                     }
 
                     if let Some(min_value1) = field_attr.get("min_value") {
@@ -1000,7 +1077,8 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                             max_decimal_places = 16;
                         }
 
-                        let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
+                        let x =
+                            float!(min_value, max_value, min_decimal_places, max_decimal_places);
                         result.insert(field_key.clone(), Value::from(x));
                     }
                 }
@@ -1033,7 +1111,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                         "negint" => {
                             max_value = 0;
                         }
-                        _ => ()
+                        _ => (),
                     }
 
                     if let Some(min_value1) = field_attr.get("min_value") {
@@ -1107,7 +1185,10 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                     if r == "" {
                         result.insert(field_key.clone(), Value::String("".to_string()));
                     } else {
-                        result.insert(field_key.clone(), Value::String(mock::basic::string_from_regex(r)));
+                        result.insert(
+                            field_key.clone(),
+                            Value::String(mock::basic::string_from_regex(r)),
+                        );
                     }
                 }
                 "image" => {
@@ -1146,7 +1227,12 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                         }
                     }
 
-                    result.insert(field_key.clone(), Value::String(mock::basic::image(size, foreground, background, format, text)));
+                    result.insert(
+                        field_key.clone(),
+                        Value::String(mock::basic::image(
+                            size, foreground, background, format, text,
+                        )),
+                    );
                 }
                 "object" => {
                     let v = create_mock_value(field_attr);
@@ -1198,7 +1284,8 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                                     result2.insert("key".to_string(), field_attr_one.clone());
                                     let mut vec = Vec::with_capacity(length as usize);
                                     while length > 0 {
-                                        let v = create_mock_value(&Value::Object({ &result2 }.clone()));
+                                        let v =
+                                            create_mock_value(&Value::Object({ &result2 }.clone()));
                                         if v.contains_key("key") {
                                             vec.push(v["key"].clone());
                                         }
@@ -1211,7 +1298,9 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                         }
                     }
                 }
-                "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cs" | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence" | "summary" | "paragraph" | _ => {
+                "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cs" | "csummary"
+                | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence" | "summary"
+                | "paragraph" | _ => {
                     get_string_value!(field_key, field_type, field_attr, result);
                 }
             }
@@ -1220,6 +1309,3 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
 
     result
 }
-
-
-

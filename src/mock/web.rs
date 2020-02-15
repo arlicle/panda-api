@@ -1,20 +1,26 @@
-use rand::{thread_rng, Rng};
 use crate::mock;
+use rand::{thread_rng, Rng};
 
-const DOMAIN_SUFFIX:[&str;10] = ["com", "net", "org", "edu", "gov", "cc", "cn", "com.cn", "name", "mobi"];
+const DOMAIN_SUFFIX: [&str; 10] = [
+    "com", "net", "org", "edu", "gov", "cc", "cn", "com.cn", "name", "mobi",
+];
 
 pub fn ip() -> String {
     let mut rng = thread_rng();
-    format!("{}.{}.{}.{}", rng.gen_range(0, 255), rng.gen_range(0, 255), rng.gen_range(0, 255), rng.gen_range(0, 255))
+    format!(
+        "{}.{}.{}.{}",
+        rng.gen_range(0, 255),
+        rng.gen_range(0, 255),
+        rng.gen_range(0, 255),
+        rng.gen_range(0, 255)
+    )
 }
-
 
 pub fn domain_suffix() -> String {
     let mut rng = thread_rng();
     let n = rng.gen_range(0, DOMAIN_SUFFIX.len());
     DOMAIN_SUFFIX[n].to_string()
 }
-
 
 pub fn domain(is_use_www: bool) -> String {
     if !is_use_www {
@@ -31,10 +37,12 @@ pub fn email() -> String {
 pub fn url() -> String {
     let mut rng = thread_rng();
     let n = rng.gen_range(1, 10);
-    let http = if n % 2 == 0 {
-        "http"
-    } else {
-        "https"
-    };
-    format!("{}://{}.{}/{}/", http, mock::text::word(0, 0, 0), domain(false), mock::text::word(0, 0, 0))
+    let http = if n % 2 == 0 { "http" } else { "https" };
+    format!(
+        "{}://{}.{}/{}/",
+        http,
+        mock::text::word(0, 0, 0),
+        domain(false),
+        mock::text::word(0, 0, 0)
+    )
 }
