@@ -1,11 +1,12 @@
-use json5;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+
+use json5;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
 use walkdir::WalkDir;
 
 #[derive(Debug)]
@@ -890,8 +891,10 @@ fn parse_attribute_ref_value(
                 if let Some(e) = value_obj.get("$exclude") {
                     for v2 in e.as_array().unwrap() {
                         let key_str = v2.as_str().unwrap();
-                        if key_str.contains(".") {
-                            // 如果exclude中含有.点，表示要嵌套的去移除字段
+                        if key_str.contains("/") {
+                            // 如果exclude中含有/斜杠，表示要嵌套的去移除字段
+                            let v = remove_val_from_value(Value::Object(new_value), key_str);
+                            new_value = v.as_object().unwrap().clone();
                         } else {
                             new_value.remove(key_str);
                         }
@@ -1175,5 +1178,43 @@ fn parse_auth_perms(
     result
 }
 
-/// 可以嵌套的删除Value里面的某一个字段数据
-fn remove_value_attribute_field(_key_str: &str, _value: Value) {}
+fn parse_index(s: &str) -> Option<usize> {
+    if s.starts_with('+') || (s.starts_with('0') && s.len() != 1) {
+        return None;
+    }
+    s.parse().ok()
+}
+
+/// 从value中删除某一个值
+fn remove_val_from_value(mut value: Value, pointer: &str) -> Value {
+    if pointer == "" {
+        return value;
+    }
+
+    let tokens: Vec<&str> = pointer.trim_start_matches("/").split("/").collect();
+    let mut target = &mut value;
+    let l = tokens.len() - 1;
+    for (i, &token) in tokens.iter().enumerate() {
+        let target_once = target;
+        let target_opt = match target_once {
+            Value::Object(ref mut map) => {
+                if i == l {
+                    map.remove(token);
+                    break;
+                } else {
+                    map.get_mut(token)
+                }
+            }
+            Value::Array(ref mut list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
+            _ => return Value::Null,
+        };
+
+        if let Some(t) = target_opt {
+            target = t;
+        } else {
+            return Value::Null;
+        }
+    }
+
+    value
+}
