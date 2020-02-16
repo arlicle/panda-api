@@ -442,15 +442,15 @@ impl Database {
                     &ref_data,
                     &basic_data.global_value,
                 );
-                let url_base = get_api_field_string_value(
-                    "url_base",
+                let base_url = get_api_field_string_value(
+                    "base_url",
                     "".to_string(),
                     api,
                     &ref_data,
                     &basic_data.global_value,
                 );
-                if &url_base != "" {
-                    url = format!("{}{}", url_base.trim_end_matches("/"), url);
+                if &base_url != "" {
+                    url = format!("{}{}", base_url.trim_end_matches("/"), url);
                 }
 
                 let mut method = get_api_field_array_value(
