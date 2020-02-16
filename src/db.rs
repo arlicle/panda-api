@@ -538,17 +538,26 @@ impl Database {
                     }
                 }
 
+                let mut is_special_private = false;
                 if let Some(r) = api.get("response") {
                     if let Some(rm) = r.as_object() {
                         for (k, v) in rm {
                             response.insert(k.to_string(), v.clone());
                         }
+                    } else {
+                        // 允许response返回任意格式的数据
+                        response.insert("$_special_private".to_string(), r.clone());
+                        is_special_private = true;
                     }
                 }
 
                 // 处理response中的$ref
-                let (mut ref_files2, response) =
+                let (mut ref_files2, mut response) =
                     parse_attribute_ref_value(Value::Object(response), doc_file_obj, doc_file);
+
+                if is_special_private {
+                    response = response.pointer("/$_special_private").unwrap().clone();
+                }
 
                 ref_files.append(&mut ref_files2);
                 for ref_file in ref_files {

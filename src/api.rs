@@ -406,56 +406,70 @@ fn parse_test_case_response(
         return Value::Null;
     }
     let mut result = Map::new();
-    if let Some(response) = test_case_response.as_object() {
-        for (field_key, field) in response {
-            match field {
-                Value::Object(field_obj) => {
-                    if let Some(v) = field_obj.get("$mock") {
-                        if let Some(v2) = v.as_bool() {
-                            if v2 == true {
-                                let pointer = format!("{}/{}", field_path, field_key);
-                                if let Some(model_field) = response_model.pointer(&pointer) {
-                                    let mut new_model_field_attr: Map<String, Value> = Map::new();
-                                    if let Some(model_field_obj) = model_field.as_object() {
-                                        new_model_field_attr = model_field_obj.clone();
-                                        for (k2, v2) in field_obj {
-                                            if k2 == "$mock" {
-                                                continue;
+    match test_case_response{
+        Value::Object(response) => {
+            for (field_key, field) in response {
+                match field {
+                    Value::Object(field_obj) => {
+                        if let Some(v) = field_obj.get("$mock") {
+                            if let Some(v2) = v.as_bool() {
+                                if v2 == true {
+                                    let pointer = format!("{}/{}", field_path, field_key);
+                                    if let Some(model_field) = response_model.pointer(&pointer) {
+                                        let mut new_model_field_attr: Map<String, Value> = Map::new();
+                                        if let Some(model_field_obj) = model_field.as_object() {
+                                            new_model_field_attr = model_field_obj.clone();
+                                            for (k2, v2) in field_obj {
+                                                if k2 == "$mock" {
+                                                    continue;
+                                                }
+                                                new_model_field_attr.insert(k2.to_string(), v2.clone());
                                             }
-                                            new_model_field_attr.insert(k2.to_string(), v2.clone());
                                         }
-                                    }
 
-                                    let mut m = Map::new();
-                                    m.insert(
-                                        field_key.to_string(),
-                                        Value::Object(new_model_field_attr),
-                                    );
-                                    let v = create_mock_value(&Value::Object(m));
-                                    for (k, v2) in v {
-                                        result.insert(k, v2);
+                                        let mut m = Map::new();
+                                        m.insert(
+                                            field_key.to_string(),
+                                            Value::Object(new_model_field_attr),
+                                        );
+                                        let v = create_mock_value(&Value::Object(m));
+                                        for (k, v2) in v {
+                                            result.insert(k, v2);
+                                        }
                                     }
                                 }
                             }
+                        } else {
+                            let pointer = format!("{}/{}", field_path, field_key);
+                            let v = parse_test_case_response(field, &pointer, response_model);
+                            result.insert(field_key.to_string(), v);
                         }
-                    } else {
-                        let pointer = format!("{}/{}", field_path, field_key);
-                        let v = parse_test_case_response(field, &pointer, response_model);
-                        result.insert(field_key.to_string(), v);
                     }
-                }
-                Value::Array(field_array) => {
-                    if field_array.len() >= 1 {
-                        let v = &field_array[0];
-                        let pointer = format!("{}/{}/0", field_path, field_key);
-                        let v = parse_test_case_response(v, &pointer, response_model);
-                        result.insert(field_key.to_string(), v);
+                    Value::Array(field_array) => {
+                        if field_array.len() >= 1 {
+                            let v = &field_array[0];
+                            let pointer = format!("{}/{}/0", field_path, field_key);
+                            let v = parse_test_case_response(v, &pointer, response_model);
+                            result.insert(field_key.to_string(), v);
+                        }
                     }
-                }
-                _ => {
-                    result.insert(field_key.to_string(), field.clone());
+                    _ => {
+                        result.insert(field_key.to_string(), field.clone());
+                    }
                 }
             }
+        },
+        Value::Array(field_array) => {
+            let mut array_result = Vec::new();
+            for item in field_array {
+                let pointer = format!("{}/0", field_path);
+                let v = parse_test_case_response(item, &pointer, response_model);
+                array_result.push(v);
+            }
+            return Value::Array(array_result);
+        }
+        _ => {
+            return test_case_response.clone();
         }
     }
 
