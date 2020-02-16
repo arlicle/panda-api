@@ -390,12 +390,6 @@ impl Database {
             None => json!([]),
         };
 
-        // 增加url_base
-        let mut url_base: Option<&str> = None;
-        if let Some(u) = basic_data.global_value.pointer("/apis/url_base") {
-            url_base = u.as_str();
-        }
-
         let mut api_vec = Vec::new();
         if let Some(api_array) = apis.as_array() {
             let mut ref_data;
@@ -448,8 +442,15 @@ impl Database {
                     &ref_data,
                     &basic_data.global_value,
                 );
-                if let Some(u) = url_base {
-                    url = format!("{}{}", u.trim_end_matches("/"), url);
+                let url_base = get_api_field_string_value(
+                    "url_base",
+                    "".to_string(),
+                    api,
+                    &ref_data,
+                    &basic_data.global_value,
+                );
+                if &url_base != "" {
+                    url = format!("{}{}", url_base.trim_end_matches("/"), url);
                 }
 
                 let mut method = get_api_field_array_value(
@@ -749,10 +750,25 @@ fn get_api_field_string_value(
 ) -> String {
     match api.get(key) {
         Some(d) => {
-            if let Some(v) = d.as_str() {
-                return v.to_owned();
-            } else {
-                return format!("{}", d);
+            match d {
+                Value::String(v) => {
+                    if v == "$del" {
+                        // 如果设置$del,那么就删除返默认值
+                        return default_value;
+                    }
+                    return v.to_owned();
+                }
+                Value::Object(v) => {
+                    if let Some(v2) = v.get("$del") {
+                        // 如果设置$del,那么就删除返默认值
+                        if let Some(v2) = v2.as_bool() {
+                            return default_value;
+                        }
+                    }
+                }
+                _ => {
+                    return format!("{}", d);
+                }
             }
         }
         None => (),
