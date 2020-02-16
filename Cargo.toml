@@ -28,7 +28,7 @@ chrono = "0.4.10"
 
 structopt = "0.3.7"
 regex = "1.3.1"
-walkdir = "2.2.9"
+ignore = "0.4"
 notify = "4.0.15"
 
 actix-web-actors = "2.0.0"

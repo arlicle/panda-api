@@ -5,7 +5,7 @@ use std::fs;
 use std::sync::{Mutex, Arc};
 use std::collections::{HashMap, HashSet};
 use regex::Regex;
-use walkdir::WalkDir;
+use ignore::Walk as WalkDir;
 use std::path::Path;
 
 
