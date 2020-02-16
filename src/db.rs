@@ -902,9 +902,6 @@ fn parse_attribute_ref_value(
         }
 
         for (field_key, field_attrs) in value_obj {
-            if field_key.contains("/") {
-                println!("field_key: {}", field_key);
-            }
             if field_attrs.is_string() && field_attrs.as_str().unwrap() == "$del" {
                 new_value.remove(field_key);
                 continue;
@@ -988,7 +985,8 @@ fn parse_attribute_ref_value(
                 }
                 // --- end 处理 enum
 
-                return (ref_files, Value::Object(new_value));
+                //                return (ref_files, Value::Object(new_value));
+                break;
             }
 
             if let Some(is_del) = field_attrs.pointer("/$del") {
@@ -1005,7 +1003,15 @@ fn parse_attribute_ref_value(
             new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
         }
 
-        return (ref_files, Value::Object(new_value));
+        // 处理嵌套增加或修改属性值的问题 category/category_name
+        let mut new_value_value = Value::Object(new_value.clone());
+        for (field_key, field_attrs) in &new_value {
+            if field_key.contains("/") {
+                new_value_value = modify_val_from_value(new_value_value, field_key, field_attrs);
+            }
+        }
+
+        return (ref_files, new_value_value);
     } else if value.is_array() {
         // 处理array
         if let Some(value_array) = value.as_array() {
@@ -1187,13 +1193,65 @@ fn parse_index(s: &str) -> Option<usize> {
     s.parse().ok()
 }
 
-/// 从value中删除某一个值
+/// 为修改value中嵌套的某一个值或者增加某一个值 /category/id
+fn modify_val_from_value(mut value: Value, pointer: &str, new_value: &Value) -> Value {
+    if pointer == "" {
+        return value;
+    }
+
+    let tokens: Vec<&str> = pointer
+        .trim_start_matches("/")
+        .trim_end_matches("/")
+        .split("/")
+        .collect();
+    if tokens.len() == 0 {
+        return value;
+    }
+    let mut target = &mut value;
+    let l = tokens.len() - 1;
+
+    for (i, &token) in tokens.iter().enumerate() {
+        let target_once = target;
+        let target_opt = match target_once {
+            Value::Object(ref mut map) => {
+                if i == 0 {
+                    map.remove(pointer);
+                }
+                if i == l {
+                    map.insert(token.to_string(), new_value.clone());
+                    break;
+                } else {
+                    map.get_mut(token)
+                }
+            }
+            Value::Array(ref mut list) => parse_index(&token).and_then(move |x| list.get_mut(x)),
+            _ => break,
+        };
+
+        if let Some(t) = target_opt {
+            target = t;
+        } else {
+            break;
+        }
+    }
+
+    value
+}
+
+/// 从value中嵌套的删除某一个值 /category/id
 fn remove_val_from_value(mut value: Value, pointer: &str) -> Value {
     if pointer == "" {
         return value;
     }
 
-    let tokens: Vec<&str> = pointer.trim_start_matches("/").split("/").collect();
+    let tokens: Vec<&str> = pointer
+        .trim_start_matches("/")
+        .trim_end_matches("/")
+        .split("/")
+        .collect();
+    if tokens.len() == 0 {
+        return value;
+    }
     let mut target = &mut value;
     let l = tokens.len() - 1;
     for (i, &token) in tokens.iter().enumerate() {
