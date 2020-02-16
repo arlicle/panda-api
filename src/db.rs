@@ -902,6 +902,9 @@ fn parse_attribute_ref_value(
         }
 
         for (field_key, field_attrs) in value_obj {
+            if field_key.contains("/") {
+                println!("field_key: {}", field_key);
+            }
             if field_attrs.is_string() && field_attrs.as_str().unwrap() == "$del" {
                 new_value.remove(field_key);
                 continue;
@@ -983,8 +986,9 @@ fn parse_attribute_ref_value(
                     new_value.remove(field_key);
                     continue;
                 }
-
                 // --- end 处理 enum
+
+                return (ref_files, Value::Object(new_value));
             }
 
             if let Some(is_del) = field_attrs.pointer("/$del") {
