@@ -390,6 +390,12 @@ impl Database {
             None => json!([]),
         };
 
+        // 增加url_base
+        let mut url_base: Option<&str> = None;
+        if let Some(u) = basic_data.global_value.pointer("/apis/url_base") {
+            url_base = u.as_str();
+        }
+
         let mut api_vec = Vec::new();
         if let Some(api_array) = apis.as_array() {
             let mut ref_data;
@@ -435,13 +441,16 @@ impl Database {
                     &ref_data,
                     &basic_data.global_value,
                 );
-                let url = get_api_field_string_value(
+                let mut url = get_api_field_string_value(
                     "url",
                     "".to_string(),
                     api,
                     &ref_data,
                     &basic_data.global_value,
                 );
+                if let Some(u) = url_base {
+                    url = format!("{}{}", u.trim_end_matches("/"), url);
+                }
 
                 let mut method = get_api_field_array_value(
                     "method",
