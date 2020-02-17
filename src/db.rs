@@ -9,7 +9,7 @@ use json5;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use walkdir::WalkDir;
+use ignore::Walk as WalkDir;
 
 #[derive(Debug)]
 pub struct Database {
