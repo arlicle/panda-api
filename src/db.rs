@@ -5,11 +5,11 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
+use ignore::Walk as WalkDir;
 use json5;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use ignore::Walk as WalkDir;
 
 #[derive(Debug)]
 pub struct Database {
@@ -23,7 +23,7 @@ pub struct Database {
     pub websocket_api: Arc<Mutex<ApiData>>,
     pub auth_doc: Option<AuthDoc>,
     pub settings: Option<Value>,
-    pub md_docs: HashMap<String, MdDoc>
+    pub md_docs: HashMap<String, MdDoc>,
 }
 
 #[derive(Debug)]
@@ -43,7 +43,7 @@ pub struct ApiDoc {
     pub apis: Vec<Arc<Mutex<ApiData>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 /// 仅仅是文档,各类md文档
 pub struct MdDoc {
     pub menu_title: String,
@@ -310,6 +310,9 @@ impl Database {
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap().trim_start_matches("./");
+            if doc_file == "README.md" {
+                continue;
+            }
             if doc_file.ends_with(".md") {
                 Self::load_a_md_doc(doc_file, &mut md_docs);
             } else if doc_file.ends_with(".json5") || doc_file.ends_with(".json") {

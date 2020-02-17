@@ -63,6 +63,11 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
         let (basic_data, settings_value) = db::load_basic_data();
         data.basic_data = basic_data;
         data.settings = settings_value;
+    } else if filepath.ends_with(".md") {
+        // 全局重新加载
+        *data = db::Database::load();
+        println!("{} data update done. {}", filename, Local::now());
+        return;
     } else if !filepath.ends_with(".json5") && !filepath.ends_with(".json") {
         return;
     } else if filename == "_settings.json" || filename == "_settings.json5" {
