@@ -54,7 +54,7 @@ pub async fn get_api_doc_data(
             let mut apis = Vec::new();
             for api in &doc.apis {
                 let api = api.lock().unwrap();
-                apis.push({ &*api }.clone());
+                apis.push(api.clone());
             }
             return HttpResponse::Ok().json(json!({
                     "name": doc.name,

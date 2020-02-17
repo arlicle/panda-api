@@ -159,3 +159,4 @@ If false, the field is optional. Default is true.
 - [相关字段说明](https://www.debugmyself.com/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
 - [test_data使用说明](https://www.debugmyself.com/p/2020/1/27/Panda-api-test_data%E5%8C%B9%E9%85%8D%E8%AF%B4%E6%98%8E/)
 - [Auth接口权限配置说明](https://www.debugmyself.com/p/2020/2/2/Panda-api接口权限配置说明/)
+- [settings配置说明](https://www.debugmyself.com/p/2020/2/16/panda_api_settings/)

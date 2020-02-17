@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use json5;
@@ -21,6 +23,7 @@ pub struct Database {
     pub websocket_api: Arc<Mutex<ApiData>>,
     pub auth_doc: Option<AuthDoc>,
     pub settings: Option<Value>,
+    pub md_docs: HashMap<String, MdDoc>
 }
 
 #[derive(Debug)]
@@ -38,6 +41,16 @@ pub struct ApiDoc {
     pub order: i64,
     pub filename: String,
     pub apis: Vec<Arc<Mutex<ApiData>>>,
+}
+
+#[derive(Debug)]
+/// 仅仅是文档,各类md文档
+pub struct MdDoc {
+    pub menu_title: String,
+    pub desc: String,
+    pub order: i32,
+    pub filename: String,
+    pub children: HashMap<String, MdDoc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -290,19 +303,25 @@ impl Database {
         let mut api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
+        let mut md_docs: HashMap<String, MdDoc> = HashMap::new();
+
         let websocket_api = Arc::new(Mutex::new(ApiData::default()));
 
         for entry in WalkDir::new("./") {
             let e = entry.unwrap();
             let doc_file = e.path().to_str().unwrap().trim_start_matches("./");
-            Self::load_a_api_json_file(
-                doc_file,
-                &basic_data,
-                &mut api_data,
-                &mut api_docs,
-                websocket_api.clone(),
-                &mut fileindex_data,
-            );
+            if doc_file.ends_with(".md") {
+                Self::load_a_md_doc(doc_file, &mut md_docs);
+            } else if doc_file.ends_with(".json5") || doc_file.ends_with(".json") {
+                Self::load_a_api_json_file(
+                    doc_file,
+                    &basic_data,
+                    &mut api_data,
+                    &mut api_docs,
+                    websocket_api.clone(),
+                    &mut fileindex_data,
+                );
+            }
         }
 
         let auth_doc = load_auth_data(&api_docs);
@@ -310,10 +329,49 @@ impl Database {
             basic_data,
             api_data,
             api_docs,
+            md_docs,
             fileindex_data,
             websocket_api,
             auth_doc,
             settings,
+        }
+    }
+
+    /// 加载md文档
+    pub fn load_a_md_doc(doc_file: &str, mut target_once: &mut HashMap<String, MdDoc>) {
+        let mut paths: Vec<&str> = doc_file.split("/").collect();
+        let l = paths.len();
+        let mut tmp_path = "".to_string();
+
+        for (i, &path) in paths.iter().enumerate() {
+            if &tmp_path == "" {
+                tmp_path = path.to_string();
+            } else {
+                tmp_path = format!("{}/{}", tmp_path, path);
+            }
+
+            let mut is_exist = false;
+            if let Some(x) = target_once.get(&tmp_path) {
+                is_exist = true;
+            }
+
+            if is_exist {
+                target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
+            } else {
+                let (order, menu_title) = get_order_and_menutitle_from_md_filename(path);
+                let mut md_doc = MdDoc {
+                    menu_title: menu_title,
+                    desc: "".to_string(),
+                    filename: tmp_path.clone(),
+                    order: order,
+                    children: HashMap::new(),
+                };
+                if i + 1 == l {
+                    load_md_doc_config(doc_file, &mut md_doc);
+                }
+                target_once.insert(tmp_path.clone(), md_doc);
+                target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
+            }
         }
     }
 
@@ -535,7 +593,7 @@ impl Database {
 
                 // 最后查询global_value
                 let mut response: Map<String, Value> =
-                    match basic_data.global_value.pointer("/api/response") {
+                    match basic_data.global_value.pointer("/apis/response") {
                         Some(v) => v.as_object().unwrap().clone(),
                         None => json!({}).as_object().unwrap().clone(),
                     };
@@ -639,6 +697,58 @@ impl Database {
         api_docs.insert(doc_file.to_string(), api_doc);
 
         1
+    }
+}
+
+/// 从md文件名中获取 排序和菜单名称
+fn get_order_and_menutitle_from_md_filename(doc_file: &str) -> (i32, String) {
+    let paths: Vec<&str> = doc_file.split("/").collect();
+    let filename = paths.last().unwrap();
+    let mut order = 0;
+    let mut menu_title = doc_file.to_string();
+    let re = Regex::new(r"^(\$)?(\d+)?\s*(.*?)(\.md)?$").unwrap(); //捕获文件名中的排序
+    for cap in re.captures_iter(filename) {
+        if let Some(v) = &cap.get(2) {
+            order = v.as_str().parse().unwrap();
+        }
+        if let Some(v) = &cap.get(3) {
+            menu_title = v.as_str().to_string();
+        }
+    }
+    (order, menu_title)
+}
+
+/// 加载md文档中文件头的config内容,
+/// 以```{开头```}结尾
+fn load_md_doc_config(doc_file: &str, md_doc: &mut MdDoc) {
+    if let Ok(md_content) = fs::read_to_string(doc_file) {
+        // 获取md文档顶部的配置信息
+        let re = Regex::new(r"^\s*(```)?\s*(\{[\s\S]*?\})\s*(```)?\s*").unwrap();
+        for cap in re.captures_iter(&md_content) {
+            let x = &cap[2];
+            if let Ok(v) = json5::from_str::<Value>(&cap[2]) {
+                if let Some(conf) = v.as_object() {
+                    if let Some(v2) = conf.get("menu_title") {
+                        if let Some(v3) = v2.as_str() {
+                            md_doc.menu_title = v3.to_string();
+                        }
+                    }
+                    if let Some(v2) = conf.get("order") {
+                        if let Some(v3) = v2.as_i64() {
+                            md_doc.order = v3 as i32;
+                        }
+                    }
+                    if let Some(v2) = conf.get("desc") {
+                        if let Some(v3) = v2.as_str() {
+                            md_doc.desc = v3.to_string();
+                        }
+                    }
+                }
+            }
+            break;
+        }
+    } else {
+        log::error!("can not read file {}", &doc_file);
     }
 }
 
@@ -943,6 +1053,12 @@ fn parse_attribute_ref_value(
                 || field_key == "$ref"
                 || field_key == "$exclude"
                 || field_key == "$include"
+                || field_key == "$name"
+                || field_key == "$desc"
+                || field_key == "$required"
+                || field_key == "$max_length"
+                || field_key == "$min_length"
+                || field_key == "$length"
             {
                 continue;
             } else if field_key == "enum" || field_key == "$enum" {
