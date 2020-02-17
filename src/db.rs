@@ -371,6 +371,8 @@ impl Database {
                 };
                 if i + 1 == l {
                     load_md_doc_config(doc_file, &mut md_doc);
+                } else {
+                    md_doc.filename = "".to_string();
                 }
                 target_once.insert(tmp_path.clone(), md_doc);
                 target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;

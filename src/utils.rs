@@ -24,20 +24,27 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
             .unwrap();
         loop {
             match rx.recv() {
-                Ok(event) => match event {
-                    DebouncedEvent::NoticeWrite(f) => {
-                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                Ok(event) => {
+                    println!("jj {:?}", event);
+
+                    match event {
+
+                        DebouncedEvent::NoticeWrite(f) => {
+                            update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                        }
+                        DebouncedEvent::Create(f) => {
+                            update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                        }
+                        DebouncedEvent::NoticeRemove(f) => {
+                            update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                        }
+                        DebouncedEvent::Rename(_f1, f2) => {
+                            update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
+                        }
+                        _ => {
+                            println!("dd {:?}", event);
+                        }
                     }
-                    DebouncedEvent::Create(f) => {
-                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
-                    }
-                    DebouncedEvent::NoticeRemove(f) => {
-                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
-                    }
-                    DebouncedEvent::Rename(_f1, f2) => {
-                        update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
-                    }
-                    _ => {}
                 },
                 Err(e) => println!("watch error: {:?}", e),
             }
