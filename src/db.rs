@@ -347,6 +347,10 @@ impl Database {
         let mut tmp_path = "".to_string();
 
         for (i, &path) in paths.iter().enumerate() {
+            if path == "$_folder.md" {
+                return;
+            }
+
             if &tmp_path == "" {
                 tmp_path = path.to_string();
             } else {
@@ -361,20 +365,29 @@ impl Database {
             if is_exist {
                 target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
             } else {
-                let (order, menu_title) = get_order_and_menutitle_from_md_filename(path);
-                let mut md_doc = MdDoc {
-                    menu_title: menu_title,
-                    desc: "".to_string(),
-                    filename: tmp_path.clone(),
-                    order: order,
-                    children: HashMap::new(),
-                };
-                if i + 1 == l {
-                    load_md_doc_config(doc_file, &mut md_doc);
+                let (mut order, mut menu_title) = get_order_and_menutitle_from_md_filename(path);
+                let mut desc = "".to_string();
+                let mut md_content = "".to_string();
+                let mut filename = "".to_string();
+
+
+                let (order, menu_title, desc, md_content, filename) = if i + 1 == l {
+                    load_md_doc_config(doc_file, order, menu_title, desc, md_content, filename)
                 } else {
-                    md_doc.filename = "".to_string();
-                }
-                target_once.insert(tmp_path.clone(), md_doc);
+                    filename = "".to_string();
+                    load_folder_config(&tmp_path, order, menu_title, desc, md_content, filename)
+                };
+
+                target_once.insert(
+                    tmp_path.clone(),
+                    MdDoc {
+                        menu_title,
+                        desc,
+                        filename,
+                        order,
+                        children: HashMap::new(),
+                    },
+                );
                 target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
             }
         }
@@ -725,36 +738,79 @@ fn get_order_and_menutitle_from_md_filename(doc_file: &str) -> (i32, String) {
 
 /// 加载md文档中文件头的config内容,
 /// 以```{开头```}结尾
-fn load_md_doc_config(doc_file: &str, md_doc: &mut MdDoc) {
-    if let Ok(md_content) = fs::read_to_string(doc_file) {
+fn load_md_doc_config(
+    doc_file: &str,
+    mut order: i32,
+    mut menu_title: String,
+    mut desc: String,
+    mut md_content: String,
+    mut filename: String,
+) -> (i32, String, String, String, String) {
+    if let Ok(content) = fs::read_to_string(doc_file) {
+        md_content = content.clone();
         // 获取md文档顶部的配置信息
         let re = Regex::new(r"^\s*(```)?\s*(\{[\s\S]*?\})\s*(```)?\s*").unwrap();
-        for cap in re.captures_iter(&md_content) {
-            let x = &cap[2];
-            if let Ok(v) = json5::from_str::<Value>(&cap[2]) {
-                if let Some(conf) = v.as_object() {
-                    if let Some(v2) = conf.get("menu_title") {
-                        if let Some(v3) = v2.as_str() {
-                            md_doc.menu_title = v3.to_string();
+        for cap in re.captures_iter(&content) {
+            if let Some(v) = &cap.get(2) {
+                let config_str = v.as_str();
+                if let Ok(v) = json5::from_str::<Value>(config_str) {
+                    md_content = { &content[config_str.len()..] }.to_string();
+                    if let Some(conf) = v.as_object() {
+                        if let Some(v2) = conf.get("menu_title") {
+                            if let Some(v3) = v2.as_str() {
+                                menu_title = v3.to_string();
+                            }
                         }
-                    }
-                    if let Some(v2) = conf.get("order") {
-                        if let Some(v3) = v2.as_i64() {
-                            md_doc.order = v3 as i32;
+                        if let Some(v2) = conf.get("order") {
+                            if let Some(v3) = v2.as_i64() {
+                                order = v3 as i32;
+                            }
                         }
-                    }
-                    if let Some(v2) = conf.get("desc") {
-                        if let Some(v3) = v2.as_str() {
-                            md_doc.desc = v3.to_string();
+                        let mut show_content = false;
+                        if let Some(v2) = conf.get("show_content") {
+                            if let Some(v3) = v2.as_bool() {
+                                show_content = v3;
+                            }
+                        }
+                        if doc_file.ends_with("$_folder.md") {
+                            if show_content {
+                                filename = doc_file.to_string();
+                            }
+                        } else {
+                            filename = doc_file.to_string();
+                        }
+                        if let Some(v2) = conf.get("desc") {
+                            if let Some(v3) = v2.as_str() {
+                                desc = v3.to_string();
+                            }
                         }
                     }
                 }
             }
             break;
         }
-    } else {
-        log::error!("can not read file {}", &doc_file);
     }
+    (order, menu_title, desc, md_content, filename)
+}
+
+/// 加载目录的菜单配置文件
+fn load_folder_config(
+    foldername: &str,
+    mut order: i32,
+    mut menu_title: String,
+    mut desc: String,
+    mut md_content: String,
+    mut filename: String,
+) -> (i32, String, String, String, String) {
+    let folder_md_doc = format!("{0}/$_folder.md", foldername);
+    load_md_doc_config(
+        &folder_md_doc,
+        order,
+        menu_title,
+        desc,
+        md_content,
+        filename,
+    )
 }
 
 fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
