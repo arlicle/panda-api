@@ -49,25 +49,26 @@ pub async fn get_api_doc_data(
         }
     }
 
-    println!("获取接口文档 {}", req_get.filename);
     if req_get.filename.ends_with(".md") {
-        let mut order = 0;
-        let menu_title = "".to_string();
-        let desc = "".to_string();
-        let md_content = "".to_string();
-        let filename = "".to_string();
-        let (order, menu_title, _, md_content, _) = db::load_md_doc_config(
-            &req_get.filename,
-            order,
-            menu_title,
-            desc,
-            md_content,
-            filename,
-        );
-        return HttpResponse::Ok().json(json!({
+        if std::path::Path::new(&req_get.filename).exists() {
+            let mut order = 0;
+            let menu_title = "".to_string();
+            let desc = "".to_string();
+            let md_content = "".to_string();
+            let filename = "".to_string();
+            let (order, menu_title, _, md_content, _) = db::load_md_doc_config(
+                &req_get.filename,
+                order,
+                menu_title,
+                desc,
+                md_content,
+                filename,
+            );
+            return HttpResponse::Ok().json(json!({
                     "order": order,
                     "name": menu_title,
                     "content": md_content}));
+        }
     } else if req_get.filename.ends_with(".json5") {
         for (_, doc) in api_docs {
             if doc.filename == req_get.filename {
@@ -142,6 +143,14 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
     let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
 
     return Ok(actix_files::NamedFile::open(theme_filepath)?);
+}
+
+
+/// 获取用户自己存放的静态文件
+/// 多用于写markdown的时候存放的图片
+pub async fn static_file_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
+    let req_path = req.path().trim_start_matches("/");
+    return Ok(actix_files::NamedFile::open(req_path)?);
 }
 
 /// 查看上传的 图片或文件
@@ -269,7 +278,7 @@ fn find_response_data(
                 if a_api_data.auth {
                     // 权限检查
                     if let Some(auth_valid_errors) =
-                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                    auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
                     {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }
