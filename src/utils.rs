@@ -24,27 +24,21 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
             .unwrap();
         loop {
             match rx.recv() {
-                Ok(event) => {
-                    //                    println!("jj {:?}", event);
-
-                    match event {
-                        DebouncedEvent::NoticeWrite(f) => {
-                            update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
-                        }
-                        DebouncedEvent::Create(f) => {
-                            update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
-                        }
-                        DebouncedEvent::NoticeRemove(f) => {
-                            update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
-                        }
-                        DebouncedEvent::Rename(_f1, f2) => {
-                            update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
-                        }
-                        _ => {
-                            //                            println!("dd {:?}", event);
-                        }
+                Ok(event) => match event {
+                    DebouncedEvent::NoticeWrite(f) => {
+                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
                     }
-                }
+                    DebouncedEvent::Create(f) => {
+                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                    }
+                    DebouncedEvent::NoticeRemove(f) => {
+                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                    }
+                    DebouncedEvent::Rename(_f1, f2) => {
+                        update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
+                    }
+                    _ => {}
+                },
                 Err(e) => println!("watch error: {:?}", e),
             }
         }
@@ -62,6 +56,11 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
     let mut data = data.lock().unwrap();
     let filename = filepath.trim_start_matches(&format!("{}/", current_dir));
 
+    // 暂时全部使用全局重新加载: 这里需要改进
+    *data = db::Database::load();
+    println!("{} data update done. {}", filename, Local::now());
+    return;
+
     let mut delete_files: Vec<String> = Vec::new();
     let mut parse_error_code = 0;
     let mut menus: HashMap<String, db::Menu> = HashMap::new();
@@ -75,14 +74,14 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
         *data = db::Database::load();
         println!("{} data update done. {}", filename, Local::now());
         return;
-    } else if !filepath.ends_with(".json5") && !filepath.ends_with(".json") {
+    } else if !filepath.ends_with(".json5") {
         return;
-    } else if filename == "_settings.json" || filename == "_settings.json5" {
+    } else if filename == "_settings.json5" {
         // 全局重新加载
         *data = db::Database::load();
         println!("{} data update done. {}", filename, Local::now());
         return;
-    } else if filename == "_auth.json" || filename == "_auth.json5" {
+    } else if filename == "_auth.json5" {
         // 加载auth
         let auth_data = db::load_auth_data(&data.api_docs);
         data.auth_doc = auth_data;

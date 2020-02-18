@@ -49,19 +49,40 @@ pub async fn get_api_doc_data(
         }
     }
 
-    for (_, doc) in api_docs {
-        if doc.filename == req_get.filename {
-            let mut apis = Vec::new();
-            for api in &doc.apis {
-                let api = api.lock().unwrap();
-                apis.push(api.clone());
-            }
-            return HttpResponse::Ok().json(json!({
+    println!("获取接口文档 {}", req_get.filename);
+    if req_get.filename.ends_with(".md") {
+        let mut order = 0;
+        let menu_title = "".to_string();
+        let desc = "".to_string();
+        let md_content = "".to_string();
+        let filename = "".to_string();
+        let (order, menu_title, _, md_content, _) = db::load_md_doc_config(
+            &req_get.filename,
+            order,
+            menu_title,
+            desc,
+            md_content,
+            filename,
+        );
+        return HttpResponse::Ok().json(json!({
+                    "order": order,
+                    "name": menu_title,
+                    "content": md_content}));
+    } else if req_get.filename.ends_with(".json5") {
+        for (_, doc) in api_docs {
+            if doc.filename == req_get.filename {
+                let mut apis = Vec::new();
+                for api in &doc.apis {
+                    let api = api.lock().unwrap();
+                    apis.push(api.clone());
+                }
+                return HttpResponse::Ok().json(json!({
                     "name": doc.name,
                     "desc": doc.desc,
                     "order": doc.order,
                     "filename": doc.filename,
                     "apis": apis}));
+            }
         }
     }
 
@@ -406,7 +427,7 @@ fn parse_test_case_response(
         return Value::Null;
     }
     let mut result = Map::new();
-    match test_case_response{
+    match test_case_response {
         Value::Object(response) => {
             for (field_key, field) in response {
                 match field {
@@ -416,14 +437,16 @@ fn parse_test_case_response(
                                 if v2 == true {
                                     let pointer = format!("{}/{}", field_path, field_key);
                                     if let Some(model_field) = response_model.pointer(&pointer) {
-                                        let mut new_model_field_attr: Map<String, Value> = Map::new();
+                                        let mut new_model_field_attr: Map<String, Value> =
+                                            Map::new();
                                         if let Some(model_field_obj) = model_field.as_object() {
                                             new_model_field_attr = model_field_obj.clone();
                                             for (k2, v2) in field_obj {
                                                 if k2 == "$mock" {
                                                     continue;
                                                 }
-                                                new_model_field_attr.insert(k2.to_string(), v2.clone());
+                                                new_model_field_attr
+                                                    .insert(k2.to_string(), v2.clone());
                                             }
                                         }
 
@@ -458,7 +481,7 @@ fn parse_test_case_response(
                     }
                 }
             }
-        },
+        }
         Value::Array(field_array) => {
             let mut array_result = Vec::new();
             for item in field_array {
@@ -810,8 +833,6 @@ fn auth_validator<'a>(
     }
     None
 }
-
-
 
 macro_rules! get_string_value {
     ($field_key:expr, $field_type:ident, $field_attr:expr, $result:expr) => {

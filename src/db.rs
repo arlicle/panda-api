@@ -342,7 +342,7 @@ impl Database {
     }
 
     /// 加载md文档
-    pub fn load_a_md_doc(doc_file: &str, mut target_once: &mut HashMap<String, Menu>) {
+    pub fn load_a_md_doc(doc_file: &str, mut menus: &mut HashMap<String, Menu>) {
         let paths: Vec<&str> = doc_file.split("/").collect();
         let l = paths.len();
         let mut tmp_path = "".to_string();
@@ -359,12 +359,12 @@ impl Database {
             }
 
             let mut is_exist = false;
-            if let Some(_x) = target_once.get(&tmp_path) {
+            if let Some(_x) = menus.get(&tmp_path) {
                 is_exist = true;
             }
 
             if is_exist {
-                target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
+                menus = &mut menus.get_mut(&tmp_path).unwrap().children;
             } else {
                 let (mut order, mut menu_title) = get_order_and_title_from_filename(path, "md");
                 let mut desc = "".to_string();
@@ -378,7 +378,7 @@ impl Database {
                     load_folder_config(&tmp_path, order, menu_title, desc, md_content, filename)
                 };
 
-                target_once.insert(
+                menus.insert(
                     tmp_path.clone(),
                     Menu {
                         desc,
@@ -389,7 +389,7 @@ impl Database {
                         children: HashMap::new(),
                     },
                 );
-                target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
+                menus = &mut menus.get_mut(&tmp_path).unwrap().children;
             }
         }
     }
@@ -496,7 +496,6 @@ impl Database {
             filename: doc_file.to_string(),
             apis: api_vec,
         };
-        //        api_docs.insert(doc_file.to_string(), api_doc);
         api_docs.insert(doc_file.to_string(), api_doc);
 
         // 根据路径加载接口文档的菜单
@@ -505,10 +504,6 @@ impl Database {
         let mut tmp_path = "".to_string();
 
         for (i, &path) in paths.iter().enumerate() {
-            if path == "$_folder.md" {
-                return 1;
-            }
-
             if &tmp_path == "" {
                 tmp_path = path.to_string();
             } else {
@@ -540,15 +535,14 @@ impl Database {
                     filetype = "md".to_string();
                     let (mut menu_order1, mut menu_title1) =
                         get_order_and_title_from_filename(path, "md");
-                    let (menu_order1, menu_title1, desc1, _, filename1) =
-                        load_folder_config(
-                            &tmp_path,
-                            menu_order1,
-                            menu_title1,
-                            desc,
-                            md_content,
-                            filename,
-                        );
+                    let (menu_order1, menu_title1, desc1, _, filename1) = load_folder_config(
+                        &tmp_path,
+                        menu_order1,
+                        menu_title1,
+                        desc,
+                        md_content,
+                        filename,
+                    );
                     menu_order = menu_order1;
                     menu_title = menu_title1;
                     desc = desc1;
@@ -573,7 +567,7 @@ impl Database {
     }
 }
 
-/// 把接口文档的所有接口记载到一个Vec中
+/// 把接口文档的所有接口加载到一个Vec中
 fn load_apis_from_api_doc(
     apis: Value,
     doc_file_obj: &Map<String, Value>,
@@ -838,7 +832,7 @@ fn get_order_and_title_from_filename(doc_file: &str, file_type: &str) -> (i32, S
 
 /// 加载md文档中文件头的config内容,
 /// 以```{开头```}结尾
-fn load_md_doc_config(
+pub fn load_md_doc_config(
     doc_file: &str,
     mut order: i32,
     mut menu_title: String,
