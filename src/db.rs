@@ -369,12 +369,12 @@ impl Database {
                 let (mut order, mut menu_title) = get_order_and_title_from_filename(path, "md");
                 let mut desc = "".to_string();
                 let mut md_content = "".to_string();
-                let mut filename = "".to_string();
+                let mut filename = String::new();
 
                 let (order, menu_title, desc, _, filename) = if i + 1 == l {
+                    filename = doc_file.to_string();
                     load_md_doc_config(doc_file, order, menu_title, desc, md_content, filename)
                 } else {
-                    filename = "".to_string();
                     load_folder_config(&tmp_path, order, menu_title, desc, md_content, filename)
                 };
 
