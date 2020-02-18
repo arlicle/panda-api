@@ -816,36 +816,7 @@ fn auth_validator<'a>(
     None
 }
 
-pub fn get_field_type(field_attr: &Value) -> String {
-    let field_type = match field_attr.get("type") {
-        Some(v) => v.as_str().unwrap(),
-        None => {
-            //            if let Some(v) = field_attr.get("-type") {
-            //                v.as_str().unwrap()
-            //            } else
-            if field_attr.is_array() {
-                "array"
-            } else if field_attr.is_object() {
-                if let Some(field_attr_object) = field_attr.as_object() {
-                    let mut s = "string";
-                    for (_k, v) in field_attr_object {
-                        if v.is_object() {
-                            s = "object";
-                            break;
-                        }
-                    }
-                    s
-                } else {
-                    "string"
-                }
-            } else {
-                "string"
-            }
-        }
-    };
 
-    field_type.to_lowercase()
-}
 
 macro_rules! get_string_value {
     ($field_key:expr, $field_type:ident, $field_attr:expr, $result:expr) => {
@@ -978,7 +949,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                 continue;
             }
 
-            let field_type = get_field_type(field_attr);
+            let field_type = db::get_field_type(field_attr);
             let field_type = field_type.as_str();
 
             let mut required = true;
@@ -1259,7 +1230,7 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                     if let Some(field_attr_array) = field_attr.as_array() {
                         if field_attr_array.len() > 0 {
                             let field_attr_one = &field_attr_array[0];
-                            let field_type2 = get_field_type(field_attr_one);
+                            let field_type2 = db::get_field_type(field_attr_one);
 
                             let mut length = 0;
                             let mut min_length = 3;

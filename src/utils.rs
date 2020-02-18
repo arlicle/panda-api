@@ -25,7 +25,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
         loop {
             match rx.recv() {
                 Ok(event) => {
-                    println!("jj {:?}", event);
+//                    println!("jj {:?}", event);
 
                     match event {
 
@@ -42,7 +42,7 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
                             update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
                         }
                         _ => {
-                            println!("dd {:?}", event);
+//                            println!("dd {:?}", event);
                         }
                     }
                 },

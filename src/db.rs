@@ -471,12 +471,13 @@ impl Database {
             let mut ref_data;
             for api in api_array {
                 ref_data = Value::Null;
+                let mut ref_files: Vec<String> = Vec::new();
 
                 match api.get("$ref") {
                     // 处理api数据引用
                     Some(v) => {
                         let v = v.as_str().unwrap();
-                        let (ref_file, ref_data2) = load_ref_file_data(v, doc_file);
+                        let (ref_file, ref_value) = load_ref_file_data(v, doc_file);
                         if ref_file != "" {
                             match fileindex_data.get_mut(&ref_file) {
                                 Some(x) => {
@@ -490,7 +491,10 @@ impl Database {
                             }
                         }
 
-                        if let Some(value) = ref_data2 {
+                        if let Some(value) = ref_value {
+                            let (mut ref_files2, value) =
+                                parse_attribute_ref_value(value, doc_file_obj, doc_file);
+                            ref_files.append(&mut ref_files2);
                             ref_data = value;
                         }
                     }
@@ -562,8 +566,9 @@ impl Database {
                         None => Value::Null,
                     },
                 };
-                let (mut ref_files, url_param) =
+                let (mut ref_files2, url_param) =
                     parse_attribute_ref_value(url_param, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
 
                 let body = match api.get("body") {
                     Some(body) => body.clone(),
@@ -615,7 +620,6 @@ impl Database {
                         Some(v) => v.as_object().unwrap().clone(),
                         None => json!({}).as_object().unwrap().clone(),
                     };
-
                 if let Some(r) = ref_data.get("response") {
                     if let Some(rm) = r.as_object() {
                         for (k, v) in rm {
@@ -1026,9 +1030,13 @@ fn parse_attribute_ref_value(
         return (ref_files, value);
     }
 
+    let field_type = get_field_type(&value);
     if value.is_object() {
         let value_obj = value.as_object().unwrap();
         let mut new_value = value_obj.clone();
+        if field_type == "object" {
+            new_value.insert("$type".to_string(), Value::String(field_type));
+        }
 
         // 处理文件引入
         if let Some(ref_val) = value_obj.get("$ref") {
@@ -1065,6 +1073,10 @@ fn parse_attribute_ref_value(
             ref_files.push(ref_file);
             let mut has_include = false;
             if let Some(vv) = ref_data {
+                let (mut ref_files2, mut vv) =
+                    parse_attribute_ref_value(vv, doc_file_obj, doc_file);
+                ref_files.append(&mut ref_files2);
+
                 new_value = match vv.as_object() {
                     Some(ref_data_map) => {
                         // 判断是否有include 字段，然后只引入include
@@ -1115,6 +1127,7 @@ fn parse_attribute_ref_value(
                 || field_key == "$exclude"
                 || field_key == "$include"
                 || field_key == "$name"
+                || field_key == "$type"
                 || field_key == "$desc"
                 || field_key == "$required"
                 || field_key == "$max_length"
@@ -1196,7 +1209,6 @@ fn parse_attribute_ref_value(
                 }
                 // --- end 处理 enum
 
-                //                return (ref_files, Value::Object(new_value));
                 break;
             }
 
@@ -1488,4 +1500,36 @@ fn remove_val_from_value(mut value: Value, pointer: &str) -> Value {
     }
 
     value
+}
+
+/// 获取字段的类型
+pub fn get_field_type(field_attr: &Value) -> String {
+    let field_type = match field_attr.get("type") {
+        Some(v) => v.as_str().unwrap(),
+        None => {
+            //            if let Some(v) = field_attr.get("-type") {
+            //                v.as_str().unwrap()
+            //            } else
+            if field_attr.is_array() {
+                "array"
+            } else if field_attr.is_object() {
+                if let Some(field_attr_object) = field_attr.as_object() {
+                    let mut s = "string";
+                    for (_k, v) in field_attr_object {
+                        if v.is_object() {
+                            s = "object";
+                            break;
+                        }
+                    }
+                    s
+                } else {
+                    "string"
+                }
+            } else {
+                "string"
+            }
+        }
+    };
+
+    field_type.to_lowercase()
 }
