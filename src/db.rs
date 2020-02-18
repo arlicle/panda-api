@@ -313,6 +313,7 @@ impl Database {
             if doc_file == "README.md" {
                 continue;
             }
+
             if doc_file.ends_with(".md") {
                 Self::load_a_md_doc(doc_file, &mut menus);
             } else if doc_file.ends_with(".json5") {
