@@ -6,6 +6,7 @@ use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::path::Path;
 use std::io::prelude::*;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
@@ -50,7 +51,7 @@ pub async fn get_api_doc_data(
     }
 
     if req_get.filename.ends_with(".md") {
-        if std::path::Path::new(&req_get.filename).exists() {
+        if Path::new(&req_get.filename).exists() {
             let mut order = 0;
             let menu_title = "".to_string();
             let desc = "".to_string();
@@ -140,9 +141,15 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
         theme_file = req_path;
     }
 
-    let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
+    // 优先加载本地目录皮肤，如果本地目录皮肤不存在，加载安装目录皮肤
+    let theme_filepath = format!("_theme{}", theme_file);
+    if Path::new(&theme_filepath).exists() {
+        return Ok(actix_files::NamedFile::open(theme_filepath)?);
+    }
 
-    return Ok(actix_files::NamedFile::open(theme_filepath)?);
+    // 加载安装目录的皮肤
+    let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
+    Ok(actix_files::NamedFile::open(theme_filepath)?)
 }
 
 
