@@ -77,22 +77,17 @@ pub async fn get_api_doc_data(
 pub async fn get_api_doc_basic(db_data: web::Data<Mutex<db::Database>>) -> HttpResponse {
     let data = db_data.lock().unwrap();
     let basic_data = &data.basic_data;
-    let api_docs = &data.api_docs;
 
     let mut docs = Vec::new();
     if let Some(auth_doc) = &data.auth_doc {
-        docs.push(json!({"name":auth_doc.name, "type":"auth", "desc":auth_doc.desc, "order":0, "filename":"_auth.json5"}));
+        docs.push(json!({"name":auth_doc.name, "filetype":"auth", "desc":auth_doc.desc, "order":0, "filename":"_auth.json5", "children":{}}));
     }
     if let Some(_) = &data.settings {
-        docs.push(json!({"name":"Settings", "type":"settings", "desc":"", "order":0, "filename":"_settings.json5"}));
-    }
-    for (_, doc) in api_docs {
-        docs.push(json!({ "name": doc.name, "type":"api_doc", "desc": doc.desc, "order": doc.order, "filename": doc.filename }));
+        docs.push(json!({"name":"Settings", "filetype":"settings", "desc":"", "order":0, "filename":"_settings.json5", "children":{}}));
     }
 
-    for (_, doc) in &data.md_docs {
-        docs.push(json!({ "name": doc.menu_title, "type":"md_doc", "desc": doc.desc, "order": doc.order, "filename": doc.filename, "children":doc.children }));
-
+    for (_, doc) in &data.menus {
+        docs.push(json!({ "name": doc.name, "filetype":doc.filetype, "desc": doc.desc, "order": doc.order, "filename": doc.filename, "children":doc.children }));
     }
 
     HttpResponse::Ok().json(json!({

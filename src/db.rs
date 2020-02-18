@@ -1,8 +1,6 @@
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 use ignore::Walk as WalkDir;
@@ -23,7 +21,7 @@ pub struct Database {
     pub websocket_api: Arc<Mutex<ApiData>>,
     pub auth_doc: Option<AuthDoc>,
     pub settings: Option<Value>,
-    pub md_docs: HashMap<String, MdDoc>,
+    pub menus: HashMap<String, Menu>,
 }
 
 #[derive(Debug)]
@@ -34,8 +32,9 @@ pub struct BasicData {
     pub global_value: Value,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ApiDoc {
+    // 接口文档的数据
     pub name: String,
     pub desc: String,
     pub order: i64,
@@ -44,17 +43,18 @@ pub struct ApiDoc {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-/// 仅仅是文档,各类md文档
-pub struct MdDoc {
-    pub menu_title: String,
+pub struct Menu {
+    pub name: String,
     pub desc: String,
+    pub filetype: String,
     pub order: i32,
     pub filename: String,
-    pub children: HashMap<String, MdDoc>,
+    pub children: HashMap<String, Menu>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ApiData {
+    // 单个接口的数据
     pub name: String,
     pub desc: String,
     pub url: String,
@@ -303,7 +303,7 @@ impl Database {
         let mut api_data: HashMap<String, Vec<Arc<Mutex<ApiData>>>> = HashMap::new();
         let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
 
-        let mut md_docs: HashMap<String, MdDoc> = HashMap::new();
+        let mut menus: HashMap<String, Menu> = HashMap::new();
 
         let websocket_api = Arc::new(Mutex::new(ApiData::default()));
 
@@ -314,8 +314,8 @@ impl Database {
                 continue;
             }
             if doc_file.ends_with(".md") {
-                Self::load_a_md_doc(doc_file, &mut md_docs);
-            } else if doc_file.ends_with(".json5") || doc_file.ends_with(".json") {
+                Self::load_a_md_doc(doc_file, &mut menus);
+            } else if doc_file.ends_with(".json5") {
                 Self::load_a_api_json_file(
                     doc_file,
                     &basic_data,
@@ -323,6 +323,7 @@ impl Database {
                     &mut api_docs,
                     websocket_api.clone(),
                     &mut fileindex_data,
+                    &mut menus,
                 );
             }
         }
@@ -332,7 +333,7 @@ impl Database {
             basic_data,
             api_data,
             api_docs,
-            md_docs,
+            menus,
             fileindex_data,
             websocket_api,
             auth_doc,
@@ -341,8 +342,8 @@ impl Database {
     }
 
     /// 加载md文档
-    pub fn load_a_md_doc(doc_file: &str, mut target_once: &mut HashMap<String, MdDoc>) {
-        let mut paths: Vec<&str> = doc_file.split("/").collect();
+    pub fn load_a_md_doc(doc_file: &str, mut target_once: &mut HashMap<String, Menu>) {
+        let paths: Vec<&str> = doc_file.split("/").collect();
         let l = paths.len();
         let mut tmp_path = "".to_string();
 
@@ -358,20 +359,19 @@ impl Database {
             }
 
             let mut is_exist = false;
-            if let Some(x) = target_once.get(&tmp_path) {
+            if let Some(_x) = target_once.get(&tmp_path) {
                 is_exist = true;
             }
 
             if is_exist {
                 target_once = &mut target_once.get_mut(&tmp_path).unwrap().children;
             } else {
-                let (mut order, mut menu_title) = get_order_and_menutitle_from_md_filename(path);
+                let (mut order, mut menu_title) = get_order_and_title_from_filename(path, "md");
                 let mut desc = "".to_string();
                 let mut md_content = "".to_string();
                 let mut filename = "".to_string();
 
-
-                let (order, menu_title, desc, md_content, filename) = if i + 1 == l {
+                let (order, menu_title, desc, _, filename) = if i + 1 == l {
                     load_md_doc_config(doc_file, order, menu_title, desc, md_content, filename)
                 } else {
                     filename = "".to_string();
@@ -380,11 +380,12 @@ impl Database {
 
                 target_once.insert(
                     tmp_path.clone(),
-                    MdDoc {
-                        menu_title,
+                    Menu {
                         desc,
                         filename,
                         order,
+                        filetype: "md".to_string(),
+                        name: menu_title,
                         children: HashMap::new(),
                     },
                 );
@@ -402,11 +403,10 @@ impl Database {
         api_docs: &mut HashMap<String, ApiDoc>,
         websocket_api: Arc<Mutex<ApiData>>,
         fileindex_data: &mut HashMap<String, HashSet<String>>,
+        mut menus: &mut HashMap<String, Menu>,
     ) -> i32 {
-        if !(doc_file.ends_with(".json") || doc_file.ends_with(".json5"))
-            || doc_file == "_settings.json"
+        if !doc_file.ends_with(".json5")
             || doc_file == "_settings.json5"
-            || doc_file == "_auth.json"
             || doc_file == "_auth.json5"
             || doc_file.contains("_data/")
             || doc_file.starts_with(".")
@@ -428,19 +428,28 @@ impl Database {
         let json_value: Value = match json5::from_str(&d) {
             Ok(v) => v,
             Err(e) => {
-                println!("Parse json file {} error : {:?}", doc_file, e);
+                log::error!("Parse json file {} error : {:?}", doc_file, e);
                 return -3;
             }
         };
 
         let doc_file_obj = match json_value.as_object() {
             Some(doc_file_obj) => doc_file_obj,
-            None => return -4,
+            None => {
+                log::error!("file {} json5 data is not a object", doc_file);
+                return -4;
+            }
         };
+
+        let (mut menu_order0, mut menu_title0) =
+            get_order_and_title_from_filename(doc_file, "json5");
 
         let mut doc_name = match doc_file_obj.get("name") {
             Some(name) => match name.as_str() {
-                Some(v) => v.to_string(),
+                Some(v) => {
+                    menu_title0 = v.to_string();
+                    v.to_string()
+                }
                 None => format!("{}", name),
             },
             None => doc_file.to_string(),
@@ -457,7 +466,11 @@ impl Database {
         let doc_desc = doc_desc.to_string();
 
         let doc_order: i64 = match doc_file_obj.get("order") {
-            Some(order) => order.as_i64().expect("order is not number"),
+            Some(order) => {
+                let order = order.as_i64().expect("order is not number");
+                menu_order0 = order as i32;
+                order
+            }
             None => 0,
         };
 
@@ -466,191 +479,119 @@ impl Database {
             None => json!([]),
         };
 
-        let mut api_vec = Vec::new();
-        if let Some(api_array) = apis.as_array() {
-            let mut ref_data;
-            for api in api_array {
-                ref_data = Value::Null;
-                let mut ref_files: Vec<String> = Vec::new();
+        let api_vec = load_apis_from_api_doc(
+            apis,
+            doc_file_obj,
+            doc_file,
+            fileindex_data,
+            basic_data,
+            api_data,
+            websocket_api.clone(),
+        );
 
-                match api.get("$ref") {
-                    // 处理api数据引用
-                    Some(v) => {
-                        let v = v.as_str().unwrap();
-                        let (ref_file, ref_value) = load_ref_file_data(v, doc_file);
-                        if ref_file != "" {
-                            match fileindex_data.get_mut(&ref_file) {
-                                Some(x) => {
-                                    x.insert(doc_file.to_string());
-                                }
-                                None => {
-                                    let mut b = HashSet::new();
-                                    b.insert(doc_file.to_string());
-                                    fileindex_data.insert(ref_file, b);
-                                }
-                            }
-                        }
+        let api_doc = ApiDoc {
+            name: doc_name,
+            desc: doc_desc,
+            order: doc_order,
+            filename: doc_file.to_string(),
+            apis: api_vec,
+        };
+        //        api_docs.insert(doc_file.to_string(), api_doc);
+        api_docs.insert(doc_file.to_string(), api_doc);
 
-                        if let Some(value) = ref_value {
-                            let (mut ref_files2, value) =
-                                parse_attribute_ref_value(value, doc_file_obj, doc_file);
-                            ref_files.append(&mut ref_files2);
-                            ref_data = value;
-                        }
-                    }
-                    None => (),
-                }
+        // 根据路径加载接口文档的菜单
+        let paths: Vec<&str> = doc_file.split("/").collect();
+        let l = paths.len();
+        let mut tmp_path = "".to_string();
 
-                let name = get_api_field_string_value(
-                    "name",
-                    doc_file.to_string(),
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
-                let desc = get_api_field_string_value(
-                    "desc",
-                    "".to_string(),
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
-                let mut url = get_api_field_string_value(
-                    "url",
-                    "".to_string(),
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
-                let base_url = get_api_field_string_value(
-                    "base_url",
-                    "".to_string(),
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
-                if &base_url != "" {
-                    url = format!("{}{}", base_url.trim_end_matches("/"), url);
-                }
+        for (i, &path) in paths.iter().enumerate() {
+            if path == "$_folder.md" {
+                return 1;
+            }
 
-                let mut method = get_api_field_array_value(
-                    "method",
-                    vec!["GET".to_string()],
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
-                for m in method.iter_mut() {
-                    *m = m.to_uppercase();
-                }
+            if &tmp_path == "" {
+                tmp_path = path.to_string();
+            } else {
+                tmp_path = format!("{}/{}", tmp_path, path);
+            }
 
-                let body_mode = get_api_field_string_value(
-                    "body_mode",
-                    "json".to_string(),
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
-                let auth = get_api_field_bool_value(
-                    "auth",
-                    false,
-                    api,
-                    &ref_data,
-                    &basic_data.global_value,
-                );
+            let mut is_exist = false;
+            if let Some(_x) = menus.get(&tmp_path) {
+                is_exist = true;
+            }
 
-                let url_param = match api.get("url_param") {
-                    Some(url_param) => url_param.clone(),
-                    None => match ref_data.get("url_param") {
-                        Some(v) => v.clone(),
-                        None => Value::Null,
-                    },
+            if is_exist {
+                menus = &mut menus.get_mut(&tmp_path).unwrap().children;
+            } else {
+                let mut menu_order = 0;
+                let mut menu_title = "".to_string();
+                let mut desc = "".to_string();
+                let mut md_content = "".to_string();
+                let mut filename = "".to_string();
+                let mut filetype = "".to_string();
+
+                if i + 1 == l {
+                    menu_order = menu_order0;
+                    menu_title = menu_title0.clone();
+                    filename = tmp_path.clone();
+                    filetype = "json5".to_string();
+                } else {
+                    filename = "".to_string();
+                    filetype = "md".to_string();
+                    let (mut menu_order1, mut menu_title1) =
+                        get_order_and_title_from_filename(path, "md");
+                    let (menu_order1, menu_title1, desc1, _, filename1) =
+                        load_folder_config(
+                            &tmp_path,
+                            menu_order1,
+                            menu_title1,
+                            desc,
+                            md_content,
+                            filename,
+                        );
+                    menu_order = menu_order1;
+                    menu_title = menu_title1;
+                    desc = desc1;
+                    filename = filename1;
                 };
-                let (mut ref_files2, url_param) =
-                    parse_attribute_ref_value(url_param, doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
 
-                let body = match api.get("body") {
-                    Some(body) => body.clone(),
-                    None => match ref_data.get("body") {
-                        Some(v) => v.clone(),
-                        None => Value::Null,
+                menus.insert(
+                    tmp_path.clone(),
+                    Menu {
+                        desc,
+                        filename,
+                        filetype,
+                        order: menu_order,
+                        name: menu_title,
+                        children: HashMap::new(),
                     },
-                };
-                let (mut ref_files2, body) =
-                    parse_attribute_ref_value(body, doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
+                );
+                menus = &mut menus.get_mut(&tmp_path).unwrap().children;
+            }
+        }
+        1
+    }
+}
 
-                let request_headers = match api.get("request_headers") {
-                    Some(request_headers) => request_headers.clone(),
-                    None => match ref_data.get("request_headers") {
-                        Some(v) => v.clone(),
-                        None => Value::Null,
-                    },
-                };
-                let (mut ref_files2, request_headers) =
-                    parse_attribute_ref_value(request_headers, doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
-
-                let response_headers = match api.get("response_headers") {
-                    Some(response_headers) => response_headers.clone(),
-                    None => match ref_data.get("response_headers") {
-                        Some(v) => v.clone(),
-                        None => Value::Null,
-                    },
-                };
-                let (mut ref_files2, response_headers) =
-                    parse_attribute_ref_value(response_headers, doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
-
-                let query = match api.get("query") {
-                    Some(query) => query.clone(),
-                    None => match ref_data.get("query") {
-                        Some(v) => v.clone(),
-                        None => Value::Null,
-                    },
-                };
-                let (mut ref_files2, query) =
-                    parse_attribute_ref_value(query, doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
-
-                // 最后查询global_value
-                let mut response: Map<String, Value> =
-                    match basic_data.global_value.pointer("/apis/response") {
-                        Some(v) => v.as_object().unwrap().clone(),
-                        None => json!({}).as_object().unwrap().clone(),
-                    };
-                if let Some(r) = ref_data.get("response") {
-                    if let Some(rm) = r.as_object() {
-                        for (k, v) in rm {
-                            response.insert(k.to_string(), v.clone());
-                        }
-                    }
-                }
-
-                let mut is_special_private = false;
-                if let Some(r) = api.get("response") {
-                    if let Some(rm) = r.as_object() {
-                        for (k, v) in rm {
-                            response.insert(k.to_string(), v.clone());
-                        }
-                    } else {
-                        // 允许response返回任意格式的数据
-                        response.insert("$_special_private".to_string(), r.clone());
-                        is_special_private = true;
-                    }
-                }
-
-                // 处理response中的$ref
-                let (mut ref_files2, mut response) =
-                    parse_attribute_ref_value(Value::Object(response), doc_file_obj, doc_file);
-
-                if is_special_private {
-                    response = response.pointer("/$_special_private").unwrap().clone();
-                }
-
-                ref_files.append(&mut ref_files2);
-                for ref_file in ref_files {
+/// 把接口文档的所有接口记载到一个Vec中
+fn load_apis_from_api_doc(
+    apis: Value,
+    doc_file_obj: &Map<String, Value>,
+    doc_file: &str,
+    fileindex_data: &mut HashMap<String, HashSet<String>>,
+    basic_data: &BasicData,
+    api_data: &mut HashMap<String, Vec<Arc<Mutex<ApiData>>>>,
+    websocket_api: Arc<Mutex<ApiData>>,
+) -> Vec<Arc<Mutex<ApiData>>> {
+    let mut api_vec = Vec::new();
+    if let Some(api_array) = apis.as_array() {
+        for api in api_array {
+            let mut ref_data = Value::Null; // 存储api接口上直接$ref一个接口模型的Value
+            let mut ref_files: Vec<String> = Vec::new(); // $ref的文件列表，用于建立ref文件和源文件的索引，方便更新
+            if let Some(ref_file_path_v) = api.get("$ref") {
+                // 处理api $ref加载数据
+                if let Some(ref_file_path) = ref_file_path_v.as_str() {
+                    let (ref_file, ref_value) = load_ref_file_data(ref_file_path, doc_file);
                     if &ref_file != "" {
                         match fileindex_data.get_mut(&ref_file) {
                             Some(x) => {
@@ -663,81 +604,236 @@ impl Database {
                             }
                         }
                     }
-                }
 
-                let test_data = match api.get("test_data") {
-                    Some(test_data) => test_data.clone(),
-                    None => match ref_data.get("test_data") {
-                        Some(v) => v.clone(),
-                        None => Value::Null,
-                    },
-                };
-
-                let o_api_data = ApiData {
-                    name,
-                    desc,
-                    body_mode,
-                    body,
-                    query,
-                    response,
-                    test_data,
-                    url_param,
-                    request_headers,
-                    response_headers,
-                    auth: auth,
-                    url: url.clone(),
-                    method: method.clone(),
-                };
-                let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
-
-                if method.contains(&"WEBSOCKET".to_string()) {
-                    let mut websocket_api = websocket_api.lock().unwrap();
-                    *websocket_api = o_api_data.clone();
-                }
-                // 形成 { url: {method:api} }
-                match api_data.get_mut(&url) {
-                    Some(data) => {
-                        data.push(a_api_data.clone());
-                    }
-                    None => {
-                        let mut x = Vec::new();
-                        x.push(a_api_data.clone());
-                        api_data.insert(url.clone(), x);
+                    if let Some(value) = ref_value {
+                        let (mut ref_files2, value) =
+                            parse_attribute_ref_value(value, doc_file_obj, doc_file);
+                        ref_files.append(&mut ref_files2);
+                        ref_data = value;
                     }
                 }
-                api_vec.push(a_api_data.clone());
             }
+
+            let name = get_api_field_string_value(
+                "name",
+                doc_file.to_string(),
+                api,
+                &ref_data,
+                &basic_data.global_value,
+            );
+            let desc = get_api_field_string_value(
+                "desc",
+                "".to_string(),
+                api,
+                &ref_data,
+                &basic_data.global_value,
+            );
+            let mut url = get_api_field_string_value(
+                "url",
+                "".to_string(),
+                api,
+                &ref_data,
+                &basic_data.global_value,
+            );
+            let base_url = get_api_field_string_value(
+                "base_url",
+                "".to_string(),
+                api,
+                &ref_data,
+                &basic_data.global_value,
+            );
+            if &base_url != "" {
+                url = format!("{}{}", base_url.trim_end_matches("/"), url);
+            }
+
+            let mut method = get_api_field_array_value(
+                "method",
+                vec!["GET".to_string()],
+                api,
+                &ref_data,
+                &basic_data.global_value,
+            );
+            for m in method.iter_mut() {
+                *m = m.to_uppercase();
+            }
+
+            let body_mode = get_api_field_string_value(
+                "body_mode",
+                "json".to_string(),
+                api,
+                &ref_data,
+                &basic_data.global_value,
+            );
+            let auth =
+                get_api_field_bool_value("auth", false, api, &ref_data, &basic_data.global_value);
+
+            let url_param = match api.get("url_param") {
+                Some(url_param) => url_param.clone(),
+                None => match ref_data.get("url_param") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            };
+            let (mut ref_files2, url_param) =
+                parse_attribute_ref_value(url_param, doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+
+            let body = match api.get("body") {
+                Some(body) => body.clone(),
+                None => match ref_data.get("body") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            };
+            let (mut ref_files2, body) = parse_attribute_ref_value(body, doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+
+            let request_headers = match api.get("request_headers") {
+                Some(request_headers) => request_headers.clone(),
+                None => match ref_data.get("request_headers") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            };
+            let (mut ref_files2, request_headers) =
+                parse_attribute_ref_value(request_headers, doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+
+            let response_headers = match api.get("response_headers") {
+                Some(response_headers) => response_headers.clone(),
+                None => match ref_data.get("response_headers") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            };
+            let (mut ref_files2, response_headers) =
+                parse_attribute_ref_value(response_headers, doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+
+            let query = match api.get("query") {
+                Some(query) => query.clone(),
+                None => match ref_data.get("query") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            };
+            let (mut ref_files2, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+
+            // 最后查询global_value
+            let mut response: Map<String, Value> =
+                match basic_data.global_value.pointer("/apis/response") {
+                    Some(v) => v.as_object().unwrap().clone(),
+                    None => json!({}).as_object().unwrap().clone(),
+                };
+            if let Some(r) = ref_data.get("response") {
+                if let Some(rm) = r.as_object() {
+                    for (k, v) in rm {
+                        response.insert(k.to_string(), v.clone());
+                    }
+                }
+            }
+
+            let mut is_special_private = false;
+            if let Some(r) = api.get("response") {
+                if let Some(rm) = r.as_object() {
+                    for (k, v) in rm {
+                        response.insert(k.to_string(), v.clone());
+                    }
+                } else {
+                    // 允许response返回任意格式的数据
+                    response.insert("$_special_private".to_string(), r.clone());
+                    is_special_private = true;
+                }
+            }
+
+            // 处理response中的$ref
+            let (mut ref_files2, mut response) =
+                parse_attribute_ref_value(Value::Object(response), doc_file_obj, doc_file);
+
+            if is_special_private {
+                response = response.pointer("/$_special_private").unwrap().clone();
+            }
+
+            ref_files.append(&mut ref_files2);
+            for ref_file in ref_files {
+                if &ref_file != "" {
+                    match fileindex_data.get_mut(&ref_file) {
+                        Some(x) => {
+                            x.insert(doc_file.to_string());
+                        }
+                        None => {
+                            let mut b = HashSet::new();
+                            b.insert(doc_file.to_string());
+                            fileindex_data.insert(ref_file, b);
+                        }
+                    }
+                }
+            }
+
+            let test_data = match api.get("test_data") {
+                Some(test_data) => test_data.clone(),
+                None => match ref_data.get("test_data") {
+                    Some(v) => v.clone(),
+                    None => Value::Null,
+                },
+            };
+
+            let o_api_data = ApiData {
+                name,
+                desc,
+                body_mode,
+                body,
+                query,
+                response,
+                test_data,
+                url_param,
+                request_headers,
+                response_headers,
+                auth: auth,
+                url: url.clone(),
+                method: method.clone(),
+            };
+            let a_api_data = Arc::new(Mutex::new(o_api_data.clone()));
+
+            if method.contains(&"WEBSOCKET".to_string()) {
+                // 如果method是websocket,表面有websocket接口， 那么就把websocket接口更新配置到websocket配置
+                let mut websocket_api = websocket_api.lock().unwrap();
+                *websocket_api = o_api_data.clone();
+            }
+            // 形成 { url: {method:api} }
+            match api_data.get_mut(&url) {
+                Some(data) => {
+                    data.push(a_api_data.clone());
+                }
+                None => {
+                    let mut x = Vec::new();
+                    x.push(a_api_data.clone());
+                    api_data.insert(url.clone(), x);
+                }
+            }
+            api_vec.push(a_api_data.clone());
         }
-
-        let api_doc = ApiDoc {
-            name: doc_name,
-            desc: doc_desc,
-            order: doc_order,
-            filename: doc_file.to_string(),
-            apis: api_vec,
-        };
-        api_docs.insert(doc_file.to_string(), api_doc);
-
-        1
     }
+    api_vec
 }
 
 /// 从md文件名中获取 排序和菜单名称
-fn get_order_and_menutitle_from_md_filename(doc_file: &str) -> (i32, String) {
+fn get_order_and_title_from_filename(doc_file: &str, file_type: &str) -> (i32, String) {
     let paths: Vec<&str> = doc_file.split("/").collect();
     let filename = paths.last().unwrap();
     let mut order = 0;
-    let mut menu_title = doc_file.to_string();
-    let re = Regex::new(r"^(\$)?(\d+)?\s*(.*?)(\.md)?$").unwrap(); //捕获文件名中的排序
+    let mut name = doc_file.to_string();
+    let re = Regex::new(&format!(r"^(\$)?(\d+)?\s*(.*?)(\.{})?$", file_type)).unwrap(); //捕获文件名中的排序
     for cap in re.captures_iter(filename) {
         if let Some(v) = &cap.get(2) {
             order = v.as_str().parse().unwrap();
         }
         if let Some(v) = &cap.get(3) {
-            menu_title = v.as_str().to_string();
+            name = v.as_str().to_string();
         }
     }
-    (order, menu_title)
+    (order, name)
 }
 
 /// 加载md文档中文件头的config内容,
@@ -936,7 +1032,7 @@ fn get_api_field_string_value(
                 Value::Object(v) => {
                     if let Some(v2) = v.get("$del") {
                         // 如果设置$del,那么就删除返默认值
-                        if let Some(v2) = v2.as_bool() {
+                        if let Some(true) = v2.as_bool() {
                             return default_value;
                         }
                     }

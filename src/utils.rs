@@ -25,10 +25,9 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
         loop {
             match rx.recv() {
                 Ok(event) => {
-//                    println!("jj {:?}", event);
+                    //                    println!("jj {:?}", event);
 
                     match event {
-
                         DebouncedEvent::NoticeWrite(f) => {
                             update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
                         }
@@ -42,10 +41,10 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
                             update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
                         }
                         _ => {
-//                            println!("dd {:?}", event);
+                            //                            println!("dd {:?}", event);
                         }
                     }
-                },
+                }
                 Err(e) => println!("watch error: {:?}", e),
             }
         }
@@ -65,6 +64,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
 
     let mut delete_files: Vec<String> = Vec::new();
     let mut parse_error_code = 0;
+    let mut menus: HashMap<String, db::Menu> = HashMap::new();
 
     if filename == "README.md" {
         let (basic_data, settings_value) = db::load_basic_data();
@@ -101,6 +101,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
                         &mut api_docs,
                         websocket_api.clone(),
                         &mut fileindex_data,
+                        &mut menus,
                     );
                     if parse_error_code == -2 {
                         delete_files.push(ref_file.to_string());
@@ -117,6 +118,7 @@ fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::
             &mut api_docs,
             websocket_api.clone(),
             &mut fileindex_data,
+            &mut menus,
         );
         if parse_error_code == -2 {
             delete_files.push(filename.to_string());
