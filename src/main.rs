@@ -67,8 +67,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(server.clone())
             .app_data(web_db.clone())
-            .wrap(middleware::Logger::default())
-            .wrap(middleware::Logger::new("%a %{User-Agent}i"))
+            .wrap(middleware::Logger::default().exclude("/__api_docs/").exclude("/__api_docs/api_data/").exclude("/__api_docs/_data/"))
+//            .wrap(middleware::Logger::new("%a %{User-Agent}i"))
             .wrap(
                 middleware::DefaultHeaders::new()
                     .header("Panda-Api", "0.5")
@@ -87,7 +87,6 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/").route(web::get().to(api::theme_view)))
             .service(web::resource("/static/*").route(web::get().to(api::theme_view)))
             .service(web::resource("/media/*").route(web::get().to(api::static_file_view)))
-            .service(web::resource("/favicon.ico").route(web::get().to(api::theme_view)))
             .service(web::resource("/_upload/").route(web::get().to(api::upload_file_view)))
             .service(web::resource(&websocket_uri).to(api::chat_route))
             .service(web::resource("/*").to(api::action_handle))

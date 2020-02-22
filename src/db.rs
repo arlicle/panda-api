@@ -368,6 +368,7 @@ impl Database {
                 menus = &mut menus.get_mut(&tmp_path).unwrap().children;
             } else {
                 let (mut order, mut menu_title) = get_order_and_title_from_filename(path, "md");
+
                 let mut desc = "".to_string();
                 let mut md_content = "".to_string();
                 let mut filename = String::new();
@@ -544,6 +545,7 @@ impl Database {
                         md_content,
                         filename,
                     );
+
                     menu_order = menu_order1;
                     menu_title = menu_title1;
                     desc = desc1;
@@ -844,12 +846,17 @@ pub fn load_md_doc_config(
     if let Ok(content) = fs::read_to_string(doc_file) {
         md_content = content.clone();
         // 获取md文档顶部的配置信息
-        let re = Regex::new(r"^\s*(```)?\s*(\{[\s\S]*?\})\s*(```)?\s*").unwrap();
+        let re = Regex::new(r"^\s*(```)?\s*(\{[\s\S]*?\})\s*(```)\s*").unwrap();
         for cap in re.captures_iter(&content) {
             if let Some(v) = &cap.get(2) {
                 let config_str = v.as_str();
+                let mut l = config_str.len() + 6;
+                if let Some(v0) = &cap.get(0) {
+                    l = v0.as_str().len();
+                }
+
                 if let Ok(v) = json5::from_str::<Value>(config_str) {
-                    md_content = { &content[config_str.len()..] }.to_string();
+                    md_content = { &content[l..] }.to_string();
                     if let Some(conf) = v.as_object() {
                         if let Some(v2) = conf.get("menu_title") {
                             if let Some(v3) = v2.as_str() {
@@ -861,7 +868,7 @@ pub fn load_md_doc_config(
                                 order = v3 as i32;
                             }
                         }
-                        let mut show_content = false;
+                        let mut show_content = true;
                         if let Some(v2) = conf.get("show_content") {
                             if let Some(v3) = v2.as_bool() {
                                 show_content = v3;
