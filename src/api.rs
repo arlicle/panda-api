@@ -6,8 +6,8 @@ use actix_web::{http, web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::Path;
 use std::io::prelude::*;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -135,10 +135,8 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
     let theme_file;
     if req_path == "/" {
         theme_file = "/index.html";
-    } else if req_path == "favicon.ico" {
-        theme_file = "/static/favicon.ico";
     } else {
-        theme_file = req_path;
+        theme_file = req_path.trim_start_matches("/__api_docs/theme");
     }
 
     // 优先加载本地目录皮肤，如果本地目录皮肤不存在，加载安装目录皮肤
@@ -151,7 +149,6 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
     let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
     Ok(actix_files::NamedFile::open(theme_filepath)?)
 }
-
 
 /// 获取用户自己存放的静态文件
 /// 多用于写markdown的时候存放的图片
@@ -285,7 +282,7 @@ fn find_response_data(
                 if a_api_data.auth {
                     // 权限检查
                     if let Some(auth_valid_errors) =
-                    auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
                     {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }
@@ -894,7 +891,7 @@ macro_rules! get_string_value {
                     Value::String(mock::text::ctitle(length, min_length, max_length)),
                 );
             }
-            "csentence" | "cs" => {
+            "csentence" | "cstring" | "cs" => {
                 $result.insert(
                     $field_key.clone(),
                     Value::String(mock::text::csentence(length, min_length, max_length)),
@@ -1318,9 +1315,9 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                         }
                     }
                 }
-                "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cs" | "csummary"
-                | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence" | "summary"
-                | "paragraph" | _ => {
+                "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cstring" | "cs"
+                | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence"
+                | "summary" | "paragraph" | _ => {
                     get_string_value!(field_key, field_type, field_attr, result);
                 }
             }

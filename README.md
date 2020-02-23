@@ -4,12 +4,11 @@
 
 Panda api makes it easier to build better api docs more quickly and easy for front end and back end.
 
-Panda api encourages test driven development. it takes care of much of the hassle of web development between front end and back end, when you write done your api docs, you can focus on writing front end without needing to finish the backend. It’s free and open source.
+Panda api encourages test driven development. it takes care of much of the hassle of web development between front end and back end, when you write done your api docs, you can focus on writing front end without needing to develop the backend. It’s free and open source.
 
 Why Panda Api：
-
 1. A better online read api docs.
-2. Use json or json5 to write the api docs，eazy to lean and write.
+2. Use json5 to write the api docs，eazy to lean and write.
 3. Manage you api docs change as your code with git.
 4. You can use Panda api as a back end api service with out backend develop.
 5. Panda api takes test data helps developers auto test back end and front end
@@ -19,7 +18,6 @@ Why Panda Api：
 9. Websocket support
 
 
-## Getting started
 
 ### Install
 
@@ -41,15 +39,32 @@ build and run panda api use `cargo`
 cargo run
 ```
 
+Once Panda Api is installed (see Install above) do this in a terminal:
+``` shell
+panda --help
+```
+You should see the Panda Api command manual page printed to the terminal. This information includes command line options recognized by panda.
 
-### A auth api docus
+
+## Getting started
+
+Let's build a simple project to get our feet wet. We'll create a new directory, say `my-project`, and a file in it, `auth.json5`:
+
+``` shell
+mkdir my-project
+cd my-project
+touch auth.json5
+```
+
+### write a panda api doc
+Edit the file `auth.json5` with the following contents:
 
 ``` json5
 {
     name:"Auth",
     desc:"user login and logout",
     order:1,
-    api:
+    apis:
     [{
         name:"user login",
         desc:"if user login success, will get a token",
@@ -61,8 +76,8 @@ cargo run
             password:{name: "password"}
         },
         response:{
-            code:{name:"response result code", type:"int", desc:"success is 1"},
-            msg:{name:"response result message", type:"string", desc:""},
+            code:{name:"response result code", type:"int", desc:"success is 1", enum:[-1, 1]},
+            msg:{name:"response result message", type:"string"},
             token:{name:"login success, get a user token; login failed, no token", type:"string", required:false}
         },
         test_data:[
@@ -72,19 +87,11 @@ cargo run
             },
             {
                 body:{username:"lily", password:"123"},
-                response:{code:-2, msg:"username not exist"}
+                response:{code:-1, msg:"username not exist"}
             },
             {
                 body:{username:"root", password:"123"},
                 response:{code:1, msg:"login success", token:"fjdlkfjlafjdlaj3jk2l4j"}
-            },
-            {
-                body:{username:"lily"},
-                response:{code:-1, msg:"password is required"}
-            },
-            {
-                body:{password:"123"},
-                response:{code:-1, msg:"username is required"}
             }
         ]
     },
@@ -97,8 +104,8 @@ cargo run
             username:{}
         },
         response:{
-            code:{name:"response result code", type:"int", desc:"success is 1"},
-            msg:{name:"response result message", type:"string", desc:""}
+            code:{name:"response result code", type:"int", desc:"success is 1", enum:[-1, 1]},
+            msg:{name:"response result message", type:"string"}
         },
         test_data:[
             {
@@ -118,29 +125,148 @@ cargo run
 ```
 
 
-#### Field options
+run command `panda` in the `my-project`
+``` shell
+panda
+```
+You should see run info:
+``` shell
+ INFO  actix_server::builder > Starting 8 workers
+ INFO  actix_server::builder > Starting "actix-web-service-127.0.0.1:9000" service on 127.0.0.1:9000
+```
+### view online api docs
+Now we can view the api docs online `http:://127.0.0.1:9000` or `http://localhost:9000`
 
-Each field takes a set of field-specific arguments (documented in the body、query、response field reference). 
+Notice if you get a error
+``` shell
+Error: Os { code: 48, kind: AddrInUse, message: "Address already in use" }
+```
+It's mean the port 9000 is in use, you need to change another one.
+```
+panda -p 9001
+```
+### request the api
+When the panda is running, we can request api in the docs without write a code of backend.
 
-There’s also a set of common arguments available to all field types. All are optional. Here’s a quick summary of the most often-used ones:
+we request the api `/login/` with `test_data` in the docs `auth.json5`.
 
-##### name
-the field name, default is the field
+1th:
+```.language-shell
+curl localhost:9000/login/ -X POST -H "Content-Type:application/json" -d '{"username":"edison","password":"123"}'
+// you will get response
+{"code":-1,"msg":"password incorrect"}
+```
 
-##### desc
-the field description, defaulti is ""
+2th:
+```.language-shell
+curl localhost:9000/login/ -X POST -H "Content-Type:application/json" -d '{"username":"lily","password":"123"}'
+// you will get response
+{"code":-1,"msg":"username not exist"}
+```
 
-##### type
-default it string, the type can be: string, number, bool, object, array
+3th:
+```.language-shell
+curl localhost:9000/login/ -X POST -H "Content-Type:application/json" -d '{"username":"root","password":"123"}'
+// you will get response
+{"code":1,"msg":"login success"}
+```
 
-##### default
-the field default value
+If you request data not defined in the `test_data`, You will get a mock response
 
-##### enum
-enum value list , ex: enum:["a", "b", "c"]
+```.language-shell
+curl localhost:9000/login/ -X POST -H "Content-Type:application/json" -d '{"username":"hello","password":"123"}'
+// you will get response like this
+{"code":1,"msg":"SqM!3Mky@)q1O","token":"OkkdvtKKl(htx#KU6"}
+```
 
-##### required
-If false, the field is optional. Default is true.
+Pretty simple, right? 
+
+mock options can help the mock data more like the production environment, update api `/login/` `response` define:
+```
+...
+response:{
+    code:{name:"response result code", type:"int", desc:"success is 1", enum:[-1, 1]},
+    msg:{name:"response result message", type:"sentence"}, // update type string to sentence
+    token:{name:"login success, get a user token; login failed, no token", type:"string", required:false, length:64} // set the token length:64
+},
+...
+```
+request data not defined in the `test_data` again:
+```.language-shell
+curl localhost:9000/login/ -X POST -H "Content-Type:application/json" -d '{"username":"hello","password":"123"}'
+// you will get response like this
+{"code":1,"msg":"Qphxw ddfcvpy odpi ikdd, ","token":"PRL3%S%Uc&33X%HB*Yflc3qQt(LnC)cf6^0w357F07r3xUyafsvS#mr8BZw6UrMo"}
+```
+
+more field options in here: [https://www.debugmyself.com/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/](https://www.debugmyself.com/p/2020/1/29/Panda-api%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E/)
+
+
+### array and object field
+```.language-json5
+response:{
+    total_page: {name:"total page", type:"number"},
+    current_page: {name:"current page num", type:"number"},
+    result: 
+        [{
+            id:{name:"Article ID", type:"PosInt"},
+            title:{name:"Article title"},
+            category:{
+                id:{name:"category id"},
+                name:{name:"category name"}
+            },
+            author_name:{name:"Author name"},
+            tags:[{
+                id:{name:"Tag id", type:"PosInt"},
+                name:{name:"tag name"}
+            }],
+            created:{name:"article created time", type:"timestamp"}
+        }]
+}
+```
+
+
+### inherit model
+``` shell
+mkdir _data
+cd _data
+touch models.json5
+```
+
+``` json5
+// _datat/models.json5
+{
+    Article:{
+        id:{name:"Article ID", type:"PosInt"},
+        title:{name:"Article Title"},
+        category:{
+            id:{name:"Category ID",},
+            name:{name:"Category Name"}
+        },
+        author_name:{name:"Author name"},
+        tags:[{
+            id:{name:"Tag id", type:"PosInt"},
+            name:{name:"Tag name"}
+        }],
+        created:{name:"article created time", type:"timestamp"}
+    }
+}
+```
+
+``` json5
+body: {
+    $ref:"./_data/models.json5:Article",
+    $exclude:["created", "category/name", "tags/0/name"],
+    id:{name:"Article ID", type:"PosInt", required:false},
+}
+```
+
+``` json5
+response: {
+    $ref:"./_data/models.json5:Article",
+    $exclude:["created", "category/name", "tags/0/name"],
+    id:{name:"Article ID", type:"PosInt", required:false},
+}
+```
 
 
 ## Examples

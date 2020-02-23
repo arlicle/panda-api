@@ -632,15 +632,15 @@ fn load_apis_from_api_doc(
                 &ref_data,
                 &basic_data.global_value,
             );
-            let base_url = get_api_field_string_value(
-                "base_url",
+            let base_path = get_api_field_string_value(
+                "base_path",
                 "".to_string(),
                 api,
                 &ref_data,
                 &basic_data.global_value,
             );
-            if &base_url != "" {
-                url = format!("{}{}", base_url.trim_end_matches("/"), url);
+            if &base_path != "" {
+                url = format!("{}{}", base_path.trim_end_matches("/"), url);
             }
 
             let mut method = get_api_field_array_value(
