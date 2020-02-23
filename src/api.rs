@@ -348,6 +348,7 @@ fn find_response_data(
                     status_code = 200;
                 }
                 let status_code = http::StatusCode::from_u16(status_code as u16).unwrap();
+                let response_type = db::get_field_type(&a_api_data.response);
 
                 // 开始匹配 test_data
                 if let Some(test_data) = a_api_data.test_data.as_array() {
@@ -400,9 +401,19 @@ fn find_response_data(
                             None => &Value::Null,
                         };
 
-                        let case_response =
-                            parse_test_case_response(case_response, "", &a_api_data.response);
-                        let serialized = serde_json::to_string(&case_response).unwrap();
+                        let response = if &response_type != "object" {
+                            // 处理response直接就是一个字符串
+                            let mut m = Map::new();
+                            m.insert("$__response".to_string(), a_api_data.response.clone());
+                            let mut m2 = Map::new();
+                            m2.insert("$__response".to_string(), case_response.clone());
+                            let v = parse_test_case_response(&Value::Object(m2), "", &Value::Object(m));
+                            v.pointer("/$__response").unwrap().clone()
+                        } else {
+                            parse_test_case_response(case_response, "", &a_api_data.response)
+                        };
+
+                        let serialized = serde_json::to_string(&response).unwrap();
                         return HttpResponse::build(status_code)
                             .content_type(content_type)
                             .body(serialized);
@@ -410,8 +421,22 @@ fn find_response_data(
                     }
                 }
 
-                let x = create_mock_value(&a_api_data.response);
-                let serialized = serde_json::to_string(&x).unwrap();
+                let x = if &response_type != "object" {
+                    // 处理response直接就是一个字符串
+                    let mut m = Map::new();
+                    m.insert("$__response".to_string(), a_api_data.response.clone());
+                    create_mock_value(&Value::Object(m))
+                } else {
+                    create_mock_value(&a_api_data.response)
+                };
+
+                let serialized = if let Some(v) = x.get("$__response") {
+                    // 为了处理直接response就是一个字符串
+                    serde_json::to_string(v).unwrap()
+                } else {
+                    serde_json::to_string(&x).unwrap()
+                };
+
                 return HttpResponse::build(status_code)
                     .content_type(content_type)
                     .body(serialized);
@@ -964,16 +989,19 @@ macro_rules! get_string_value {
 pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
-        let response_model = response_model.as_object().unwrap();
+        let response_type = db::get_field_type(response_model);
+
+        let mut response_model_obj = response_model.as_object().unwrap();
         let mut rng = thread_rng();
 
-        for (field_key, field_attr) in response_model {
+        for (field_key, field_attr) in response_model_obj {
             if field_key == "$type"
                 || field_key == "$name"
                 || field_key == "$desc"
                 || field_key == "$length"
                 || field_key == "$min_length"
                 || field_key == "$max_length"
+                || field_key == "$required"
             {
                 continue;
             }
