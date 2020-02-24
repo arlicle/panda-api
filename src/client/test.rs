@@ -1,3 +1,4 @@
+#![allow(unused_must_use)]
 use json5;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
