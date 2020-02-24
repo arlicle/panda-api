@@ -10,6 +10,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
+use std::thread;
 
 use futures::StreamExt;
 use rand::{thread_rng, Rng};
@@ -282,7 +283,7 @@ fn find_response_data(
                 if a_api_data.auth {
                     // 权限检查
                     if let Some(auth_valid_errors) =
-                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                    auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
                     {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }
@@ -412,6 +413,12 @@ fn find_response_data(
                         } else {
                             parse_test_case_response(case_response, "", &a_api_data.response)
                         };
+
+                        if let Some(v) = test_case_data.get("delay") {
+                            if let Some(t) = v.as_u64() {
+                                thread::sleep(Duration::from_millis(t));
+                            }
+                        }
 
                         let serialized = serde_json::to_string(&response).unwrap();
                         return HttpResponse::build(status_code)
@@ -990,7 +997,6 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
     let mut result: Map<String, Value> = Map::new();
     if response_model.is_object() {
         let response_type = db::get_field_type(response_model);
-
         let mut response_model_obj = response_model.as_object().unwrap();
         let mut rng = thread_rng();
 
@@ -1282,6 +1288,67 @@ pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
                 "object" => {
                     let v = create_mock_value(field_attr);
                     result.insert(field_key.clone(), Value::Object(v));
+                }
+                "map" => {
+                    let mut new_result = Map::new();
+                    let mut map_obj: Map<String, Value> = Map::new();
+
+                    if let Some(key_v) = field_attr.get("key") {
+                        map_obj.insert("$key".to_string(), key_v.clone());
+                    } else {
+                        continue;
+                    }
+                    if let Some(value_v) = field_attr.get("value") {
+                        map_obj.insert("$value".to_string(), value_v.clone());
+                    } else {
+                        continue;
+                    }
+                    let mut length = 0;
+                    let mut min_length = 0;
+                    let mut max_length = 7;
+                    if let Some(v) = field_attr.get("length") {
+                        if let Some(v) = v.as_u64() {
+                            length = v;
+                        }
+                    }
+                    if let Some(v) = field_attr.get("min_length") {
+                        if let Some(v) = v.as_u64() {
+                            min_length = v;
+                        }
+                    }
+                    if let Some(v) = field_attr.get("max_length") {
+                        if let Some(v) = v.as_u64() {
+                            max_length = v;
+                        }
+                    }
+                    if length == 0 {
+                        // 默认有5到10个句子
+                        length = rng.gen_range(min_length, max_length);
+                    }
+
+                    while length > 0 {
+                        length -= 1;
+                        let v = create_mock_value(&Value::Object(map_obj.clone()));
+                        if let Some(key_v) = v.get("$key") {
+                            if let Some(value_v) = v.get("$value") {
+                                match key_v {
+                                    Value::String(v) => {
+                                        new_result.insert(v.to_string(), value_v.clone());
+                                    }
+                                    Value::Bool(v) => {
+                                        new_result.insert(v.to_string(), value_v.clone());
+                                    }
+                                    Value::Number(v) => {
+                                        new_result.insert(v.to_string(), value_v.clone());
+                                    }
+                                    _ => {
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    result.insert(field_key.clone(), Value::Object(new_result));
                 }
                 "array" => {
                     if let Some(field_attr_array) = field_attr.as_array() {

@@ -1605,13 +1605,20 @@ pub fn get_field_type(field_attr: &Value) -> String {
     let field_type = match field_attr.get("type") {
         Some(v) => v.as_str().unwrap(),
         None => {
-            //            if let Some(v) = field_attr.get("-type") {
-            //                v.as_str().unwrap()
-            //            } else
+
             if field_attr.is_array() {
                 "array"
             } else if field_attr.is_object() {
                 if let Some(field_attr_object) = field_attr.as_object() {
+                    if let Some(t) = field_attr_object.get("$type") {
+                        // 处理$type是map的情况
+                        if let Some(t) = t.as_str() {
+                            if ["map"].contains(&t) {
+                                return t.to_string();
+                            }
+                        }
+                    }
+
                     let mut s = "string";
                     for (_k, v) in field_attr_object {
                         if v.is_object() {
