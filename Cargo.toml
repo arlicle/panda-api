@@ -1,6 +1,6 @@
 [package]
 name = "panda-api"
-version = "0.7.0"
+version = "0.7.3"
 authors = ["edison <arlicle@gmail.com>"]
 edition = "2018"
 
@@ -18,6 +18,8 @@ futures = "0.3.1"
 dotenv = "0.15.0"
 pretty_env_logger = "0.4.0"
 log = "0.4.8"
+actix-http = "1.0.1"
+
 
 
 serde = {version="1.0.104", features=["derive"]}

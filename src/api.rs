@@ -402,18 +402,7 @@ fn find_response_data(
                             None => &Value::Null,
                         };
 
-                        let response = if &response_type != "object" {
-                            // 处理response直接就是一个字符串
-                            let mut m = Map::new();
-                            m.insert("$__response".to_string(), a_api_data.response.clone());
-                            let mut m2 = Map::new();
-                            m2.insert("$__response".to_string(), case_response.clone());
-                            let v = parse_test_case_response(&Value::Object(m2), "", &Value::Object(m));
-                            v.pointer("/$__response").unwrap().clone()
-                        } else {
-                            parse_test_case_response(case_response, "", &a_api_data.response)
-                        };
-
+                        let response = parse_test_case_response(case_response, "", &a_api_data.response);
                         if let Some(v) = test_case_data.get("delay") {
                             if let Some(t) = v.as_u64() {
                                 thread::sleep(Duration::from_millis(t));
@@ -424,30 +413,16 @@ fn find_response_data(
                         return HttpResponse::build(status_code)
                             .content_type(content_type)
                             .body(serialized);
-                        //                      return HttpResponse::Ok().json(case_response);
                     }
                 }
 
-                let x = if &response_type != "object" {
-                    // 处理response直接就是一个字符串
-                    let mut m = Map::new();
-                    m.insert("$__response".to_string(), a_api_data.response.clone());
-                    create_mock_value(&Value::Object(m))
-                } else {
-                    create_mock_value(&a_api_data.response)
-                };
-
-                let serialized = if let Some(v) = x.get("$__response") {
-                    // 为了处理直接response就是一个字符串
-                    serde_json::to_string(v).unwrap()
-                } else {
-                    serde_json::to_string(&x).unwrap()
-                };
-
+                let mut serialized = "".to_string();
+                if let Some(response) = create_mock_value(&a_api_data.response, "", &a_api_data.response) {
+                    serialized = serde_json::to_string(&response).unwrap();
+                }
                 return HttpResponse::build(status_code)
                     .content_type(content_type)
                     .body(serialized);
-                //                return HttpResponse::Ok().json(x);
             }
         }
         return HttpResponse::Ok().json(json!({
@@ -462,6 +437,7 @@ fn find_response_data(
     }))
 }
 
+
 /// 处理test_case response中的部分$mock字段
 fn parse_test_case_response(
     test_case_response: &Value,
@@ -473,37 +449,34 @@ fn parse_test_case_response(
     }
     let mut result = Map::new();
     match test_case_response {
-        Value::Object(response) => {
-            for (field_key, field) in response {
+        Value::Object(test_response) => {
+            for (field_key, field) in test_response {
                 match field {
                     Value::Object(field_obj) => {
+                        // 拿到$mock设定的字段，并且值要为true
                         if let Some(v) = field_obj.get("$mock") {
-                            if let Some(v2) = v.as_bool() {
-                                if v2 == true {
-                                    let pointer = format!("{}/{}", field_path, field_key);
-                                    if let Some(model_field) = response_model.pointer(&pointer) {
-                                        let mut new_model_field_attr: Map<String, Value> =
-                                            Map::new();
-                                        if let Some(model_field_obj) = model_field.as_object() {
-                                            new_model_field_attr = model_field_obj.clone();
-                                            for (k2, v2) in field_obj {
-                                                if k2 == "$mock" {
-                                                    continue;
-                                                }
-                                                new_model_field_attr
-                                                    .insert(k2.to_string(), v2.clone());
+                            if let Some(true) = v.as_bool() {
+                                // 首先拿出对应response字段的设置
+                                let pointer = format!("{}/{}", field_path, field_key);
+                                if let Some(model_field) = response_model.pointer(&pointer) {
+                                    let mut new_model_field_attr: Map<String, Value> =
+                                        Map::new();
+                                    if let Some(model_field_obj) = model_field.as_object() {
+                                        // 先获取对应response字段的属性
+                                        new_model_field_attr = model_field_obj.clone();
+                                        // 用当前新属性进行值的重写
+                                        for (k2, v2) in field_obj {
+                                            if k2 == "$mock" {
+                                                continue;
                                             }
+                                            new_model_field_attr
+                                                .insert(k2.to_string(), v2.clone());
                                         }
+                                    }
 
-                                        let mut m = Map::new();
-                                        m.insert(
-                                            field_key.to_string(),
-                                            Value::Object(new_model_field_attr),
-                                        );
-                                        let v = create_mock_value(&Value::Object(m));
-                                        for (k, v2) in v {
-                                            result.insert(k, v2);
-                                        }
+                                    let v_obj = Value::Object(new_model_field_attr);
+                                    if let Some(v) = create_mock_value(&v_obj, "", &v_obj){
+                                        result.insert(field_key.to_string(), v);
                                     }
                                 }
                             }
@@ -879,545 +852,679 @@ fn auth_validator<'a>(
     None
 }
 
-macro_rules! get_string_value {
-    ($field_key:expr, $field_type:ident, $field_attr:expr, $result:expr) => {
-        let mut min_length = 0;
-        let mut max_length = 0;
-        let mut length = 0;
-        let mut content_type = "markdown";
 
-        if let Some(min_value1) = $field_attr.get("length") {
-            if let Some(min_value1) = min_value1.as_u64() {
-                length = min_value1;
-            }
-        }
+/// 获取string类型的mock value
+fn get_string_mock_value(field_type: &str, field_attr: &Value) -> Value {
+    let mut min_length = 0;
+    let mut max_length = 0;
+    let mut length = 0;
+    let mut content_type = "markdown";
 
-        if let Some(min_value1) = $field_attr.get("min_length") {
-            if let Some(min_value1) = min_value1.as_u64() {
-                min_length = min_value1;
-            }
+    if let Some(min_value1) = field_attr.get("length") {
+        if let Some(min_value1) = min_value1.as_u64() {
+            length = min_value1;
         }
+    }
 
-        if let Some(max_value1) = $field_attr.get("max_length") {
-            if let Some(max_value1) = max_value1.as_u64() {
-                max_length = max_value1;
-            }
+    if let Some(min_value1) = field_attr.get("min_length") {
+        if let Some(min_value1) = min_value1.as_u64() {
+            min_length = min_value1;
         }
+    }
 
-        if let Some(min_value1) = $field_attr.get("content_type") {
-            if let Some(min_value1) = min_value1.as_str() {
-                content_type = min_value1;
-            }
+    if let Some(max_value1) = field_attr.get("max_length") {
+        if let Some(max_value1) = max_value1.as_u64() {
+            max_length = max_value1;
         }
+    }
 
-        match $field_type {
-            "cword" | "cw" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::cword(length as usize, min_length, max_length)),
-                );
-            }
-            "ctitle" | "ct" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::ctitle(length, min_length, max_length)),
-                );
-            }
-            "csentence" | "cstring" | "cs" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::csentence(length, min_length, max_length)),
-                );
-            }
-            "csummary" | "cm" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::csummary(length, min_length, max_length)),
-                );
-            }
-            "cparagraph" | "cp" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::cparagraph(
-                        length,
-                        min_length,
-                        max_length,
-                        content_type,
-                    )),
-                );
-            }
-            "word" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::word(length as usize, min_length, max_length)),
-                );
-            }
-            "title" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::title(length, min_length, max_length)),
-                );
-            }
-            "sentence" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::sentence(length, min_length, max_length)),
-                );
-            }
-            "summary" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::summary(length, min_length, max_length)),
-                );
-            }
-            "paragraph" => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::text::paragraph(
-                        length,
-                        min_length,
-                        max_length,
-                        content_type,
-                    )),
-                );
-            }
-            "string" | _ => {
-                $result.insert(
-                    $field_key.clone(),
-                    Value::String(mock::basic::string(length, min_length, max_length)),
-                );
-            }
+    if let Some(min_value1) = field_attr.get("content_type") {
+        if let Some(min_value1) = min_value1.as_str() {
+            content_type = min_value1;
         }
-    };
+    }
+
+    if max_length <= min_length {
+        max_length = min_length + 3;
+    }
+
+    match field_type {
+        "name" => {
+            return Value::String(mock::name::name());
+        }
+        "cname" => {
+            return Value::String(mock::name::cname());
+        }
+        "domain" => {
+            return Value::String(mock::web::domain(true));
+        }
+        "ip" => {
+            return Value::String(mock::web::ip());
+        }
+        "email" => {
+            return Value::String(mock::web::email());
+        }
+        "url" => {
+            return Value::String(mock::web::url());
+        }
+        "uuid" => {
+            return Value::String(mock::basic::uuid());
+        }
+        "cword" | "cw" => {
+            return Value::String(mock::text::cword(length as usize, min_length, max_length));
+        }
+        "ctitle" | "ct" => {
+            return Value::String(mock::text::ctitle(length, min_length, max_length));
+        }
+        "csentence" | "cstring" | "cs" => {
+            return Value::String(mock::text::csentence(length, min_length, max_length));
+        }
+        "csummary" | "cm" => {
+            return Value::String(mock::text::csummary(length, min_length, max_length));
+        }
+        "cparagraph" | "cp" => {
+            return Value::String(mock::text::cparagraph(
+                length,
+                min_length,
+                max_length,
+                content_type,
+            ));
+        }
+        "word" => {
+            return Value::String(mock::text::word(length as usize, min_length, max_length));
+        }
+        "title" => {
+            return Value::String(mock::text::title(length, min_length, max_length));
+        }
+        "sentence" => {
+            return Value::String(mock::text::sentence(length, min_length, max_length));
+        }
+        "summary" => {
+            return Value::String(mock::text::summary(length, min_length, max_length));
+        }
+        "paragraph" => {
+            return Value::String(mock::text::paragraph(
+                length,
+                min_length,
+                max_length,
+                content_type,
+            ));
+        }
+        "string" | _ => {
+            return Value::String(mock::basic::string(length, min_length, max_length));
+        }
+    }
 }
 
 /// 根据response定义生成返回给前端的mock数据
 ///
-pub fn create_mock_value(response_model: &Value) -> Map<String, Value> {
-    let mut result: Map<String, Value> = Map::new();
-    if response_model.is_object() {
-        let response_type = db::get_field_type(response_model);
-        let mut response_model_obj = response_model.as_object().unwrap();
-        let mut rng = thread_rng();
+pub fn create_mock_value(response_model: &Value, rec_path: &str, org_response_model: &Value) -> Option<Value> {
+    let mut rng = thread_rng();
+    let response_type = db::get_field_type(response_model);
+    let response_model_type = response_type.as_str();
 
-        for (field_key, field_attr) in response_model_obj {
-            if field_key == "$type"
-                || field_key == "$name"
-                || field_key == "$desc"
-                || field_key == "$length"
-                || field_key == "$min_length"
-                || field_key == "$max_length"
-                || field_key == "$required"
-            {
-                continue;
-            }
+    if is_marked_delete_field(response_model) {
+        return None;
+    }
 
-            let field_type = db::get_field_type(field_attr);
-            let field_type = field_type.as_str();
+    if !["object", "array", "map", "rec"].contains(&response_model_type) {
+        // 只要不是数组 、对象、map、rec 这种结构节点，直接输出mock值
+        return create_mock_value_by_field("", &rec_path, response_model, org_response_model);
+    }
 
-            let mut required = true;
-
-            match field_attr.get("required") {
-                Some(v) => {
-                    if let Some(v) = v.as_bool() {
-                        required = v;
-                    }
-                }
-                None => (),
-            }
-
-            if !required {
-                // 如果required是false，那么返回数据就随机丢失
-                let n = rng.gen_range(0, 10);
-                if n % 2 == 0 {
-                    continue;
-                }
-            }
-
-            if let Some(value1) = field_attr.get("value") {
-                // 如果设定了value，那么就只返回一个固定的值
-                if let Some(value1) = value1.as_i64() {
-                    result.insert(field_key.clone(), Value::from(value1));
-                    continue;
-                }
-            }
-            if let Some(enum_data) = field_attr.get("enum") {
-                // 如果设置了枚举值，那么就只使用枚举值
-                let list = enum_data.as_array().unwrap();
-                if list.len() == 0 {
-                    result.insert(field_key.clone(), Value::Null);
-                    continue;
-                }
-                let n = rng.gen_range(0, list.len());
-                let v = &list[n];
-                match v {
-                    Value::Object(v2) => {
-                        if let Some(v3) = v2.get("$value") {
-                            result.insert(field_key.clone(), v3.clone());
-                        } else {
-                            result.insert(field_key.clone(), v.clone());
-                        }
-                    }
-                    _ => {
-                        result.insert(field_key.clone(), v.clone());
-                    }
-                }
-
-                continue;
-            }
-
-            match field_type {
-                "float" | "posfloat" | "negfloat" => {
-                    let mut min_value = i32::min_value() as f64;
-                    let mut max_value = i32::max_value() as f64;
-
-                    let mut decimal_places = 0;
-                    let mut min_decimal_places = 0;
-                    let mut max_decimal_places = 0;
-
-                    match field_type {
-                        "posfloat" => {
-                            min_value = 0.0;
-                        }
-                        "negfloat" => {
-                            max_value = 0.0;
-                        }
-                        _ => (),
-                    }
-
-                    if let Some(min_value1) = field_attr.get("min_value") {
-                        if let Some(min_value1) = min_value1.as_f64() {
-                            min_value = min_value1;
-                        }
-                    }
-
-                    if let Some(max_value1) = field_attr.get("max_value") {
-                        if let Some(max_value1) = max_value1.as_f64() {
-                            max_value = max_value1;
-                        }
-                    }
-
-                    if let Some(max_value1) = field_attr.get("min_decimal_places") {
-                        if let Some(max_value1) = max_value1.as_u64() {
-                            min_decimal_places = max_value1 as u32;
-                        }
-                    }
-                    if let Some(max_value1) = field_attr.get("max_decimal_places") {
-                        if let Some(max_value1) = max_value1.as_u64() {
-                            max_decimal_places = max_value1 as u32;
-                        }
-                    }
-                    if let Some(max_value1) = field_attr.get("decimal_places") {
-                        if let Some(max_value1) = max_value1.as_u64() {
-                            decimal_places = max_value1 as u32;
-                        }
-                    }
-
-                    if decimal_places > 0 || (min_decimal_places == 0 && max_decimal_places == 0) {
-                        // 如果decimal_places设置了 或者 所有值都没有设置，那么默认就是两位小数
-                        if decimal_places <= 0 {
-                            decimal_places = 2;
-                        }
-                        let x = float!(min_value, max_value, decimal_places);
-                        result.insert(field_key.clone(), Value::from(x));
-                    } else {
-                        if min_decimal_places == 0 {
-                            min_decimal_places = 2;
-                        }
-                        if max_decimal_places == 0 {
-                            max_decimal_places = 16;
-                        }
-
-                        let x =
-                            float!(min_value, max_value, min_decimal_places, max_decimal_places);
-                        result.insert(field_key.clone(), Value::from(x));
-                    }
-                }
-                "timestamp" => {
-                    let mut min_value = 0;
-                    let mut max_value = 0; // 2299年，12月 31日 12时 12 分 12秒
-
-                    if let Some(min_value1) = field_attr.get("min_value") {
-                        if let Some(min_value1) = min_value1.as_u64() {
-                            min_value = min_value1;
-                        }
-                    }
-
-                    if let Some(max_value1) = field_attr.get("max_value") {
-                        if let Some(max_value1) = max_value1.as_u64() {
-                            max_value = max_value1;
-                        }
-                    }
-
-                    let x = timestamp!(min_value, max_value);
-                    result.insert(field_key.clone(), Value::from(x));
-                }
-                "number" | "int" | "posint" | "negint" => {
-                    let mut min_value = i64::min_value();
-                    let mut max_value = i64::max_value();
-                    match field_type {
-                        "posint" => {
-                            min_value = 0;
-                        }
-                        "negint" => {
-                            max_value = 0;
-                        }
-                        _ => (),
-                    }
-
-                    if let Some(min_value1) = field_attr.get("min_value") {
-                        if let Some(min_value1) = min_value1.as_i64() {
-                            min_value = min_value1;
-                        }
-                    }
-
-                    if let Some(max_value1) = field_attr.get("max_value") {
-                        if let Some(max_value1) = max_value1.as_i64() {
-                            max_value = max_value1;
-                        }
-                    }
-                    let x = int!(min_value, max_value);
-                    result.insert(field_key.clone(), Value::from(x));
-                }
-                "date" | "datetime" => {
-                    let mut min_value = "";
-                    let mut max_value = "";
-
-                    if let Some(min_value1) = field_attr.get("min_value") {
-                        if let Some(min_value1) = min_value1.as_str() {
-                            min_value = min_value1;
-                        }
-                    }
-
-                    if let Some(max_value1) = field_attr.get("max_value") {
-                        if let Some(max_value1) = max_value1.as_str() {
-                            max_value = max_value1;
-                        }
-                    }
-                    let d = if field_type == "date" {
-                        mock::basic::datetime(min_value, max_value, "%Y-%m-%d")
-                    } else {
-                        mock::basic::datetime(min_value, max_value, "")
-                    };
-
-                    result.insert(field_key.clone(), Value::from(d));
-                }
-                "name" => {
-                    result.insert(field_key.clone(), Value::String(mock::name::name()));
-                }
-                "cname" => {
-                    result.insert(field_key.clone(), Value::String(mock::name::cname()));
-                }
-                "domain" => {
-                    result.insert(field_key.clone(), Value::String(mock::web::domain(true)));
-                }
-                "ip" => {
-                    result.insert(field_key.clone(), Value::String(mock::web::ip()));
-                }
-                "email" => {
-                    result.insert(field_key.clone(), Value::String(mock::web::email()));
-                }
-                "url" => {
-                    result.insert(field_key.clone(), Value::String(mock::web::url()));
-                }
-                "uuid" => {
-                    result.insert(field_key.clone(), Value::String(mock::basic::uuid()));
-                }
-                "bool" => {
-                    result.insert(field_key.clone(), Value::Bool(mock::basic::bool()));
-                }
-                "regex" => {
-                    let mut r = "";
-                    if let Some(v) = field_attr.get("regex") {
-                        if let Some(v) = v.as_str() {
-                            r = v.trim();
-                        }
-                    }
-                    if r == "" {
-                        result.insert(field_key.clone(), Value::String("".to_string()));
-                    } else {
-                        result.insert(
-                            field_key.clone(),
-                            Value::String(mock::basic::string_from_regex(r)),
-                        );
-                    }
-                }
-                "image" => {
-                    let mut size = "";
-                    let mut foreground = "";
-                    let mut background = "";
-                    let mut format = "";
-                    let mut text = "";
-                    if let Some(v) = field_attr.get("size") {
-                        if let Some(v) = v.as_str() {
-                            size = v;
-                        }
-                    }
-
-                    if let Some(v) = field_attr.get("foreground") {
-                        if let Some(v) = v.as_str() {
-                            foreground = v;
-                        }
-                    }
-
-                    if let Some(v) = field_attr.get("background") {
-                        if let Some(v) = v.as_str() {
-                            background = v;
-                        }
-                    }
-
-                    if let Some(v) = field_attr.get("format") {
-                        if let Some(v) = v.as_str() {
-                            format = v;
-                        }
-                    }
-
-                    if let Some(v) = field_attr.get("text") {
-                        if let Some(v) = v.as_str() {
-                            text = v;
-                        }
-                    }
-
-                    result.insert(
-                        field_key.clone(),
-                        Value::String(mock::basic::image(
-                            size, foreground, background, format, text,
-                        )),
-                    );
-                }
-                "object" => {
-                    let v = create_mock_value(field_attr);
-                    result.insert(field_key.clone(), Value::Object(v));
-                }
-                "map" => {
-                    let mut new_result = Map::new();
-                    let mut map_obj: Map<String, Value> = Map::new();
-
-                    if let Some(key_v) = field_attr.get("key") {
-                        map_obj.insert("$key".to_string(), key_v.clone());
-                    } else {
-                        continue;
-                    }
-                    if let Some(value_v) = field_attr.get("value") {
-                        map_obj.insert("$value".to_string(), value_v.clone());
-                    } else {
-                        continue;
-                    }
-                    let mut length = 0;
-                    let mut min_length = 0;
-                    let mut max_length = 7;
-                    if let Some(v) = field_attr.get("length") {
-                        if let Some(v) = v.as_u64() {
-                            length = v;
-                        }
-                    }
-                    if let Some(v) = field_attr.get("min_length") {
-                        if let Some(v) = v.as_u64() {
-                            min_length = v;
-                        }
-                    }
-                    if let Some(v) = field_attr.get("max_length") {
-                        if let Some(v) = v.as_u64() {
-                            max_length = v;
-                        }
-                    }
-                    if length == 0 {
-                        // 默认有5到10个句子
-                        length = rng.gen_range(min_length, max_length);
-                    }
-
-                    while length > 0 {
-                        length -= 1;
-                        let v = create_mock_value(&Value::Object(map_obj.clone()));
-                        if let Some(key_v) = v.get("$key") {
-                            if let Some(value_v) = v.get("$value") {
-                                match key_v {
-                                    Value::String(v) => {
-                                        new_result.insert(v.to_string(), value_v.clone());
-                                    }
-                                    Value::Bool(v) => {
-                                        new_result.insert(v.to_string(), value_v.clone());
-                                    }
-                                    Value::Number(v) => {
-                                        new_result.insert(v.to_string(), value_v.clone());
-                                    }
-                                    _ => {
-
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    result.insert(field_key.clone(), Value::Object(new_result));
-                }
-                "array" => {
-                    if let Some(field_attr_array) = field_attr.as_array() {
-                        if field_attr_array.len() > 0 {
-                            let field_attr_one = &field_attr_array[0];
-                            let field_type2 = db::get_field_type(field_attr_one);
-
-                            let mut length = 0;
-                            let mut min_length = 3;
-                            let mut max_length = 10;
-                            // 可以设定数组要展示多少个元素
-                            if let Some(v) = field_attr_one.get("$length") {
-                                if let Some(v) = v.as_u64() {
-                                    length = v;
-                                }
-                            }
-
-                            if let Some(v) = field_attr_one.get("$min_length") {
-                                if let Some(v) = v.as_u64() {
-                                    min_length = v;
-                                }
-                            }
-
-                            if let Some(v) = field_attr_one.get("$max_length") {
-                                if let Some(v) = v.as_u64() {
-                                    max_length = v;
-                                }
-                            }
-                            if length == 0 {
-                                length = rng.gen_range(min_length, max_length);
-                            }
-
-                            match field_type2.to_lowercase().as_str() {
-                                "object" => {
-                                    let mut vec = Vec::with_capacity(length as usize);
-                                    while length > 0 {
-                                        let v = create_mock_value(field_attr_one);
-                                        vec.push(Value::Object(v));
-                                        length -= 1;
-                                    }
-                                    result.insert(field_key.clone(), Value::Array(vec));
-                                }
-                                "array" | _ => {
-                                    let mut result2: Map<String, Value> = Map::new();
-                                    result2.insert("key".to_string(), field_attr_one.clone());
-                                    let mut vec = Vec::with_capacity(length as usize);
-                                    while length > 0 {
-                                        let v =
-                                            create_mock_value(&Value::Object({ &result2 }.clone()));
-                                        if v.contains_key("key") {
-                                            vec.push(v["key"].clone());
-                                        }
-                                        length -= 1;
-                                    }
-
-                                    result.insert(field_key.clone(), Value::Array(vec));
-                                }
-                            }
-                        }
-                    }
-                }
-                "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cstring" | "cs"
-                | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence"
-                | "summary" | "paragraph" | _ => {
-                    get_string_value!(field_key, field_type, field_attr, result);
+    if "rec" == response_model_type {
+        if let Some(path) = response_model.get("$ref") {
+            if let Some(path_str) = path.as_str() {
+                if let Some(v) = create_recursive_mock_model(path_str, rec_path, response_model, org_response_model) {
+                    return create_mock_value(&v, "", org_response_model);
                 }
             }
         }
     }
 
-    result
+    if "map" == response_model_type {
+        let key_v = if let Some(v) = response_model.get("$key") {
+            v
+        } else {
+            return None;
+        };
+
+        let value_v = if let Some(v) = response_model.get("$value") {
+            v
+        } else {
+            return None;
+        };
+
+        let mut length = 0;
+        let mut min_length = 0;
+        let mut max_length = 7;
+        if let Some(v) = response_model.get("$length") {
+            if let Some(v) = v.as_u64() {
+                length = v;
+            }
+        }
+        if let Some(v) = response_model.get("$min_length") {
+            if let Some(v) = v.as_u64() {
+                min_length = v;
+            }
+        }
+        if let Some(v) = response_model.get("$max_length") {
+            if let Some(v) = v.as_u64() {
+                max_length = v;
+            }
+        }
+        if max_length <= min_length {
+            max_length = min_length + 3;
+        }
+        if length == 0 {
+            // 默认有5到10个句子
+            length = rng.gen_range(min_length, max_length);
+        }
+
+        let rec_path1 = format!("{}/$key", rec_path);
+        let rec_path2 = format!("{}/$value", rec_path);
+        let mut result = Map::new();
+        while length > 0 {
+            length -= 1;
+            let key = create_mock_value(key_v, &rec_path1, org_response_model);
+            let value = create_mock_value(value_v, &rec_path2, org_response_model);
+            if let Some(value) = value {
+                if let Some(key) = key {
+                    match key {
+                        Value::String(k) => {
+                            result.insert(k, value);
+                        }
+                        Value::Bool(k) => {
+                            result.insert(k.to_string(), value);
+                        }
+                        Value::Number(k) => {
+                            result.insert(k.to_string(), value);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        return Some(Value::Object(result));
+    }
+
+    if let Some(response_model_obj) = response_model.as_object() {
+        let mut result: Map<String, Value> = Map::new();
+        for (field_key, field_attr) in response_model_obj {
+            if is_special_private_key(field_key) {
+                continue;
+            }
+
+            if is_marked_delete_field(field_attr) {
+                continue;
+            }
+
+            let rec_path = format!("{}/{}", rec_path, field_key);
+            if let Some(value) = create_mock_value(field_attr, &rec_path, org_response_model) {
+                result.insert(field_key.to_string(), value);
+            }
+        }
+        return Some(Value::Object(result));
+    }
+
+    if let Some(response_model_array) = response_model.as_array() {
+        let mut array_vec = Vec::new();
+        if response_model_array.len() > 0 {
+            for (index, field_attr_one) in response_model_array.iter().enumerate() {
+                if field_attr_one.is_null() {
+                    continue;
+                }
+                let index = index.to_string();
+                let field_type2 = db::get_field_type(field_attr_one);
+                let mut length = 0;
+                let mut min_length = 3;
+                let mut max_length = 10;
+                // 可以设定数组要展示多少个元素
+                if let Some(v) = field_attr_one.get("$length") {
+                    if let Some(v) = v.as_u64() {
+                        length = v;
+                    }
+                }
+
+                if let Some(v) = field_attr_one.get("$min_length") {
+                    if let Some(v) = v.as_u64() {
+                        min_length = v;
+                    }
+                }
+
+                if let Some(v) = field_attr_one.get("$max_length") {
+                    if let Some(v) = v.as_u64() {
+                        max_length = v;
+                    }
+                }
+                if max_length <= min_length {
+                    max_length = min_length + 3;
+                }
+                if length == 0 {
+                    length = rng.gen_range(min_length, max_length + 1);
+                }
+
+                let mut new_rec_path = format!("{}/{}", rec_path, index);
+                while length > 0 {
+                    if let Some(v) = create_mock_value(field_attr_one, &new_rec_path, org_response_model){
+                        array_vec.push(v);
+                    }
+                    length -= 1;
+                }
+            }
+        }
+        return Some(Value::Array(array_vec));
+    }
+
+    None
+}
+
+
+/// 判断这个字段是否是系统的特殊私有字段
+fn is_special_private_key(field_key: &str) -> bool {
+    if field_key == "$type"
+        || field_key == "$name"
+        || field_key == "$desc"
+        || field_key == "$ref"
+        || field_key == "$length"
+        || field_key == "$min_length"
+        || field_key == "$max_length"
+        || field_key == "$required"
+    {
+        return true;
+    }
+    return false;
+}
+
+/// 根据字段和字段属性，生成mock数据
+fn create_mock_value_by_field(field_key: &str, rec_path: &str, field_attr: &Value, org_response_model: &Value) -> Option<Value> {
+    if is_special_private_key(field_key)
+        || field_attr.is_null()
+    {
+        return None;
+    }
+
+    let mut rng = thread_rng();
+    let field_type = db::get_field_type(field_attr);
+    let field_type = field_type.as_str();
+
+    let mut required = true;
+
+    match field_attr.get("required") {
+        Some(v) => {
+            if let Some(v) = v.as_bool() {
+                required = v;
+            }
+        }
+        None => (),
+    }
+
+    if !required {
+        // 如果required是false，那么返回数据就随机丢失
+        let n = rng.gen_range(0, 10);
+        if n % 2 == 0 {
+            return None;
+        }
+    }
+
+    if let Some(value1) = field_attr.get("value") {
+        // 如果设定了value，那么就只返回一个固定的值
+        return Some(value1.clone());
+    }
+
+    if let Some(enum_data) = field_attr.get("enum") {
+        // 如果设置了枚举值，那么就只使用枚举值
+        let list = enum_data.as_array().unwrap();
+        if list.len() == 0 {
+            return Some(Value::Null);
+        }
+        let n = rng.gen_range(0, list.len());
+        let v = &list[n];
+        if let Some(v2) = v.pointer("/$value") {
+            return Some(v2.clone());
+        }
+        return Some(Value::Null);
+    }
+
+    if ["float", "posfloat", "negfloat"].contains(&field_type) {
+        let mut min_value = i32::min_value() as f64;
+        let mut max_value = i32::max_value() as f64;
+        let mut decimal_places = 0;
+        let mut min_decimal_places = 0;
+        let mut max_decimal_places = 0;
+
+        match field_type {
+            "posfloat" => {
+                min_value = 0.0;
+            }
+            "negfloat" => {
+                max_value = 0.0;
+            }
+            _ => (),
+        }
+
+        if let Some(v) = field_attr.get("min_value") {
+            if let Some(v) = v.as_f64() {
+                min_value = v;
+            }
+        }
+
+        if let Some(v) = field_attr.get("max_value") {
+            if let Some(v) = v.as_f64() {
+                max_value = v;
+            }
+        }
+
+        if let Some(v) = field_attr.get("min_decimal_places") {
+            if let Some(v) = v.as_u64() {
+                min_decimal_places = v as u32;
+            }
+        }
+        if let Some(v) = field_attr.get("max_decimal_places") {
+            if let Some(v) = v.as_u64() {
+                max_decimal_places = v as u32;
+            }
+        }
+        if let Some(v) = field_attr.get("decimal_places") {
+            if let Some(v) = v.as_u64() {
+                decimal_places = v as u32;
+            }
+        }
+
+        if decimal_places > 0 || (min_decimal_places == 0 && max_decimal_places == 0) {
+            // 如果decimal_places设置了 或者 所有值都没有设置，那么默认就是两位小数
+            if decimal_places <= 0 {
+                decimal_places = 2;
+            }
+            let x = float!(min_value, max_value, decimal_places);
+            return Some(Value::from(x));
+        } else {
+            if min_decimal_places == 0 {
+                min_decimal_places = 2;
+            }
+            if max_decimal_places == 0 {
+                max_decimal_places = 16;
+            }
+
+            let x =
+                float!(min_value, max_value, min_decimal_places, max_decimal_places);
+            return Some(Value::from(x));
+        }
+    }
+
+    if "timestamp" == field_type {
+        let mut min_value = 0;
+        let mut max_value = 0; // 2299年，12月 31日 12时 12 分 12秒
+
+        if let Some(min_value1) = field_attr.get("min_value") {
+            if let Some(min_value1) = min_value1.as_u64() {
+                min_value = min_value1;
+            }
+        }
+
+        if let Some(max_value1) = field_attr.get("max_value") {
+            if let Some(max_value1) = max_value1.as_u64() {
+                max_value = max_value1;
+            }
+        }
+
+        let x = timestamp!(min_value, max_value);
+        return Some(Value::from(x));
+    }
+
+    if ["number", "int", "posint", "negint"].contains(&field_type) {
+        let mut min_value = i64::min_value();
+        let mut max_value = i64::max_value();
+        match field_type {
+            "posint" => {
+                min_value = 0;
+            }
+            "negint" => {
+                max_value = 0;
+            }
+            _ => (),
+        }
+
+        if let Some(min_value1) = field_attr.get("min_value") {
+            if let Some(min_value1) = min_value1.as_i64() {
+                min_value = min_value1;
+            }
+        }
+
+        if let Some(max_value1) = field_attr.get("max_value") {
+            if let Some(max_value1) = max_value1.as_i64() {
+                max_value = max_value1;
+            }
+        }
+        let x = int!(min_value, max_value);
+        return Some(Value::from(x));
+    }
+
+    if ["date", "datetime"].contains(&field_type) {
+        let mut min_value = "";
+        let mut max_value = "";
+
+        if let Some(min_value1) = field_attr.get("min_value") {
+            if let Some(min_value1) = min_value1.as_str() {
+                min_value = min_value1;
+            }
+        }
+
+        if let Some(max_value1) = field_attr.get("max_value") {
+            if let Some(max_value1) = max_value1.as_str() {
+                max_value = max_value1;
+            }
+        }
+        let d = if field_type == "date" {
+            mock::basic::datetime(min_value, max_value, "%Y-%m-%d")
+        } else {
+            mock::basic::datetime(min_value, max_value, "")
+        };
+
+        return Some(Value::from(d));
+    }
+
+    if ["bool"].contains(&field_type) {
+        return Some(Value::Bool(mock::basic::bool()));
+    }
+    if ["regex"].contains(&field_type) {
+        let mut r = "";
+        if let Some(v) = field_attr.get("regex") {
+            if let Some(v) = v.as_str() {
+                r = v.trim();
+            }
+        }
+        if r == "" {
+            return Some(Value::String("".to_string()));
+        } else {
+            return Some(Value::String(mock::basic::string_from_regex(r)));
+        }
+    }
+
+    if ["image"].contains(&field_type) {
+        let mut size = "";
+        let mut foreground = "";
+        let mut background = "";
+        let mut format = "";
+        let mut text = "";
+        if let Some(v) = field_attr.get("size") {
+            if let Some(v) = v.as_str() {
+                size = v;
+            }
+        }
+
+        if let Some(v) = field_attr.get("foreground") {
+            if let Some(v) = v.as_str() {
+                foreground = v;
+            }
+        }
+
+        if let Some(v) = field_attr.get("background") {
+            if let Some(v) = v.as_str() {
+                background = v;
+            }
+        }
+
+        if let Some(v) = field_attr.get("format") {
+            if let Some(v) = v.as_str() {
+                format = v;
+            }
+        }
+
+        if let Some(v) = field_attr.get("text") {
+            if let Some(v) = v.as_str() {
+                text = v;
+            }
+        }
+
+        return Some(Value::String(mock::basic::image(
+            size, foreground, background, format, text,
+        )));
+    }
+
+    // 其它字段一律按字符串处理
+    // "string" | "cword" | "cw" | "ctitle" | "ct" | "csentence" | "cstring" | "cs"
+    //        | "csummary" | "cm" | "cparagraph" | "cp" | "word" | "title" | "sentence"
+    //        | "summary" | "paragraph"
+
+    return Some(get_string_mock_value(field_type, field_attr));
+}
+
+/// 生成递归结构的mock数据
+/// rec_model_path_str 要递归的value
+/// rec_pointer_path_str 递归重复指向的节点
+fn create_recursive_mock_model(rec_model_path_str: &str, rec_pointer_path_str: &str, field_attr: &Value, org_response_model: &Value) -> Option<Value> {
+    if !rec_model_path_str.starts_with("/") {
+        // 递归结构的数据路径只允许递归response内部的，必须以$response开头
+        return None;
+    }
+    let mut rng = thread_rng();
+
+    let mut empty_value_conf: Option<Value> = None;
+    let mut length = 0;
+    let mut min_length = 0;
+    let mut max_length = 4;
+    let mut count = 0;
+    let mut min_count = 0;
+    let mut max_count = 4;
+
+    // 可以设定数组要展示多少个元素
+    if let Some(v) = field_attr.get("$empty_value") {
+        empty_value_conf = Some(v.clone());
+    }
+
+    // 可以设定数组要展示多少个元素
+    if let Some(v) = field_attr.get("$length") {
+        if let Some(v) = v.as_u64() {
+            length = v;
+        }
+    }
+
+    if let Some(v) = field_attr.get("$min_length") {
+        if let Some(v) = v.as_u64() {
+            min_length = v;
+        }
+    }
+
+    if let Some(v) = field_attr.get("$max_length") {
+        if let Some(v) = v.as_u64() {
+            max_length = v;
+        }
+    }
+
+    if max_length <= min_length {
+        max_length = min_length + 3;
+    }
+    if length == 0 {
+        length = rng.gen_range(min_length, max_length);
+    }
+
+    // 可以设定递归要展示多少层
+    if let Some(v) = field_attr.get("$count") {
+        if let Some(v) = v.as_u64() {
+            count = v;
+        }
+    }
+
+    if let Some(v) = field_attr.get("$min_count") {
+        if let Some(v) = v.as_u64() {
+            min_count = v;
+        }
+    }
+
+    if let Some(v) = field_attr.get("$max_count") {
+        if let Some(v) = v.as_u64() {
+            max_count = v;
+        }
+    }
+    if max_count <= min_count {
+        max_count = min_count + 3;
+    }
+    if count == 0 {
+        count = rng.gen_range(min_count, max_count);
+    }
+
+    // 拿到递归模型
+    let mut mock_model;
+    let mut rec_pointer_path_string;
+    if rec_model_path_str == "/" {
+        // 如果直接是/ 代表直接使用根节点，
+        mock_model = org_response_model.clone();
+        rec_pointer_path_string = rec_pointer_path_str.to_string();
+    } else {
+        if let Some(rec_model) = org_response_model.pointer(rec_model_path_str) {
+            mock_model = rec_model.clone();
+            rec_pointer_path_string = rec_pointer_path_str.trim_start_matches(rec_model_path_str).to_string();
+        } else {
+            return None;
+        }
+    }
+
+    let rec_model = mock_model.clone();
+
+    let field_type = db::get_field_type(&rec_model);
+    let field_type = field_type.as_str();
+
+    let relative_path = rec_pointer_path_string.clone();
+    // 生成mock模型
+    while count > 0 {
+        if let Some(model_v) = mock_model.pointer_mut(&rec_pointer_path_string) {
+            *model_v = rec_model.clone();
+            rec_pointer_path_string = rec_pointer_path_string + &relative_path;
+        }
+        count -= 1;
+    }
+    // 递归的尾节点设置为
+    if let Some(model_v) = mock_model.pointer_mut(&rec_pointer_path_string) {
+        // 如果用户设置了默认的空值，那么使用用户定义的
+        if let Some(empty_v) = empty_value_conf {
+            let mut m = Map::new();
+            m.insert("type".to_string(), Value::String("string".to_string()));
+            m.insert("value".to_string(), empty_v);
+            *model_v = Value::Object(m);
+        } else {
+            // 如果用户未定义，那么按类型来
+            *model_v = match field_type {
+                "array" => json!([]),
+                "object" => Value::Null,
+                "map" => json!({"type":"string","value":{}}),
+                _ => {
+                    Value::Null
+                }
+            }
+        }
+    }
+    return Some(mock_model);
+}
+
+/// 检查value字段中是否标记了$del:true
+fn is_marked_delete_field(field_value: &Value) -> bool {
+    if let Some(del) = field_value.pointer("/$del") {
+        // 如果标记了删除，那么就返回空
+        if let Some(true) = del.as_bool() {
+            return true;
+        }
+    }
+    return false;
 }

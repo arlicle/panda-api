@@ -915,6 +915,8 @@ fn load_folder_config(
     )
 }
 
+
+/// 加载ref对应文件的数据
 fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
 
@@ -946,7 +948,8 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
                 };
 
                 if let Some(key) = ref_info.get(1) {
-                    if let Some(v) = data.pointer(&format!("/{}", &key.replace(".", "/"))) {
+//                    if let Some(v) = data.pointer(&format!("/{}", &key.replace(".", "/"))) {
+                    if let Some(v) = data.pointer(&format!("/{}", key)) {
                         return (file_path, Some(v.clone()));
                     }
                 }
@@ -1115,7 +1118,14 @@ fn get_api_field_bool_value(
     default_value
 }
 
-/// parse $ref引用数据
+/// parse 分析value的值，处理各种语法优化
+/// $ref引用数据，
+/// 继承字段，
+/// 重写字段，
+/// 删除字段
+/// $enum
+/// 标注object类型
+///
 /// 第一个参数表示获取到的值，body, query, resonse 等, 判断是否有引用值 或者 全局值
 /// 对不满足要求的数据会全部进行过滤
 fn parse_attribute_ref_value(
@@ -1136,88 +1146,34 @@ fn parse_attribute_ref_value(
             new_value.insert("$type".to_string(), Value::String(field_type));
         }
 
-        // 处理文件引入
-        if let Some(ref_val) = value_obj.get("$ref") {
-            let mut v_str = ref_val.as_str().unwrap();
-            let mut new_v_str = "".to_string();
-            if v_str.contains("$") {
-                match doc_file_obj.get("define") {
-                    Some(defined) => {
-                        let re = Regex::new(r"\$\w+").unwrap();
-                        match re.find(v_str) {
-                            Some(m) => {
-                                let m_str = &v_str[m.start() + 1..m.end()];
-                                match defined.get(m_str) {
-                                    Some(v3) => {
-                                        new_v_str = format!(
-                                            "{}{}",
-                                            v3.as_str().unwrap(),
-                                            &v_str[m.end()..]
-                                        );
-                                    }
-                                    None => (),
-                                }
-                            }
-                            None => (),
-                        };
-                    }
-                    None => (),
-                }
-            }
-            if new_v_str != "".to_string() {
-                v_str = new_v_str.as_str();
-            }
-            let (ref_file, ref_data) = load_ref_file_data(v_str, doc_file);
-            ref_files.push(ref_file);
-            let mut has_include = false;
-            if let Some(vv) = ref_data {
-                let (mut ref_files2, mut vv) =
-                    parse_attribute_ref_value(vv, doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
-
-                new_value = match vv.as_object() {
-                    Some(ref_data_map) => {
-                        // 判断是否有include 字段，然后只引入include
-                        let mut new_result = Map::new();
-                        if let Some(e) = value_obj.get("$include") {
-                            for v2 in e.as_array().unwrap() {
-                                has_include = true;
-                                let key_str = v2.as_str().unwrap();
-                                if let Some(v) = ref_data_map.get(key_str) {
-                                    new_result.insert(key_str.to_string(), v.clone());
-                                }
-                            }
-                        }
-                        if has_include {
-                            new_result
-                        } else {
-                            ref_data_map.clone()
-                        }
-                    }
-                    None => {
-                        println!(" file value error '{}' got {:?}", v_str, vv);
-                        json!({}).as_object().unwrap().clone()
-                    }
-                }
-            }
-
-            // 移除exclude中的字段
-            if let Some(e) = value_obj.get("$exclude") {
-                for v2 in e.as_array().unwrap() {
-                    let key_str = v2.as_str().unwrap();
-                    if key_str.contains("/") {
-                        // 如果exclude中含有/斜杠，表示要嵌套的去移除字段
-                        let v = remove_val_from_value(Value::Object(new_value), key_str);
-                        new_value = v.as_object().unwrap().clone();
-                    } else {
-                        new_value.remove(key_str);
-                    }
+        let mut is_rec = false; // 是否是递归
+        if let Some(type_v) = value_obj.get("$type") {
+            if let Some(type_v) = type_v.as_str() {
+                if type_v == "rec" {
+                    is_rec = true;
                 }
             }
         }
 
+        // 如果是递归，就不进行文件的引入操作，递归的文件引入在生成mock数据时才进行引入
+        if !is_rec {
+            // 处理文件引入
+            new_value =
+                load_a_ref_value(new_value, &mut ref_files, value_obj, doc_file_obj, doc_file);
+        }
+
         for (field_key, field_attrs) in value_obj {
+
+            if let Some(is_del) = field_attrs.pointer("/$del") {
+                // 处理当字段设置了{$del:true}属性,那么就不显示这个字段
+                if let Some(true) = is_del.as_bool() {
+                    new_value.remove(field_key);
+                    continue;
+                }
+            }
+
             if field_attrs.is_string() && field_attrs.as_str().unwrap() == "$del" {
+                // 删除不要的字段
                 new_value.remove(field_key);
                 continue;
             } else if field_key == "$del"
@@ -1310,18 +1266,12 @@ fn parse_attribute_ref_value(
                 break;
             }
 
-            if let Some(is_del) = field_attrs.pointer("/$del") {
-                // 处理当字段设置了{$del:true}属性,那么就不显示这个字段
-                if let Some(true) = is_del.as_bool() {
-                    new_value.remove(field_key);
-                    continue;
-                }
-            }
-
+            // 处理属性中的value
             let (mut ref_files2, field_value) =
                 parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
             ref_files.append(&mut ref_files2);
-            new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
+//            new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
+            new_value.insert(field_key.to_string(), field_value);
         }
 
         // 处理嵌套增加或修改属性值的问题 category/category_name
@@ -1351,6 +1301,93 @@ fn parse_attribute_ref_value(
     }
 
     (ref_files, value)
+}
+
+/// 加载某个$ref 路径的数据出来
+fn load_a_ref_value(
+    mut new_value: Map<String, Value>,
+    ref_files: &mut Vec<String>,
+    value_obj: &Map<String, Value>,
+    doc_file_obj: &Map<String, Value>,
+    doc_file: &str,
+) -> Map<String, Value> {
+    if let Some(ref_val) = value_obj.get("$ref") {
+        let mut v_str = ref_val.as_str().unwrap();
+        let mut new_v_str = "".to_string();
+
+        if v_str.contains("$") {
+            match doc_file_obj.get("define") {
+                Some(defined) => {
+                    let re = Regex::new(r"\$\w+").unwrap();
+                    match re.find(v_str) {
+                        Some(m) => {
+                            let m_str = &v_str[m.start() + 1..m.end()];
+                            match defined.get(m_str) {
+                                Some(v3) => {
+                                    new_v_str =
+                                        format!("{}{}", v3.as_str().unwrap(), &v_str[m.end()..]);
+                                }
+                                None => (),
+                            }
+                        }
+                        None => (),
+                    };
+                }
+                None => (),
+            }
+        }
+        if new_v_str != "".to_string() {
+            v_str = new_v_str.as_str();
+        }
+        // 处理response, body里面的ref
+        let (ref_file, ref_data) = load_ref_file_data(v_str, doc_file);
+        ref_files.push(ref_file);
+        let mut has_include = false;
+        if let Some(vv) = ref_data {
+            let (mut ref_files2, mut vv) = parse_attribute_ref_value(vv, doc_file_obj, doc_file);
+            ref_files.append(&mut ref_files2);
+
+            new_value = match vv.as_object() {
+                Some(ref_data_map) => {
+                    // 判断是否有include 字段，然后只引入include
+                    let mut new_result = Map::new();
+                    if let Some(e) = value_obj.get("$include") {
+                        for v2 in e.as_array().unwrap() {
+                            has_include = true;
+                            let key_str = v2.as_str().unwrap();
+                            if let Some(v) = ref_data_map.get(key_str) {
+                                new_result.insert(key_str.to_string(), v.clone());
+                            }
+                        }
+                    }
+                    if has_include {
+                        new_result
+                    } else {
+                        ref_data_map.clone()
+                    }
+                }
+                None => {
+                    println!(" file value error '{}' got {:?}", v_str, vv);
+                    json!({}).as_object().unwrap().clone()
+                }
+            }
+        }
+
+        // 移除exclude中的字段
+        if let Some(e) = value_obj.get("$exclude") {
+            for v2 in e.as_array().unwrap() {
+                let key_str = v2.as_str().unwrap();
+                if key_str.contains("/") {
+                    // 如果exclude中含有/斜杠，表示要嵌套的去移除字段
+                    let v = remove_val_from_value(Value::Object(new_value), key_str);
+                    new_value = v.as_object().unwrap().clone();
+                } else {
+                    new_value.remove(key_str);
+                }
+            }
+        }
+    }
+    new_value
 }
 
 /// auth文件里面，可能是按文件加载接口地址
@@ -1602,39 +1639,32 @@ fn remove_val_from_value(mut value: Value, pointer: &str) -> Value {
 
 /// 获取字段的类型
 pub fn get_field_type(field_attr: &Value) -> String {
-    let field_type = match field_attr.get("type") {
-        Some(v) => v.as_str().unwrap(),
-        None => {
+    if field_attr.is_array() {
+        return "array".to_lowercase();
+    }
 
-            if field_attr.is_array() {
-                "array"
-            } else if field_attr.is_object() {
-                if let Some(field_attr_object) = field_attr.as_object() {
-                    if let Some(t) = field_attr_object.get("$type") {
-                        // 处理$type是map的情况
-                        if let Some(t) = t.as_str() {
-                            if ["map"].contains(&t) {
-                                return t.to_string();
-                            }
-                        }
-                    }
+    if let Some(v) = field_attr.get("type") {
+        return v.as_str().unwrap().to_lowercase();
+    }
+    if let Some(v) = field_attr.get("$type") {
+        return v.as_str().unwrap().to_lowercase();
+    }
 
-                    let mut s = "string";
-                    for (_k, v) in field_attr_object {
-                        if v.is_object() {
-                            s = "object";
-                            break;
-                        }
-                    }
-                    s
-                } else {
-                    "string"
+    if field_attr.is_object() {
+        if let Some(field_attr_object) = field_attr.as_object() {
+            for (_k, v) in field_attr_object {
+                if v.is_object() {
+                    return "object".to_lowercase();
+                } else if v.is_array() {
+                    return "object".to_lowercase();
+//                    if let Some(v2) = v.pointer("/0") {
+//                        if v2.is_object() | v2.is_array() {
+//                            return "object".to_lowercase();
+//                        }
+//                    }
                 }
-            } else {
-                "string"
             }
         }
-    };
-
-    field_type.to_lowercase()
+    }
+    return "string".to_lowercase();
 }

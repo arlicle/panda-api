@@ -73,6 +73,9 @@ macro_rules! int {
 macro_rules! float {
     ($min_value:expr, $max_value:expr, $min_decimal_places:expr, $max_decimal_places:expr) => {{
         let mut rng = thread_rng();
+        if $max_value < $min_value {
+            $max_value = $min_value;
+        }
         let n = rng.gen_range($min_value as f64, $max_value as f64);
         let l = rng.gen_range($min_decimal_places as u32, $max_decimal_places as u32);
         (n * 10_u64.pow(l) as f64).round() / 10_i64.pow(l) as f64
@@ -174,6 +177,9 @@ pub fn string(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
     }
     if max_length == 0 {
         max_length = 30;
+    }
+    if max_length < min_length {
+        max_length = min_length + 20;
     }
 
     if length == 0 {
