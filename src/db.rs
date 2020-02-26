@@ -843,7 +843,6 @@ pub fn load_md_doc_config(
     mut md_content: String,
     mut filename: String,
 ) -> (i32, String, String, String, String) {
-
     if let Ok(content) = fs::read_to_string(Path::new(doc_file)) {
         md_content = content.clone();
         // 获取md文档顶部的配置信息
@@ -916,7 +915,6 @@ fn load_folder_config(
     )
 }
 
-
 /// 加载ref对应文件的数据
 fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>) {
     let ref_info: Vec<&str> = ref_file.split(":").collect();
@@ -949,7 +947,7 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
                 };
 
                 if let Some(key) = ref_info.get(1) {
-//                    if let Some(v) = data.pointer(&format!("/{}", &key.replace(".", "/"))) {
+                    //                    if let Some(v) = data.pointer(&format!("/{}", &key.replace(".", "/"))) {
                     if let Some(v) = data.pointer(&format!("/{}", key)) {
                         return (file_path, Some(v.clone()));
                     }
@@ -1164,7 +1162,6 @@ fn parse_attribute_ref_value(
         }
 
         for (field_key, field_attrs) in value_obj {
-
             if let Some(is_del) = field_attrs.pointer("/$del") {
                 // 处理当字段设置了{$del:true}属性,那么就不显示这个字段
                 if let Some(true) = is_del.as_bool() {
@@ -1271,7 +1268,7 @@ fn parse_attribute_ref_value(
             let (mut ref_files2, field_value) =
                 parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
             ref_files.append(&mut ref_files2);
-//            new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
+            //            new_value.insert(field_key.trim_start_matches("$").to_string(), field_value);
             new_value.insert(field_key.to_string(), field_value);
         }
 
@@ -1658,11 +1655,11 @@ pub fn get_field_type(field_attr: &Value) -> String {
                     return "object".to_lowercase();
                 } else if v.is_array() {
                     return "object".to_lowercase();
-//                    if let Some(v2) = v.pointer("/0") {
-//                        if v2.is_object() | v2.is_array() {
-//                            return "object".to_lowercase();
-//                        }
-//                    }
+                    //                    if let Some(v2) = v.pointer("/0") {
+                    //                        if v2.is_object() | v2.is_array() {
+                    //                            return "object".to_lowercase();
+                    //                        }
+                    //                    }
                 }
             }
         }

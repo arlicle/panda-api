@@ -9,8 +9,8 @@ use std::fs;
 use std::io::prelude::*;
 use std::path::Path;
 use std::sync::Mutex;
-use std::time::{Duration, Instant, SystemTime};
 use std::thread;
+use std::time::{Duration, Instant, SystemTime};
 
 use futures::StreamExt;
 use rand::{thread_rng, Rng};
@@ -147,22 +147,22 @@ pub async fn theme_view(req: HttpRequest) -> Result<actix_files::NamedFile, Erro
     }
 
     // 加载安装目录的皮肤
-    let theme_filepath = format!("{}{}", theme_home_dir, theme_file);
-    Ok(actix_files::NamedFile::open(theme_filepath)?)
+    let theme_filepath = theme_home_dir + theme_file;
+    Ok(actix_files::NamedFile::open(Path::new(&theme_filepath))?)
 }
 
 /// 获取用户自己存放的静态文件
 /// 多用于写markdown的时候存放的图片
 pub async fn static_file_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
     let req_path = req.path().trim_start_matches("/");
-    return Ok(actix_files::NamedFile::open(req_path)?);
+    return Ok(actix_files::NamedFile::open(Path::new(req_path))?);
 }
 
 /// 查看上传的 图片或文件
 pub async fn upload_file_view(req: HttpRequest) -> Result<actix_files::NamedFile, Error> {
     let req_path = req.path();
     let file_path = "_data".to_string() + req_path;
-    return Ok(actix_files::NamedFile::open(file_path)?);
+    return Ok(actix_files::NamedFile::open(Path::new(&file_path))?);
 }
 
 /// 获取_data目录中的数据, models数据 或者其它加载数据
@@ -284,7 +284,7 @@ fn find_response_data(
                 if a_api_data.auth {
                     // 权限检查
                     if let Some(auth_valid_errors) =
-                    auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
                     {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }
@@ -403,7 +403,8 @@ fn find_response_data(
                             None => &Value::Null,
                         };
 
-                        let response = parse_test_case_response(case_response, "", &a_api_data.response);
+                        let response =
+                            parse_test_case_response(case_response, "", &a_api_data.response);
                         if let Some(v) = test_case_data.get("delay") {
                             if let Some(t) = v.as_u64() {
                                 thread::sleep(Duration::from_millis(t));
@@ -418,7 +419,9 @@ fn find_response_data(
                 }
 
                 let mut serialized = "".to_string();
-                if let Some(response) = create_mock_value(&a_api_data.response, "", &a_api_data.response) {
+                if let Some(response) =
+                    create_mock_value(&a_api_data.response, "", &a_api_data.response)
+                {
                     serialized = serde_json::to_string(&response).unwrap();
                 }
                 return HttpResponse::build(status_code)
@@ -437,7 +440,6 @@ fn find_response_data(
         "msg": format ! ("this api address {} no api url match", req_path)
     }))
 }
-
 
 /// 处理test_case response中的部分$mock字段
 fn parse_test_case_response(
@@ -460,8 +462,7 @@ fn parse_test_case_response(
                                 // 首先拿出对应response字段的设置
                                 let pointer = format!("{}/{}", field_path, field_key);
                                 if let Some(model_field) = response_model.pointer(&pointer) {
-                                    let mut new_model_field_attr: Map<String, Value> =
-                                        Map::new();
+                                    let mut new_model_field_attr: Map<String, Value> = Map::new();
                                     if let Some(model_field_obj) = model_field.as_object() {
                                         // 先获取对应response字段的属性
                                         new_model_field_attr = model_field_obj.clone();
@@ -470,13 +471,12 @@ fn parse_test_case_response(
                                             if k2 == "$mock" {
                                                 continue;
                                             }
-                                            new_model_field_attr
-                                                .insert(k2.to_string(), v2.clone());
+                                            new_model_field_attr.insert(k2.to_string(), v2.clone());
                                         }
                                     }
 
                                     let v_obj = Value::Object(new_model_field_attr);
-                                    if let Some(v) = create_mock_value(&v_obj, "", &v_obj){
+                                    if let Some(v) = create_mock_value(&v_obj, "", &v_obj) {
                                         result.insert(field_key.to_string(), v);
                                     }
                                 }
@@ -853,7 +853,6 @@ fn auth_validator<'a>(
     None
 }
 
-
 /// 获取string类型的mock value
 fn get_string_mock_value(field_type: &str, field_attr: &Value) -> Value {
     let mut min_length = 0;
@@ -959,7 +958,11 @@ fn get_string_mock_value(field_type: &str, field_attr: &Value) -> Value {
 
 /// 根据response定义生成返回给前端的mock数据
 ///
-pub fn create_mock_value(response_model: &Value, rec_path: &str, org_response_model: &Value) -> Option<Value> {
+pub fn create_mock_value(
+    response_model: &Value,
+    rec_path: &str,
+    org_response_model: &Value,
+) -> Option<Value> {
     let mut rng = thread_rng();
     let response_type = db::get_field_type(response_model);
     let response_model_type = response_type.as_str();
@@ -976,7 +979,12 @@ pub fn create_mock_value(response_model: &Value, rec_path: &str, org_response_mo
     if "rec" == response_model_type {
         if let Some(path) = response_model.get("$ref") {
             if let Some(path_str) = path.as_str() {
-                if let Some(v) = create_recursive_mock_model(path_str, rec_path, response_model, org_response_model) {
+                if let Some(v) = create_recursive_mock_model(
+                    path_str,
+                    rec_path,
+                    response_model,
+                    org_response_model,
+                ) {
                     return create_mock_value(&v, "", org_response_model);
                 }
             }
@@ -1108,7 +1116,9 @@ pub fn create_mock_value(response_model: &Value, rec_path: &str, org_response_mo
 
                 let mut new_rec_path = format!("{}/{}", rec_path, index);
                 while length > 0 {
-                    if let Some(v) = create_mock_value(field_attr_one, &new_rec_path, org_response_model){
+                    if let Some(v) =
+                        create_mock_value(field_attr_one, &new_rec_path, org_response_model)
+                    {
                         array_vec.push(v);
                     }
                     length -= 1;
@@ -1120,7 +1130,6 @@ pub fn create_mock_value(response_model: &Value, rec_path: &str, org_response_mo
 
     None
 }
-
 
 /// 判断这个字段是否是系统的特殊私有字段
 fn is_special_private_key(field_key: &str) -> bool {
@@ -1139,10 +1148,13 @@ fn is_special_private_key(field_key: &str) -> bool {
 }
 
 /// 根据字段和字段属性，生成mock数据
-fn create_mock_value_by_field(field_key: &str, rec_path: &str, field_attr: &Value, org_response_model: &Value) -> Option<Value> {
-    if is_special_private_key(field_key)
-        || field_attr.is_null()
-    {
+fn create_mock_value_by_field(
+    field_key: &str,
+    rec_path: &str,
+    field_attr: &Value,
+    org_response_model: &Value,
+) -> Option<Value> {
+    if is_special_private_key(field_key) || field_attr.is_null() {
         return None;
     }
 
@@ -1248,8 +1260,7 @@ fn create_mock_value_by_field(field_key: &str, rec_path: &str, field_attr: &Valu
                 max_decimal_places = 16;
             }
 
-            let x =
-                float!(min_value, max_value, min_decimal_places, max_decimal_places);
+            let x = float!(min_value, max_value, min_decimal_places, max_decimal_places);
             return Some(Value::from(x));
         }
     }
@@ -1395,7 +1406,12 @@ fn create_mock_value_by_field(field_key: &str, rec_path: &str, field_attr: &Valu
 /// 生成递归结构的mock数据
 /// rec_model_path_str 要递归的value
 /// rec_pointer_path_str 递归重复指向的节点
-fn create_recursive_mock_model(rec_model_path_str: &str, rec_pointer_path_str: &str, field_attr: &Value, org_response_model: &Value) -> Option<Value> {
+fn create_recursive_mock_model(
+    rec_model_path_str: &str,
+    rec_pointer_path_str: &str,
+    field_attr: &Value,
+    org_response_model: &Value,
+) -> Option<Value> {
     if !rec_model_path_str.starts_with("/") {
         // 递归结构的数据路径只允许递归response内部的，必须以$response开头
         return None;
@@ -1476,7 +1492,9 @@ fn create_recursive_mock_model(rec_model_path_str: &str, rec_pointer_path_str: &
     } else {
         if let Some(rec_model) = org_response_model.pointer(rec_model_path_str) {
             mock_model = rec_model.clone();
-            rec_pointer_path_string = rec_pointer_path_str.trim_start_matches(rec_model_path_str).to_string();
+            rec_pointer_path_string = rec_pointer_path_str
+                .trim_start_matches(rec_model_path_str)
+                .to_string();
         } else {
             return None;
         }
@@ -1510,9 +1528,7 @@ fn create_recursive_mock_model(rec_model_path_str: &str, rec_pointer_path_str: &
                 "array" => json!([]),
                 "object" => Value::Null,
                 "map" => json!({"type":"string","value":{}}),
-                _ => {
-                    Value::Null
-                }
+                _ => Value::Null,
             }
         }
     }
