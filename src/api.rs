@@ -1068,7 +1068,6 @@ pub fn create_mock_value(
             if is_marked_delete_field(field_attr) {
                 continue;
             }
-
             let rec_path = format!("{}/{}", rec_path, field_key);
             if let Some(value) = create_mock_value(field_attr, &rec_path, org_response_model) {
                 result.insert(field_key.to_string(), value);
@@ -1084,6 +1083,12 @@ pub fn create_mock_value(
                 if field_attr_one.is_null() {
                     continue;
                 }
+
+                // 如果值里面是递归模型返回的，包含了$__continue_array_value，表示到了递归尾节点，不在继续生成mock值
+                if let Some(v) = field_attr_one.get("$__continue_array_value") {
+                    continue;
+                }
+
                 let index = index.to_string();
                 let field_type2 = db::get_field_type(field_attr_one);
                 let mut length = 0;
@@ -1524,10 +1529,23 @@ fn create_recursive_mock_model(
             *model_v = Value::Object(m);
         } else {
             // 如果用户未定义，那么按类型来
+            // $__continue_array_value 用于数组中的递归，进行跳过
+            //      response:{
+            //        $name:"一个棵节点树",
+            //        name:{name:"名称"},
+            //        score:{name:"节点权重", type:"int"},
+            //        children:[
+            //          {
+            //            $type:"rec",
+            //            $ref:"/"
+            //          }
+            //        ]
+            //      }
+            //
             *model_v = match field_type {
-                "array" => json!([]),
-                "object" => Value::Null,
-                "map" => json!({"type":"string","value":{}}),
+                "array" => json!({"type":"string","value":[],"$__continue_array_value":true}),
+                "object" => json!({"type":"string","value":null,"$__continue_array_value":true}),
+                "map" => json!({"type":"string","value":{},"$__continue_array_value":true}),
                 _ => Value::Null,
             }
         }
