@@ -167,7 +167,8 @@ pub async fn upload_file_view(req: HttpRequest) -> Result<actix_files::NamedFile
 
 /// 获取_data目录中的数据, models数据 或者其它加载数据
 pub async fn get_api_doc_schema_data(req_get: web::Query<ApiDocDataRequest>) -> HttpResponse {
-    let read_me = match fs::read_to_string(&req_get.filename) {
+    let path = Path::new(&req_get.filename);
+    let read_me = match fs::read_to_string(path) {
         Ok(x) => x,
         Err(_) => "no data file".to_string(),
     };

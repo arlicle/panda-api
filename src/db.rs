@@ -417,7 +417,7 @@ impl Database {
             return -1;
         }
 
-        let d = match fs::read_to_string(doc_file) {
+        let d = match fs::read_to_string(Path::new(doc_file)) {
             Ok(d) => d,
             Err(_e) => {
                 // println!("Unable to read file: {} {:?}", doc_file, e);
@@ -843,7 +843,8 @@ pub fn load_md_doc_config(
     mut md_content: String,
     mut filename: String,
 ) -> (i32, String, String, String, String) {
-    if let Ok(content) = fs::read_to_string(doc_file) {
+
+    if let Ok(content) = fs::read_to_string(Path::new(doc_file)) {
         md_content = content.clone();
         // 获取md文档顶部的配置信息
         let re = Regex::new(r"^\s*(```)?\s*(\{[\s\S]*?\})\s*(```)\s*").unwrap();
@@ -937,7 +938,7 @@ fn load_ref_file_data(ref_file: &str, doc_file: &str) -> (String, Option<Value>)
             }
             file_path = file_path.trim_start_matches("/").to_string();
             // 加载数据文件
-            if let Ok(d) = fs::read_to_string(&file_path) {
+            if let Ok(d) = fs::read_to_string(Path::new(&file_path)) {
                 let d = fix_json(d);
                 let data: Value = match json5::from_str(&d) {
                     Ok(v) => v,
