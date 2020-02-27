@@ -55,7 +55,11 @@ pub fn bool() -> bool {
 macro_rules! int {
     ($min_value:expr, $max_value:expr) => {{
         let mut rng = thread_rng();
-        rng.gen_range($min_value, $max_value)
+        if $max_value < $min_value {
+            $min_value
+        } else {
+            rng.gen_range($min_value, $max_value)
+        }
     }};
 
     ($min_value:expr) => {{
@@ -73,9 +77,7 @@ macro_rules! int {
 macro_rules! float {
     ($min_value:expr, $max_value:expr, $min_decimal_places:expr, $max_decimal_places:expr) => {{
         let mut rng = thread_rng();
-        if $max_value < $min_value {
-            $max_value = $min_value;
-        }
+           // todo: 判断最大值是否比最小值小，如果小，需要改进
         let n = rng.gen_range($min_value as f64, $max_value as f64);
         let l = rng.gen_range($min_decimal_places as u32, $max_decimal_places as u32);
         (n * 10_u64.pow(l) as f64).round() / 10_i64.pow(l) as f64
@@ -106,6 +108,9 @@ macro_rules! timestamp {
             // 当前时间戳
             let s2 = s.duration_since(SystemTime::UNIX_EPOCH).unwrap();
             max_value = s2.as_secs();
+        }
+        if max_value < min_value {
+            max_value = min_value + 1;
         }
 
         int!(min_value, max_value)
@@ -143,12 +148,14 @@ pub fn datetime(min_value: &str, max_value: &str, format: &str) -> String {
     if max_value != "" {
         timestamp_max_value = datetime_str_to_timestamp(max_value);
     }
-
+    let t = if timestamp_max_value <= timestamp_min_value {
+        datetime_str_to_timestamp("2020-02 02 14 16:18")
+    } else {
+        timestamp!(timestamp_min_value, timestamp_max_value)
+    };
     if format.trim() == "" {
         format = "%Y-%m-%d %H:%M:%S";
     }
-
-    let t = timestamp!(timestamp_min_value, timestamp_max_value);
 
     let dt = Utc.timestamp(t as i64, 0);
     dt.format(&format).to_string()

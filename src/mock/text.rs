@@ -63,7 +63,9 @@ pub fn cparagraph(
         max_length = 1600;
     }
 
-    if length == 0 {
+    if max_length <= min_length {
+        length = min_length + 20;
+    } else {
         // 默认有5到10个句子
         length = rng.gen_range(min_length, max_length);
     }
@@ -81,7 +83,8 @@ pub fn cparagraph(
         s.push_str(&s1);
         if content_type == "html" {
             s.push_str("</p>\n");
-        } else if content_type == "markdown" {
+        } else {
+            // 如果没有设置content_type，所有默认的段落换行都是\n\n
             s.push_str("\n\n");
         }
     }
@@ -109,8 +112,9 @@ pub fn paragraph(
     if max_length == 0 {
         max_length = 1600;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         // 默认有5到10个句子
         length = rng.gen_range(min_length, max_length);
     }
@@ -146,8 +150,9 @@ pub fn csummary(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
     if max_length == 0 {
         max_length = 250;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         length = rng.gen_range(min_length, max_length);
     }
 
@@ -178,8 +183,9 @@ pub fn summary(mut length: u64, mut min_length: u64, mut max_length: u64) -> Str
     if max_length == 0 {
         max_length = 300;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         length = rng.gen_range(min_length, max_length);
     }
     let length = length as usize;
@@ -209,8 +215,9 @@ pub fn csentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> S
     if max_length == 0 {
         max_length = 50;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         length = rng.gen_range(min_length, max_length);
     }
 
@@ -238,8 +245,9 @@ pub fn sentence(mut length: u64, mut min_length: u64, mut max_length: u64) -> St
     if max_length == 0 {
         max_length = 90;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         length = rng.gen_range(min_length, max_length);
     }
 
@@ -270,8 +278,9 @@ pub fn ctitle(mut length: u64, mut min_length: u64, mut max_length: u64) -> Stri
     if max_length == 0 {
         max_length = 50;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         length = rng.gen_range(min_length, max_length);
     }
 
@@ -302,8 +311,9 @@ pub fn title(mut length: u64, mut min_length: u64, mut max_length: u64) -> Strin
     if max_length == 0 {
         max_length = 90;
     }
-
-    if length == 0 {
+    if max_length <= min_length {
+        length = max_length;
+    } else {
         length = rng.gen_range(min_length, max_length);
     }
 
@@ -378,8 +388,10 @@ pub fn word(mut length: usize, mut min_length: u64, mut max_length: u64) -> Stri
     if max_length == 0 {
         max_length = 12;
     }
-    if length == 0 {
-        length = rng.gen_range(min_length as usize, max_length as usize);
+    if max_length <= min_length {
+        length = max_length as usize;
+    } else {
+        length = rng.gen_range(min_length as usize, (max_length+1) as usize);
     }
 
     while length > 0 {
@@ -400,8 +412,10 @@ pub fn cword(mut length: usize, mut min_length: u64, mut max_length: u64) -> Str
     if max_length == 0 {
         max_length = 4;
     }
-    if length == 0 {
-        length = rng.gen_range(min_length as usize, max_length as usize);
+    if max_length <= min_length {
+        length = max_length as usize;
+    } else {
+        length = rng.gen_range(min_length as usize, (max_length+1) as usize);
     }
 
     while length > 0 {

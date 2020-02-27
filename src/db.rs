@@ -1187,81 +1187,6 @@ fn parse_attribute_ref_value(
                 || field_key == "$length"
             {
                 continue;
-            } else if field_key == "enum" || field_key == "$enum" {
-                // --- start 处理 enum
-                // 处理enum, enum不是数组，也不是对象，那么就会忽略这个字段
-                let (mut ref_files2, field_value) =
-                    parse_attribute_ref_value(field_attrs.clone(), doc_file_obj, doc_file);
-                ref_files.append(&mut ref_files2);
-
-                // 判断第一个是不是$desc, 或$符号开头，如果是，那么表示里面的就是[value, desc]组成的元素
-                let mut is_desc_format = false;
-                if field_key == "$enum" {
-                    new_value.remove(field_key);
-                    is_desc_format = true;
-                }
-
-                if let Some(enum_array) = field_value.as_array() {
-                    let mut new_enum: Vec<Value> = Vec::new();
-
-                    if enum_array.len() == 0 {
-                        // 如果数组长度为空，那么忽略这个enum
-                        new_value.remove(field_key);
-                        continue;
-                    }
-
-                    for enum_item in enum_array {
-                        // 取出枚举的值，重组为[{$value:1,$desc:""}]的形式
-                        let mut new_item = Map::new();
-                        if is_desc_format || enum_item.is_array() {
-                            if is_desc_format {
-                                // 如果是有注释模式
-                                if let Some(enum_item2) = enum_item.as_array() {
-                                    if enum_item2.len() < 1 {
-                                        println!("doc file {} field {} enum value length error {:?}, $desc need all item is array: [[value1, desc2], [value2, desc2]...]", doc_file, field_key, enum_item);
-                                        continue;
-                                    }
-                                    for (i, v) in enum_item2.iter().enumerate() {
-                                        if i == 0 {
-                                            new_item.insert("$value".to_string(), v.clone());
-                                        } else if i == 1 {
-                                            new_item.insert("$desc".to_string(), v.clone());
-                                        }
-                                    }
-                                    if new_item.len() > 0 {
-                                        new_enum.push(Value::Object(new_item));
-                                    }
-                                    continue;
-                                }
-                                // 如果不是数组，忽略
-                                continue;
-                            }
-                        }
-
-                        if enum_item.is_object() {
-                            if let Some(enum_item2) = enum_item.as_object() {
-                                if let Some(_v) = enum_item2.get("$value") {
-                                    continue;
-                                }
-                            }
-                        }
-                        new_item.insert("$value".to_string(), enum_item.clone());
-                        new_enum.push(Value::Object(new_item));
-                    }
-                    if new_enum.len() > 1 {
-                        new_value.insert(
-                            field_key.trim_start_matches("$").to_string(),
-                            Value::Array(new_enum),
-                        );
-                    }
-                } else {
-                    // 如果不是数组，那么直接删除 enum属性
-                    new_value.remove(field_key);
-                    continue;
-                }
-                // --- end 处理 enum
-
-                break;
             }
 
             // 处理属性中的value
@@ -1650,7 +1575,12 @@ pub fn get_field_type(field_attr: &Value) -> String {
 
     if field_attr.is_object() {
         if let Some(field_attr_object) = field_attr.as_object() {
-            for (_k, v) in field_attr_object {
+            if let Some(v2) = field_attr_object.get("name") {
+                if v2.is_string() {
+                    return "string".to_lowercase();
+                }
+            }
+            for (k, v) in field_attr_object {
                 if v.is_object() {
                     return "object".to_lowercase();
                 } else if v.is_array() {

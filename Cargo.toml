@@ -5,6 +5,8 @@ authors = ["edison <arlicle@gmail.com>"]
 edition = "2018"
 
 
+#[profile.release]
+#panic = "abort"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

@@ -860,32 +860,28 @@ fn get_string_mock_value(field_type: &str, field_attr: &Value) -> Value {
     let mut length = 0;
     let mut content_type = "markdown";
 
-    if let Some(min_value1) = field_attr.get("length") {
-        if let Some(min_value1) = min_value1.as_u64() {
-            length = min_value1;
+    if let Some(v) = field_attr.get("length") {
+        if let Some(v) = v.as_u64() {
+            length = v;
         }
     }
 
-    if let Some(min_value1) = field_attr.get("min_length") {
-        if let Some(min_value1) = min_value1.as_u64() {
-            min_length = min_value1;
+    if let Some(v) = field_attr.get("min_length") {
+        if let Some(v) = v.as_u64() {
+            min_length = v;
         }
     }
 
-    if let Some(max_value1) = field_attr.get("max_length") {
-        if let Some(max_value1) = max_value1.as_u64() {
-            max_length = max_value1;
+    if let Some(v) = field_attr.get("max_length") {
+        if let Some(v) = v.as_u64() {
+            max_length = v;
         }
     }
 
-    if let Some(min_value1) = field_attr.get("content_type") {
-        if let Some(min_value1) = min_value1.as_str() {
-            content_type = min_value1;
+    if let Some(v) = field_attr.get("content_type") {
+        if let Some(v) = v.as_str() {
+            content_type = v;
         }
-    }
-
-    if max_length <= min_length {
-        max_length = min_length + 3;
     }
 
     match field_type {
@@ -966,7 +962,6 @@ pub fn create_mock_value(
     let mut rng = thread_rng();
     let response_type = db::get_field_type(response_model);
     let response_model_type = response_type.as_str();
-
     if is_marked_delete_field(response_model) {
         return None;
     }
@@ -1198,9 +1193,23 @@ fn create_mock_value_by_field(
             return Some(Value::Null);
         }
         let n = rng.gen_range(0, list.len());
-        let v = &list[n];
-        if let Some(v2) = v.pointer("/$value") {
+        if let Some(v2) = list.get(n) {
             return Some(v2.clone());
+        }
+        return Some(Value::Null);
+    }
+
+    if let Some(enum_data) = field_attr.get("$enum") {
+        // 如果设置了枚举值，那么就只使用枚举值
+        let list = enum_data.as_array().unwrap();
+        if list.len() == 0 {
+            return Some(Value::Null);
+        }
+        let n = rng.gen_range(0, list.len());
+        if let Some(v2) = list.get(n) {
+            if let Some(v3) = v2.pointer("/0") {
+                return Some(v3.clone());
+            }
         }
         return Some(Value::Null);
     }
