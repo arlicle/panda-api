@@ -98,7 +98,7 @@ pub struct AuthData {
 }
 
 fn fix_json(org_string: String) -> String {
-    let re = Regex::new(r#":\s*"[\s\S]*?\n*[\s\S]*?""#).unwrap(); // 把多换行变为一个
+    let re = Regex::new(r#":\s*["']{1}[\s\S]*?\n*[\s\S]*?["']{1}"#).unwrap(); // 把多换行变为一个
     let re3 = Regex::new(r"/\*(.|[\r\n])*?\*/").unwrap(); // 去掉/* */注释
 
     let mut new_string = org_string.clone();
@@ -1137,14 +1137,9 @@ fn parse_attribute_ref_value(
         return (ref_files, value);
     }
 
-    let field_type = get_field_type(&value);
     if value.is_object() {
         let value_obj = value.as_object().unwrap();
         let mut new_value = value_obj.clone();
-        if field_type == "object" {
-            new_value.insert("$type".to_string(), Value::String(field_type));
-        }
-
         let mut is_rec = false; // 是否是递归
         if let Some(type_v) = value_obj.get("$type") {
             if let Some(type_v) = type_v.as_str() {
@@ -1160,6 +1155,7 @@ fn parse_attribute_ref_value(
             new_value =
                 load_a_ref_value(new_value, &mut ref_files, value_obj, doc_file_obj, doc_file);
         }
+
 
         for (field_key, field_attrs) in value_obj {
             if let Some(is_del) = field_attrs.pointer("/$del") {
@@ -1197,6 +1193,10 @@ fn parse_attribute_ref_value(
             new_value.insert(field_key.to_string(), field_value);
         }
 
+        let field_type = get_field_type(&Value::Object(new_value.clone()));
+        if field_type == "object" {
+            new_value.insert("$type".to_string(), Value::String(field_type));
+        }
         // 处理嵌套增加或修改属性值的问题 category/category_name
         let mut new_value_value = Value::Object(new_value.clone());
         for (field_key, field_attrs) in &new_value {
@@ -1269,7 +1269,6 @@ fn load_a_ref_value(
         if let Some(vv) = ref_data {
             let (mut ref_files2, mut vv) = parse_attribute_ref_value(vv, doc_file_obj, doc_file);
             ref_files.append(&mut ref_files2);
-
             new_value = match vv.as_object() {
                 Some(ref_data_map) => {
                     // 判断是否有include 字段，然后只引入include
@@ -1284,6 +1283,7 @@ fn load_a_ref_value(
                         }
                     }
                     if has_include {
+                        new_value.insert("$type".to_string(), Value::String("object".to_string()));
                         new_result
                     } else {
                         ref_data_map.clone()

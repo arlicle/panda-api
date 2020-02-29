@@ -390,6 +390,7 @@ fn find_response_data(
                             Some(v) => v,
                             None => &Value::Null,
                         };
+
                         let request_query = parse_request_query_to_api_query_format(
                             &request_query,
                             &a_api_data.query,
@@ -402,7 +403,6 @@ fn find_response_data(
                             Some(v) => v,
                             None => &Value::Null,
                         };
-
                         let response =
                             parse_test_case_response(case_response, "", &a_api_data.response);
                         if let Some(v) = test_case_data.get("delay") {
@@ -453,6 +453,7 @@ fn parse_test_case_response(
     let mut result = Map::new();
     match test_case_response {
         Value::Object(test_response) => {
+
             for (field_key, field) in test_response {
                 match field {
                     Value::Object(field_obj) => {
@@ -488,12 +489,14 @@ fn parse_test_case_response(
                         }
                     }
                     Value::Array(field_array) => {
-                        if field_array.len() >= 1 {
-                            let v = &field_array[0];
-                            let pointer = format!("{}/{}/0", field_path, field_key);
-                            let v = parse_test_case_response(v, &pointer, response_model);
-                            result.insert(field_key.to_string(), v);
+                        let pointer = format!("{}/{}/0", field_path, field_key);
+                        let mut new_array = Vec::new();
+                        for field_array_item in field_array {
+                            let v = parse_test_case_response(field_array_item, &pointer, response_model);
+                            new_array.push(v);
+//                            m.insert(field_key.to_string(), v);
                         }
+                        result.insert(field_key.to_string(), Value::Array(new_array));
                     }
                     _ => {
                         result.insert(field_key.to_string(), field.clone());
@@ -503,8 +506,8 @@ fn parse_test_case_response(
         }
         Value::Array(field_array) => {
             let mut array_result = Vec::new();
+            let pointer = format!("{}/0", field_path);
             for item in field_array {
-                let pointer = format!("{}/0", field_path);
                 let v = parse_test_case_response(item, &pointer, response_model);
                 array_result.push(v);
             }
