@@ -714,6 +714,7 @@ fn load_apis_from_api_doc(
                     None => Value::Null,
                 },
             };
+
             let (mut ref_files2, query) = parse_attribute_ref_value(query, doc_file_obj, doc_file);
             ref_files.append(&mut ref_files2);
 
