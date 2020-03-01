@@ -218,15 +218,13 @@ pub async fn action_handle(
         return HttpResponse::Ok().body("");
     }
 
-    let form_data = if &body_mode == "form-data" {
+    let request_body = if &body_mode == "form-data" {
         get_request_form_data(request_form_data).await
     } else {
-        Value::Null
-    };
-
-    let request_body = match request_body {
-        Some(x) => x.into_inner(),
-        None => Value::Null,
+        match request_body {
+            Some(x) => x.into_inner(),
+            None => Value::Null,
+        }
     };
 
     let request_query = match request_query {
@@ -239,7 +237,6 @@ pub async fn action_handle(
         body_mode,
         request_body,
         request_query,
-        form_data,
         db_data,
     )
 }
@@ -251,7 +248,6 @@ fn find_response_data(
     body_mode: String,
     request_body: Value,
     request_query: Value,
-    form_data: Value,
     db_data: web::Data<Mutex<db::Database>>,
 ) -> HttpResponse {
     let db_data = db_data.lock().unwrap();
@@ -378,14 +374,6 @@ fn find_response_data(
                             continue;
                         }
 
-                        let v = match test_case_data.get("form-data") {
-                            Some(v) => v,
-                            None => &Value::Null,
-                        };
-                        if !is_value_equal(&form_data, v) {
-                            continue;
-                        }
-
                         let v = match test_case_data.get("query") {
                             Some(v) => v,
                             None => &Value::Null,
@@ -404,7 +392,7 @@ fn find_response_data(
                             None => &Value::Null,
                         };
                         let response =
-                            parse_test_case_response(case_response, "", &a_api_data.response);
+                            parse_test_case_response(case_response, "", &a_api_data.response, &request_body, &request_query);
                         if let Some(v) = test_case_data.get("delay") {
                             if let Some(t) = v.as_u64() {
                                 thread::sleep(Duration::from_millis(t));
@@ -420,7 +408,7 @@ fn find_response_data(
 
                 let mut serialized = "".to_string();
                 if let Some(response) =
-                    create_mock_value(&a_api_data.response, "", &a_api_data.response)
+                    create_mock_value(&a_api_data.response, "", &a_api_data.response, &request_body, &request_query)
                 {
                     serialized = serde_json::to_string(&response).unwrap();
                 }
@@ -446,6 +434,8 @@ fn parse_test_case_response(
     test_case_response: &Value,
     field_path: &str,
     response_model: &Value,
+    request_body: &Value,
+    request_query: &Value,
 ) -> Value {
     if test_case_response.is_null() {
         return Value::Null;
@@ -477,14 +467,14 @@ fn parse_test_case_response(
                                     }
 
                                     let v_obj = Value::Object(new_model_field_attr);
-                                    if let Some(v) = create_mock_value(&v_obj, "", &v_obj) {
+                                    if let Some(v) = create_mock_value(&v_obj, "", &v_obj, request_body, request_query) {
                                         result.insert(field_key.to_string(), v);
                                     }
                                 }
                             }
                         } else {
                             let pointer = format!("{}/{}", field_path, field_key);
-                            let v = parse_test_case_response(field, &pointer, response_model);
+                            let v = parse_test_case_response(field, &pointer, response_model, request_body, request_query);
                             result.insert(field_key.to_string(), v);
                         }
                     }
@@ -492,7 +482,7 @@ fn parse_test_case_response(
                         let pointer = format!("{}/{}/0", field_path, field_key);
                         let mut new_array = Vec::new();
                         for field_array_item in field_array {
-                            let v = parse_test_case_response(field_array_item, &pointer, response_model);
+                            let v = parse_test_case_response(field_array_item, &pointer, response_model, request_body, request_query);
                             new_array.push(v);
 //                            m.insert(field_key.to_string(), v);
                         }
@@ -508,7 +498,7 @@ fn parse_test_case_response(
             let mut array_result = Vec::new();
             let pointer = format!("{}/0", field_path);
             for item in field_array {
-                let v = parse_test_case_response(item, &pointer, response_model);
+                let v = parse_test_case_response(item, &pointer, response_model, request_body, request_query);
                 array_result.push(v);
             }
             return Value::Array(array_result);
@@ -716,7 +706,7 @@ async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
                                 Value::String(filename.to_string()),
                             );
                             form_data.insert(
-                                format!("__{}", field_name),
+                                format!("$___{}:url", field_name),
                                 Value::String(format!("/_upload/{}", filename)),
                             );
                         } else {
@@ -961,6 +951,8 @@ pub fn create_mock_value(
     response_model: &Value,
     rec_path: &str,
     org_response_model: &Value,
+    request_body: &Value,
+    request_query: &Value,
 ) -> Option<Value> {
     let mut rng = thread_rng();
     let response_type = db::get_field_type(response_model);
@@ -971,7 +963,7 @@ pub fn create_mock_value(
 
     if !["object", "array", "map", "rec"].contains(&response_model_type) {
         // 只要不是数组 、对象、map、rec 这种结构节点，直接输出mock值
-        return create_mock_value_by_field("", &rec_path, response_model, org_response_model);
+        return create_mock_value_by_field("", &rec_path, response_model, org_response_model, request_body, request_query);
     }
 
     if "rec" == response_model_type {
@@ -983,7 +975,7 @@ pub fn create_mock_value(
                     response_model,
                     org_response_model,
                 ) {
-                    return create_mock_value(&v, "", org_response_model);
+                    return create_mock_value(&v, "", org_response_model, request_body, request_query);
                 }
             }
         }
@@ -1033,8 +1025,8 @@ pub fn create_mock_value(
         let mut result = Map::new();
         while length > 0 {
             length -= 1;
-            let key = create_mock_value(key_v, &rec_path1, org_response_model);
-            let value = create_mock_value(value_v, &rec_path2, org_response_model);
+            let key = create_mock_value(key_v, &rec_path1, org_response_model, request_body, request_query);
+            let value = create_mock_value(value_v, &rec_path2, org_response_model, request_body, request_query);
             if let Some(value) = value {
                 if let Some(key) = key {
                     match key {
@@ -1067,7 +1059,7 @@ pub fn create_mock_value(
                 continue;
             }
             let rec_path = format!("{}/{}", rec_path, field_key);
-            if let Some(value) = create_mock_value(field_attr, &rec_path, org_response_model) {
+            if let Some(value) = create_mock_value(field_attr, &rec_path, org_response_model, request_body, request_query) {
                 result.insert(field_key.to_string(), value);
             }
         }
@@ -1120,7 +1112,7 @@ pub fn create_mock_value(
                 let mut new_rec_path = format!("{}/{}", rec_path, index);
                 while length > 0 {
                     if let Some(v) =
-                        create_mock_value(field_attr_one, &new_rec_path, org_response_model)
+                        create_mock_value(field_attr_one, &new_rec_path, org_response_model, request_body, request_query)
                     {
                         array_vec.push(v);
                     }
@@ -1156,6 +1148,8 @@ fn create_mock_value_by_field(
     rec_path: &str,
     field_attr: &Value,
     org_response_model: &Value,
+    request_body: &Value,
+    request_query: &Value,
 ) -> Option<Value> {
     if is_special_private_key(field_key) || field_attr.is_null() {
         return None;
@@ -1187,6 +1181,30 @@ fn create_mock_value_by_field(
     if let Some(value1) = field_attr.get("value") {
         // 如果设定了value，那么就只返回一个固定的值
         return Some(value1.clone());
+    }
+
+    if let Some(value1) = field_attr.get("$value") {
+        // 如果设定了$value，那么就从请求的body或者query中取值
+        let value2 = value1.as_str()?;
+        if value2.starts_with("$body") {
+            let pointer = value2.trim_start_matches("$body");
+            let pp:Vec<&str> = pointer.split(":").collect();
+            if pp.len() == 1 {
+                // 无:url之类的特殊调用
+                let v = request_body.pointer(pointer)?;
+                return Some(v.clone());
+            } else if pp.len() == 2 {
+                // 有:url之类的特殊调用
+                let x= &format!("/$___{}:{}",pp[0].trim_start_matches("/"), pp[1]);
+                let v = request_body.pointer(x)?;
+                return Some(v.clone());
+
+            }
+        } else if value2.starts_with("$query") {
+
+        }
+
+        return None;
     }
 
     if let Some(enum_data) = field_attr.get("enum") {
