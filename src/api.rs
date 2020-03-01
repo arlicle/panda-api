@@ -705,6 +705,7 @@ async fn get_request_form_data(request_form_data: Option<Multipart>) -> Value {
                                 field_name.to_string(),
                                 Value::String(filename.to_string()),
                             );
+                            // 保存上传文件对应的访问url地址，好让response中调取
                             form_data.insert(
                                 format!("$___{}:url", field_name),
                                 Value::String(format!("/_upload/{}", filename)),
@@ -1201,7 +1202,9 @@ fn create_mock_value_by_field(
 
             }
         } else if value2.starts_with("$query") {
-
+            let pointer = value2.trim_start_matches("$query");
+            let v = request_query.pointer(pointer)?;
+            return Some(v.clone());
         }
 
         return None;
