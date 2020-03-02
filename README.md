@@ -25,9 +25,9 @@ Why Panda Api：
 
 It looks like you’re running macOS, Linux, or another Unix-like OS. To download installer and install Panda api.
 
-- [Mac installer](https://github.com/arlicle/panda-api/releases/download/0.7.0/mac_install_0.7.0.zip)
-- [Linux installer](https://github.com/arlicle/panda-api/releases/download/0.7.0/linux_install_0.7.0.zip)
-- [Windows installer](https://github.com/arlicle/panda-api/releases/download/0.7.0/windows_install_0.7.0.zip)
+- [Mac installer](https://github.com/arlicle/panda-api/releases/latest)
+- [Linux installer](https://github.com/arlicle/panda-api/releases/latest)
+- [Windows installer](https://github.com/arlicle/panda-api/releases/latest)
 
 #### Install by Source code
 Get the latest development version
@@ -179,7 +179,7 @@ curl localhost:9000/login/ -X POST -H "Content-Type:application/json" -d '{"user
 {"code":1,"msg":"SqM!3Mky@)q1O","token":"OkkdvtKKl(htx#KU6"}
 ```
 
-Pretty simple, right? 
+Pretty simple, right?
 
 mock options can help the mock data more like the production environment, update api `/login/` `response` define:
 ```
@@ -206,7 +206,7 @@ more field options in here: [https://www.debugmyself.com/p/2020/1/29/Panda-api%E
 response:{
     total_page: {name:"total page", type:"number"},
     current_page: {name:"current page num", type:"number"},
-    result: 
+    result:
         [{
             id:{name:"Article ID", type:"PosInt"},
             title:{name:"Article title"},
@@ -278,13 +278,13 @@ response: {
 
 
 ### Panda Api 如何使用
-- [快速简单的写好第一个接口文档 使用说明(一)](/p/2020/1/15/Panda-api-how-to-use/)
+- [快速简单的写好第一个接口文档 使用说明(一)](https://www.debugmyself.com/p/2020/1/15/Panda-api-how-to-use/)
 - [快速开发的视频教程](https://www.bilibili.com/video/av88926940?p=2)
-- [接口文档的高级配置 使用说明(二)](/p/2020/1/15/Panda-api-how-to-use2/)
-- [相关字段说明](/p/2020/1/29/panda-api-field/)
-- [test_data使用说明](/p/2020/1/27/panda-api-test_data/)
-- [Auth接口权限配置说明](/p/2020/2/2/Panda-api-auth/)
-- [settings配置说明](/p/2020/2/16/panda_api_settings/)
+- [接口文档的高级配置 使用说明(二)](https://www.debugmyself.com/p/2020/1/15/Panda-api-how-to-use2/)
+- [相关字段说明](https://www.debugmyself.com/p/2020/1/29/panda-api-field/)
+- [test_data使用说明](https://www.debugmyself.com/p/2020/1/27/panda-api-test_data/)
+- [Auth接口权限配置说明](https://www.debugmyself.com/p/2020/2/2/Panda-api-auth/)
+- [settings配置说明](https://www.debugmyself.com/p/2020/2/16/panda_api_settings/)
 
 
 
