@@ -98,18 +98,19 @@ pub struct AuthData {
 }
 
 fn fix_json(org_string: String) -> String {
-    let re = Regex::new(r#":\s*["']{1}[\s\S]*?\n*[\s\S]*?["']{1}"#).unwrap(); // 把多换行变为一个
-    let re3 = Regex::new(r"/\*(.|[\r\n])*?\*/").unwrap(); // 去掉/* */注释
+    let re = Regex::new(r#":\s*["']{1}[\s\S]*?\n*[\s\S]*?["']{1}"#).unwrap(); // 把多换行变为一行
+    let re2 = Regex::new(r"([\r\n])+").unwrap();
 
     let mut new_string = org_string.clone();
     for cap in re.captures_iter(&org_string) {
-        let x = &cap[0];
-        if x.contains("\n") {
-            let y = x.replace("\n", r#"\n"#);
-            new_string = new_string.replace(x, &y);
+        if let Some(x) = cap.get(0) {
+            let x = x.as_str();
+            if x.contains("\n") || x.contains("\r") {
+                let y = re2.replace_all(x, r#"\$1"#).to_string();
+                new_string = new_string.replace(x, &y);
+            }
         }
     }
-    let new_string = re3.replace_all(&new_string, "").to_string();
     new_string
 }
 
@@ -1156,7 +1157,6 @@ fn parse_attribute_ref_value(
             new_value =
                 load_a_ref_value(new_value, &mut ref_files, value_obj, doc_file_obj, doc_file);
         }
-
 
         for (field_key, field_attrs) in value_obj {
             if let Some(is_del) = field_attrs.pointer("/$del") {
