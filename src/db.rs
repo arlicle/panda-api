@@ -98,16 +98,17 @@ pub struct AuthData {
 }
 
 fn fix_json(org_string: String) -> String {
-    let re = Regex::new(r#":\s*["']{1}[\s\S]*?\n*[\s\S]*?["']{1}"#).unwrap(); // 把多换行变为一行
-    let re2 = Regex::new(r"(?P<m>\\?(?P<n>[ \t　]*)(?P<h>[\s\r\n]+))").unwrap();
+    let re = Regex::new(r#":\s*["']{1}(?P<s>[\s\S]*?\n*[\s\S]*?)["']{1}"#).unwrap(); // 把多换行变为一行
+    let re2 = Regex::new(r"(\\?(?P<n>[ \t　]*)(?P<h>[\r\n]+))").unwrap();
 
     let mut new_string = org_string.clone();
     for cap in re.captures_iter(&org_string) {
-        if let Some(x) = cap.get(0) {
+        if let Some(x) = cap.name("s") {
             let x = x.as_str();
             if x.contains("\n") || x.contains("\r") {
+                let x = x.replace("\r\n", "\n");
+                let x = x.as_str();
                 let y = re2.replace_all(x, r#"$n\n"#).to_string();
-                println!("y {}", y);
                 new_string = new_string.replace(x, &y);
             }
         }
