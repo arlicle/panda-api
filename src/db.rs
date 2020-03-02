@@ -104,12 +104,13 @@ fn fix_json(org_string: String) -> String {
     let mut new_string = org_string.clone();
     for cap in re.captures_iter(&org_string) {
         if let Some(x) = cap.name("s") {
-            let x = x.as_str();
-            if x.contains("\n") || x.contains("\r") {
-                let x = x.replace("\r\n", "\n");
+            let x0 = x.as_str();
+            if x0.contains("\n") || x0.contains("\r") {
+                let x = x0.replace("\r\n", "\n");
+                let x = x.replace("\r", "\n");
                 let x = x.as_str();
                 let y = re2.replace_all(x, r#"$n\n"#).to_string();
-                new_string = new_string.replace(x, &y);
+                new_string = new_string.replace(x0, &y);
             }
         }
     }
