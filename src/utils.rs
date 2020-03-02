@@ -4,6 +4,7 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use std::path::PathBuf;
 
 use actix_web::web;
 use chrono::Local;
@@ -14,6 +15,7 @@ use crate::db;
 /// 建立异步线程，监控文件改动，当改动的时候，就重新生成文件
 pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
     let current_dir = env::current_dir().expect("Failed to determine current directory");
+    let ignore_file_path = current_dir.join(".gitignore");
     let current_dir = current_dir.to_str().unwrap().to_string();
 
     thread::spawn(move || {
@@ -26,16 +28,16 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
             match rx.recv() {
                 Ok(event) => match event {
                     DebouncedEvent::NoticeWrite(f) => {
-                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                        update_api_data(f, &current_dir, &ignore_file_path, data.clone());
                     }
                     DebouncedEvent::Create(f) => {
-                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                        update_api_data(f, &current_dir, &ignore_file_path, data.clone());
                     }
                     DebouncedEvent::NoticeRemove(f) => {
-                        update_api_data(f.to_str().unwrap(), &current_dir, data.clone());
+                        update_api_data(f, &current_dir, &ignore_file_path, data.clone());
                     }
                     DebouncedEvent::Rename(_f1, f2) => {
-                        update_api_data(f2.to_str().unwrap(), &current_dir, data.clone());
+                        update_api_data(f2, &current_dir, &ignore_file_path, data.clone());
                     }
                     _ => {}
                 },
@@ -47,7 +49,15 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 
 /// 发生文件改动/新增时，更新接口文档数据
 /// README.md, json数据
-fn update_api_data(filepath: &str, current_dir: &str, data: web::Data<Mutex<db::Database>>) {
+fn update_api_data(filepath: PathBuf, current_dir: &str, ignore_file_path: &PathBuf, data: web::Data<Mutex<db::Database>>) {
+    let file = gitignore::File::new(ignore_file_path).unwrap();
+    let is_ignore = file.is_excluded(&filepath).unwrap();
+    if is_ignore {
+        return;
+    }
+
+    let filepath = filepath.to_str().unwrap();
+
     let mut api_docs: HashMap<String, db::ApiDoc> = HashMap::new();
     let mut api_data: HashMap<String, Vec<Arc<Mutex<db::ApiData>>>> = HashMap::new();
     let mut fileindex_data: HashMap<String, HashSet<String>> = HashMap::new();
