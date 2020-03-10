@@ -1,2 +1,2 @@
 (window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["api-info"],{"3ac4":function(n,t,a){"use strict";var s=a("7e4d"),i=a.n(s);i.a},"7e4d":function(n,t,a){},deb4:function(n,t,a){"use strict";a.r(t);var s=function(){var n=this,t=n.$createElement,a=n._self._c||t;return a("div",{staticClass:"api-info"},[a("div",{staticClass:"name"},[n._v(n._s(n.apiInfo.name))]),a("div",{staticClass:"desc"},[n._v(n._s(n.apiInfo.desc))])])},i=[],e={computed:{apiInfo:function(){return this.$store.state.apiInfo}}},c=e,o=(a("3ac4"),a("2877")),u=Object(o["a"])(c,s,i,!1,null,"592129ac",null);t["default"]=u.exports}}]);
-//# sourceMappingURL=api-info.4d420680.js.map
+//# sourceMappingURL=api-info.df246fd6.js.map
