@@ -497,7 +497,7 @@ impl Database {
 
         let api_doc = ApiDoc {
             name: doc_name,
-            desc: doc_desc,
+            desc: doc_desc.clone(),
             order: doc_order,
             filename: doc_file.to_string(),
             apis: api_vec,
@@ -536,6 +536,7 @@ impl Database {
                     menu_title = menu_title0.clone();
                     filename = tmp_path.clone();
                     filetype = "json5".to_string();
+                    desc = doc_desc.clone()
                 } else {
                     filename = "".to_string();
                     filetype = "md".to_string();
