@@ -391,7 +391,7 @@ pub fn word(mut length: usize, mut min_length: u64, mut max_length: u64) -> Stri
     if max_length <= min_length {
         length = max_length as usize;
     } else {
-        length = rng.gen_range(min_length as usize, (max_length+1) as usize);
+        length = rng.gen_range(min_length as usize, (max_length + 1) as usize);
     }
 
     while length > 0 {
@@ -415,7 +415,7 @@ pub fn cword(mut length: usize, mut min_length: u64, mut max_length: u64) -> Str
     if max_length <= min_length {
         length = max_length as usize;
     } else {
-        length = rng.gen_range(min_length as usize, (max_length+1) as usize);
+        length = rng.gen_range(min_length as usize, (max_length + 1) as usize);
     }
 
     while length > 0 {

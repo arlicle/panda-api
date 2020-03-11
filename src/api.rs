@@ -274,7 +274,7 @@ fn find_response_data(
                 if a_api_data.auth {
                     // 权限检查
                     if let Some(auth_valid_errors) =
-                    auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
                     {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }

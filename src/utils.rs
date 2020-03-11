@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::path::PathBuf;
 
 use actix_web::web;
 use chrono::Local;
@@ -49,8 +49,12 @@ pub fn watch_api_docs_change(data: web::Data<Mutex<db::Database>>) {
 
 /// 发生文件改动/新增时，更新接口文档数据
 /// README.md, json数据
-fn update_api_data(filepath: PathBuf, current_dir: &str, ignore_file_path: &PathBuf, data: web::Data<Mutex<db::Database>>) {
-
+fn update_api_data(
+    filepath: PathBuf,
+    current_dir: &str,
+    ignore_file_path: &PathBuf,
+    data: web::Data<Mutex<db::Database>>,
+) {
     if let Ok(ignore) = gitignore::File::new(ignore_file_path) {
         let is_ignore = ignore.is_excluded(&filepath).unwrap();
         if is_ignore {

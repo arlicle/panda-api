@@ -77,7 +77,7 @@ macro_rules! int {
 macro_rules! float {
     ($min_value:expr, $max_value:expr, $min_decimal_places:expr, $max_decimal_places:expr) => {{
         let mut rng = thread_rng();
-           // todo: 判断最大值是否比最小值小，如果小，需要改进
+        // todo: 判断最大值是否比最小值小，如果小，需要改进
         let n = rng.gen_range($min_value as f64, $max_value as f64);
         let l = rng.gen_range($min_decimal_places as u32, $max_decimal_places as u32);
         (n * 10_u64.pow(l) as f64).round() / 10_i64.pow(l) as f64
