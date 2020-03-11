@@ -53,18 +53,18 @@ pub async fn get_api_doc_data(
 
     if req_get.filename.ends_with(".md") {
         if Path::new(&req_get.filename).exists() {
-            let mut order = 0;
-            let menu_title = "".to_string();
-            let desc = "".to_string();
-            let md_content = "".to_string();
-            let filename = "".to_string();
-            let (order, menu_title, _, md_content, _) = db::load_md_doc_config(
+            let (mut order, mut menu_title) =
+                db::get_order_and_title_from_filename(&req_get.filename, "md");
+            let mut desc = "".to_string();
+            let mut md_content = "".to_string();
+            let mut filename = "".to_string();
+            db::load_md_doc_config(
                 &req_get.filename,
-                order,
-                menu_title,
-                desc,
-                md_content,
-                filename,
+                &mut order,
+                &mut menu_title,
+                &mut desc,
+                &mut md_content,
+                &mut filename,
             );
             return HttpResponse::Ok().json(json!({
                     "order": order,
@@ -232,13 +232,7 @@ pub async fn action_handle(
         None => Value::Null,
     };
 
-    find_response_data(
-        &req,
-        body_mode,
-        request_body,
-        request_query,
-        db_data,
-    )
+    find_response_data(&req, body_mode, request_body, request_query, db_data)
 }
 
 /// 找到对应url 对应请求的数据
@@ -280,7 +274,7 @@ fn find_response_data(
                 if a_api_data.auth {
                     // 权限检查
                     if let Some(auth_valid_errors) =
-                        auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
+                    auth_validator(&req, &a_api_data.url, &db_data.auth_doc)
                     {
                         return HttpResponse::Ok().json(auth_valid_errors);
                     }
@@ -391,8 +385,13 @@ fn find_response_data(
                             Some(v) => v,
                             None => &Value::Null,
                         };
-                        let response =
-                            parse_test_case_response(case_response, "", &a_api_data.response, &request_body, &request_query);
+                        let response = parse_test_case_response(
+                            case_response,
+                            "",
+                            &a_api_data.response,
+                            &request_body,
+                            &request_query,
+                        );
                         if let Some(v) = test_case_data.get("delay") {
                             if let Some(t) = v.as_u64() {
                                 thread::sleep(Duration::from_millis(t));
@@ -407,9 +406,13 @@ fn find_response_data(
                 }
 
                 let mut serialized = "".to_string();
-                if let Some(response) =
-                    create_mock_value(&a_api_data.response, "", &a_api_data.response, &request_body, &request_query)
-                {
+                if let Some(response) = create_mock_value(
+                    &a_api_data.response,
+                    "",
+                    &a_api_data.response,
+                    &request_body,
+                    &request_query,
+                ) {
                     serialized = serde_json::to_string(&response).unwrap();
                 }
                 return HttpResponse::build(status_code)
@@ -443,7 +446,6 @@ fn parse_test_case_response(
     let mut result = Map::new();
     match test_case_response {
         Value::Object(test_response) => {
-
             for (field_key, field) in test_response {
                 match field {
                     Value::Object(field_obj) => {
@@ -467,14 +469,26 @@ fn parse_test_case_response(
                                     }
 
                                     let v_obj = Value::Object(new_model_field_attr);
-                                    if let Some(v) = create_mock_value(&v_obj, "", &v_obj, request_body, request_query) {
+                                    if let Some(v) = create_mock_value(
+                                        &v_obj,
+                                        "",
+                                        &v_obj,
+                                        request_body,
+                                        request_query,
+                                    ) {
                                         result.insert(field_key.to_string(), v);
                                     }
                                 }
                             }
                         } else {
                             let pointer = format!("{}/{}", field_path, field_key);
-                            let v = parse_test_case_response(field, &pointer, response_model, request_body, request_query);
+                            let v = parse_test_case_response(
+                                field,
+                                &pointer,
+                                response_model,
+                                request_body,
+                                request_query,
+                            );
                             result.insert(field_key.to_string(), v);
                         }
                     }
@@ -482,9 +496,15 @@ fn parse_test_case_response(
                         let pointer = format!("{}/{}/0", field_path, field_key);
                         let mut new_array = Vec::new();
                         for field_array_item in field_array {
-                            let v = parse_test_case_response(field_array_item, &pointer, response_model, request_body, request_query);
+                            let v = parse_test_case_response(
+                                field_array_item,
+                                &pointer,
+                                response_model,
+                                request_body,
+                                request_query,
+                            );
                             new_array.push(v);
-//                            m.insert(field_key.to_string(), v);
+                            //                            m.insert(field_key.to_string(), v);
                         }
                         result.insert(field_key.to_string(), Value::Array(new_array));
                     }
@@ -498,7 +518,13 @@ fn parse_test_case_response(
             let mut array_result = Vec::new();
             let pointer = format!("{}/0", field_path);
             for item in field_array {
-                let v = parse_test_case_response(item, &pointer, response_model, request_body, request_query);
+                let v = parse_test_case_response(
+                    item,
+                    &pointer,
+                    response_model,
+                    request_body,
+                    request_query,
+                );
                 array_result.push(v);
             }
             return Value::Array(array_result);
@@ -964,7 +990,14 @@ pub fn create_mock_value(
 
     if !["object", "array", "map", "rec"].contains(&response_model_type) {
         // 只要不是数组 、对象、map、rec 这种结构节点，直接输出mock值
-        return create_mock_value_by_field("", &rec_path, response_model, org_response_model, request_body, request_query);
+        return create_mock_value_by_field(
+            "",
+            &rec_path,
+            response_model,
+            org_response_model,
+            request_body,
+            request_query,
+        );
     }
 
     if "rec" == response_model_type {
@@ -976,7 +1009,13 @@ pub fn create_mock_value(
                     response_model,
                     org_response_model,
                 ) {
-                    return create_mock_value(&v, "", org_response_model, request_body, request_query);
+                    return create_mock_value(
+                        &v,
+                        "",
+                        org_response_model,
+                        request_body,
+                        request_query,
+                    );
                 }
             }
         }
@@ -1026,8 +1065,20 @@ pub fn create_mock_value(
         let mut result = Map::new();
         while length > 0 {
             length -= 1;
-            let key = create_mock_value(key_v, &rec_path1, org_response_model, request_body, request_query);
-            let value = create_mock_value(value_v, &rec_path2, org_response_model, request_body, request_query);
+            let key = create_mock_value(
+                key_v,
+                &rec_path1,
+                org_response_model,
+                request_body,
+                request_query,
+            );
+            let value = create_mock_value(
+                value_v,
+                &rec_path2,
+                org_response_model,
+                request_body,
+                request_query,
+            );
             if let Some(value) = value {
                 if let Some(key) = key {
                     match key {
@@ -1060,7 +1111,13 @@ pub fn create_mock_value(
                 continue;
             }
             let rec_path = format!("{}/{}", rec_path, field_key);
-            if let Some(value) = create_mock_value(field_attr, &rec_path, org_response_model, request_body, request_query) {
+            if let Some(value) = create_mock_value(
+                field_attr,
+                &rec_path,
+                org_response_model,
+                request_body,
+                request_query,
+            ) {
                 result.insert(field_key.to_string(), value);
             }
         }
@@ -1112,9 +1169,13 @@ pub fn create_mock_value(
 
                 let mut new_rec_path = format!("{}/{}", rec_path, index);
                 while length > 0 {
-                    if let Some(v) =
-                        create_mock_value(field_attr_one, &new_rec_path, org_response_model, request_body, request_query)
-                    {
+                    if let Some(v) = create_mock_value(
+                        field_attr_one,
+                        &new_rec_path,
+                        org_response_model,
+                        request_body,
+                        request_query,
+                    ) {
                         array_vec.push(v);
                     }
                     length -= 1;
@@ -1189,17 +1250,16 @@ fn create_mock_value_by_field(
         let value2 = value1.as_str()?;
         if value2.starts_with("$body") {
             let pointer = value2.trim_start_matches("$body");
-            let pp:Vec<&str> = pointer.split(":").collect();
+            let pp: Vec<&str> = pointer.split(":").collect();
             if pp.len() == 1 {
                 // 无:url之类的特殊调用
                 let v = request_body.pointer(pointer)?;
                 return Some(v.clone());
             } else if pp.len() == 2 {
                 // 有:url之类的特殊调用
-                let x= &format!("/$___{}:{}",pp[0].trim_start_matches("/"), pp[1]);
+                let x = &format!("/$___{}:{}", pp[0].trim_start_matches("/"), pp[1]);
                 let v = request_body.pointer(x)?;
                 return Some(v.clone());
-
             }
         } else if value2.starts_with("$query") {
             let pointer = value2.trim_start_matches("$query");

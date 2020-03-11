@@ -377,11 +377,25 @@ impl Database {
                 let mut md_content = "".to_string();
                 let mut filename = String::new();
 
-                let (order, menu_title, desc, _, filename) = if i + 1 == l {
+                if i + 1 == l {
                     filename = doc_file.to_string();
-                    load_md_doc_config(doc_file, order, menu_title, desc, md_content, filename)
+                    load_md_doc_config(
+                        doc_file,
+                        &mut order,
+                        &mut menu_title,
+                        &mut desc,
+                        &mut md_content,
+                        &mut filename,
+                    );
                 } else {
-                    load_folder_config(&tmp_path, order, menu_title, desc, md_content, filename)
+                    load_folder_config(
+                        &tmp_path,
+                        &mut order,
+                        &mut menu_title,
+                        &mut desc,
+                        &mut md_content,
+                        &mut filename,
+                    );
                 };
 
                 menus.insert(
@@ -540,21 +554,18 @@ impl Database {
                 } else {
                     filename = "".to_string();
                     filetype = "md".to_string();
-                    let (mut menu_order1, mut menu_title1) =
-                        get_order_and_title_from_filename(path, "md");
-                    let (menu_order1, menu_title1, desc1, _, filename1) = load_folder_config(
-                        &tmp_path,
-                        menu_order1,
-                        menu_title1,
-                        desc,
-                        md_content,
-                        filename,
-                    );
-
+                    let (menu_order1, menu_title1) = get_order_and_title_from_filename(path, "md");
                     menu_order = menu_order1;
                     menu_title = menu_title1;
-                    desc = desc1;
-                    filename = filename1;
+
+                    load_folder_config(
+                        &tmp_path,
+                        &mut menu_order,
+                        &mut menu_title,
+                        &mut desc,
+                        &mut md_content,
+                        &mut filename,
+                    );
                 };
 
                 menus.insert(
@@ -822,7 +833,7 @@ fn load_apis_from_api_doc(
 }
 
 /// 从md文件名中获取 排序和菜单名称
-fn get_order_and_title_from_filename(doc_file: &str, file_type: &str) -> (i32, String) {
+pub fn get_order_and_title_from_filename(doc_file: &str, file_type: &str) -> (i32, String) {
     let paths: Vec<&str> = doc_file.split("/").collect();
     let filename = paths.last().unwrap();
     let mut order = 0;
@@ -843,14 +854,14 @@ fn get_order_and_title_from_filename(doc_file: &str, file_type: &str) -> (i32, S
 /// 以```{开头```}结尾
 pub fn load_md_doc_config(
     doc_file: &str,
-    mut order: i32,
-    mut menu_title: String,
-    mut desc: String,
-    mut md_content: String,
-    mut filename: String,
-) -> (i32, String, String, String, String) {
+    order: &mut i32,
+    menu_title: &mut String,
+    desc: &mut String,
+    md_content: &mut String,
+    filename: &mut String,
+) {
     if let Ok(content) = fs::read_to_string(Path::new(doc_file)) {
-        md_content = content.clone();
+        *md_content = content.clone();
         // 获取md文档顶部的配置信息
         let re = Regex::new(r"^\s*(```)?\s*(\{[\s\S]*?\})\s*(```)\s*").unwrap();
         for cap in re.captures_iter(&content) {
@@ -862,16 +873,16 @@ pub fn load_md_doc_config(
                 }
 
                 if let Ok(v) = json5::from_str::<Value>(config_str) {
-                    md_content = { &content[l..] }.to_string();
+                    *md_content = { &content[l..] }.to_string();
                     if let Some(conf) = v.as_object() {
                         if let Some(v2) = conf.get("menu_title") {
                             if let Some(v3) = v2.as_str() {
-                                menu_title = v3.to_string();
+                                *menu_title = v3.to_string();
                             }
                         }
                         if let Some(v2) = conf.get("order") {
                             if let Some(v3) = v2.as_i64() {
-                                order = v3 as i32;
+                                *order = v3 as i32;
                             }
                         }
                         let mut show_content = true;
@@ -882,14 +893,14 @@ pub fn load_md_doc_config(
                         }
                         if doc_file.ends_with("$_folder.md") {
                             if show_content {
-                                filename = doc_file.to_string();
+                                *filename = doc_file.to_string();
                             }
                         } else {
-                            filename = doc_file.to_string();
+                            *filename = doc_file.to_string();
                         }
                         if let Some(v2) = conf.get("desc") {
                             if let Some(v3) = v2.as_str() {
-                                desc = v3.to_string();
+                                *desc = v3.to_string();
                             }
                         }
                     }
@@ -898,18 +909,17 @@ pub fn load_md_doc_config(
             break;
         }
     }
-    (order, menu_title, desc, md_content, filename)
 }
 
 /// 加载目录的菜单配置文件
 fn load_folder_config(
     foldername: &str,
-    mut order: i32,
-    mut menu_title: String,
-    mut desc: String,
-    mut md_content: String,
-    mut filename: String,
-) -> (i32, String, String, String, String) {
+    order: &mut i32,
+    menu_title: &mut String,
+    desc: &mut String,
+    md_content: &mut String,
+    filename: &mut String,
+) {
     let folder_md_doc = format!("{0}/$_folder.md", foldername);
     load_md_doc_config(
         &folder_md_doc,
@@ -1572,7 +1582,9 @@ pub fn get_field_type(field_attr: &Value) -> String {
     }
 
     if let Some(v) = field_attr.get("type") {
-        return v.as_str().unwrap().to_lowercase();
+        if v.is_string() {
+            return v.as_str().unwrap().to_lowercase();
+        }
     }
     if let Some(v) = field_attr.get("$type") {
         return v.as_str().unwrap().to_lowercase();
