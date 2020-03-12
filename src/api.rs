@@ -1198,6 +1198,7 @@ fn is_special_private_key(field_key: &str) -> bool {
         || field_key == "$min_length"
         || field_key == "$max_length"
         || field_key == "$required"
+        || field_key == "$order"
     {
         return true;
     }
