@@ -405,6 +405,13 @@ fn find_response_data(
                     }
                 }
 
+                if a_api_data.response.is_null() || (a_api_data.response.is_object() && a_api_data.response.as_object().unwrap().is_empty()) || (a_api_data.response.is_array() && a_api_data.response.as_array().unwrap().is_empty()) {
+                    return HttpResponse::Ok().json(json!({
+                        "code": - 1,
+                        "msg": format ! ("this api address {} with method {} have no response or test_data defined", req_path, req_method)
+                    }));
+                }
+
                 let mut serialized = "".to_string();
                 if let Some(response) = create_mock_value(
                     &a_api_data.response,
@@ -446,73 +453,49 @@ fn parse_test_case_response(
     let mut result = Map::new();
     match test_case_response {
         Value::Object(test_response) => {
-            for (field_key, field) in test_response {
-                match field {
-                    Value::Object(field_obj) => {
-                        // 拿到$mock设定的字段，并且值要为true
-                        if let Some(v) = field_obj.get("$mock") {
-                            if let Some(true) = v.as_bool() {
-                                // 首先拿出对应response字段的设置
-                                let pointer = format!("{}/{}", field_path, field_key);
-                                if let Some(model_field) = response_model.pointer(&pointer) {
-                                    let mut new_model_field_attr: Map<String, Value> = Map::new();
-                                    if let Some(model_field_obj) = model_field.as_object() {
-                                        // 先获取对应response字段的属性
-                                        new_model_field_attr = model_field_obj.clone();
-                                        // 用当前新属性进行值的重写
-                                        for (k2, v2) in field_obj {
-                                            if k2 == "$mock" {
-                                                continue;
-                                            }
-                                            new_model_field_attr.insert(k2.to_string(), v2.clone());
-                                        }
-                                    }
-
-                                    let v_obj = Value::Object(new_model_field_attr);
-                                    if let Some(v) = create_mock_value(
-                                        &v_obj,
-                                        "",
-                                        &v_obj,
-                                        request_body,
-                                        request_query,
-                                    ) {
-                                        result.insert(field_key.to_string(), v);
-                                    }
+            if let Some(v) = test_response.get("$mock") {
+                    if let Some(true) = v.as_bool() {
+                    // 首先拿出对应response字段的设置
+                    if let Some(model_field) = response_model.pointer(field_path) {
+                        let mut new_model_field_attr: Map<String, Value> = Map::new();
+                        if let Some(model_field_obj) = model_field.as_object() {
+                            // 先获取对应response字段的属性
+                            new_model_field_attr = model_field_obj.clone();
+                            // 用当前新属性进行值的重写
+                            for (k2, v2) in test_response {
+                                if k2 == "$mock" {
+                                    continue;
                                 }
+                                new_model_field_attr.insert(k2.to_string(), v2.clone());
                             }
-                        } else {
-                            let pointer = format!("{}/{}", field_path, field_key);
-                            let v = parse_test_case_response(
-                                field,
-                                &pointer,
-                                response_model,
-                                request_body,
-                                request_query,
-                            );
-                            result.insert(field_key.to_string(), v);
                         }
-                    }
-                    Value::Array(field_array) => {
-                        let pointer = format!("{}/{}/0", field_path, field_key);
-                        let mut new_array = Vec::new();
-                        for field_array_item in field_array {
-                            let v = parse_test_case_response(
-                                field_array_item,
-                                &pointer,
-                                response_model,
-                                request_body,
-                                request_query,
-                            );
-                            new_array.push(v);
-                            //                            m.insert(field_key.to_string(), v);
+
+                        let v_obj = Value::Object(new_model_field_attr);
+                        if let Some(v) = create_mock_value(
+                            &v_obj,
+                            "",
+                            &v_obj,
+                            request_body,
+                            request_query,
+                        ) {
+                            return v;
                         }
-                        result.insert(field_key.to_string(), Value::Array(new_array));
-                    }
-                    _ => {
-                        result.insert(field_key.to_string(), field.clone());
                     }
                 }
+            } else {
+                for (field_key, field) in test_response {
+                    let pointer = format!("{}/{}", field_path, field_key);
+                    let v = parse_test_case_response(
+                        field,
+                        &pointer,
+                        response_model,
+                        request_body,
+                        request_query,
+                    );
+                    result.insert(field_key.to_string(), v);
+                }
             }
+
         }
         Value::Array(field_array) => {
             let mut array_result = Vec::new();
@@ -536,6 +519,7 @@ fn parse_test_case_response(
 
     Value::Object(result)
 }
+
 
 /// 把request_query 转换为api query的格式
 fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Value) -> Value {

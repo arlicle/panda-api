@@ -792,6 +792,9 @@ fn load_apis_from_api_doc(
                     None => Value::Null,
                 },
             };
+            if !test_data.is_null() && !test_data.is_array() {
+                log::error!("test_data need a array");
+            }
 
             let o_api_data = ApiData {
                 name,
