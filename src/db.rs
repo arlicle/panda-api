@@ -1611,9 +1611,6 @@ pub fn get_field_type(field_attr: &Value) -> String {
     return "string".to_lowercase();
 }
 
-
-
-
 #[cfg(test)]
 mod test {
     use super::*;

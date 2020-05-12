@@ -405,7 +405,12 @@ fn find_response_data(
                     }
                 }
 
-                if a_api_data.response.is_null() || (a_api_data.response.is_object() && a_api_data.response.as_object().unwrap().is_empty()) || (a_api_data.response.is_array() && a_api_data.response.as_array().unwrap().is_empty()) {
+                if a_api_data.response.is_null()
+                    || (a_api_data.response.is_object()
+                        && a_api_data.response.as_object().unwrap().is_empty())
+                    || (a_api_data.response.is_array()
+                        && a_api_data.response.as_array().unwrap().is_empty())
+                {
                     return HttpResponse::Ok().json(json!({
                         "code": - 1,
                         "msg": format ! ("this api address {} with method {} have no response or test_data defined", req_path, req_method)
@@ -454,7 +459,7 @@ fn parse_test_case_response(
     match test_case_response {
         Value::Object(test_response) => {
             if let Some(v) = test_response.get("$mock") {
-                    if let Some(true) = v.as_bool() {
+                if let Some(true) = v.as_bool() {
                     // 首先拿出对应response字段的设置
                     if let Some(model_field) = response_model.pointer(field_path) {
                         let mut new_model_field_attr: Map<String, Value> = Map::new();
@@ -471,13 +476,9 @@ fn parse_test_case_response(
                         }
 
                         let v_obj = Value::Object(new_model_field_attr);
-                        if let Some(v) = create_mock_value(
-                            &v_obj,
-                            "",
-                            &v_obj,
-                            request_body,
-                            request_query,
-                        ) {
+                        if let Some(v) =
+                            create_mock_value(&v_obj, "", &v_obj, request_body, request_query)
+                        {
                             return v;
                         }
                     }
@@ -495,7 +496,6 @@ fn parse_test_case_response(
                     result.insert(field_key.to_string(), v);
                 }
             }
-
         }
         Value::Array(field_array) => {
             let mut array_result = Vec::new();
@@ -519,7 +519,6 @@ fn parse_test_case_response(
 
     Value::Object(result)
 }
-
 
 /// 把request_query 转换为api query的格式
 fn parse_request_query_to_api_query_format(request_query: &Value, api_query: &Value) -> Value {
