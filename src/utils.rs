@@ -105,25 +105,22 @@ fn update_api_data(
         return;
     } else if filename.contains("_data/") {
         // 如果修改的是_data里面的文件，需要通过fileindex_datal来找到对应文件更新
-        match data.fileindex_data.get(filename) {
-            Some(ref_files) => {
-                // 把找到的文件全部重新load一遍
-                for ref_file in ref_files {
-                    parse_error_code = db::Database::load_a_api_json_file(
-                        ref_file,
-                        &data.basic_data,
-                        &mut api_data,
-                        &mut api_docs,
-                        websocket_api.clone(),
-                        &mut fileindex_data,
-                        &mut menus,
-                    );
-                    if parse_error_code == -2 {
-                        delete_files.push(ref_file.to_string());
-                    }
+        if let Some(ref_files) = data.fileindex_data.get(filename) {
+            // 把找到的文件全部重新load一遍
+            for ref_file in ref_files {
+                parse_error_code = db::Database::load_a_api_json_file(
+                    ref_file,
+                    &data.basic_data,
+                    &mut api_data,
+                    &mut api_docs,
+                    websocket_api.clone(),
+                    &mut fileindex_data,
+                    &mut menus,
+                );
+                if parse_error_code == -2 {
+                    delete_files.push(ref_file.to_string());
                 }
             }
-            None => (),
         }
     } else {
         parse_error_code = db::Database::load_a_api_json_file(

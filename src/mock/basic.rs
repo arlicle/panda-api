@@ -43,12 +43,7 @@ pub fn uuid() -> String {
 pub fn bool() -> bool {
     let mut rng = thread_rng();
     let n = rng.gen_range(1, 10);
-
-    if n % 2 == 0 {
-        true
-    } else {
-        false
-    }
+    n % 2 == 0
 }
 
 #[macro_export]

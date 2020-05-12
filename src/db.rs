@@ -1212,6 +1212,7 @@ fn parse_attribute_ref_value(
         }
 
         let field_type = get_field_type(&Value::Object(new_value.clone()));
+
         if field_type == "object" {
             new_value.insert("$type".to_string(), Value::String(field_type));
         }
@@ -1601,18 +1602,34 @@ pub fn get_field_type(field_attr: &Value) -> String {
                 }
             }
             for (k, v) in field_attr_object {
-                if v.is_object() {
+                if v.is_object() || v.is_array() {
                     return "object".to_lowercase();
-                } else if v.is_array() {
-                    return "object".to_lowercase();
-                    //                    if let Some(v2) = v.pointer("/0") {
-                    //                        if v2.is_object() | v2.is_array() {
-                    //                            return "object".to_lowercase();
-                    //                        }
-                    //                    }
                 }
             }
         }
     }
     return "string".to_lowercase();
+}
+
+
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn get_field_type_test() {
+        let data = json!({
+            "id":{"name":"ID", "type":"i32"},
+            "name":{"name":"User name"}
+        });
+        assert_eq!("object", get_field_type(&data));
+
+        let data = json!({"name":"ID", "type":"i32"});
+        assert_eq!("i32", get_field_type(&data));
+
+        let data = json!([{"name":"ID", "enum":[1,2,3]}]);
+        assert_eq!("array", get_field_type(&data));
+    }
 }
