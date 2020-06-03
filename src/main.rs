@@ -94,7 +94,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/").route(web::get().to(api::theme_view)))
             .service(web::resource("/media/*").route(web::get().to(api::static_file_view)))
             .service(web::resource("/_upload/*").route(web::get().to(api::upload_file_view)))
-            .service(web::resource(&websocket_uri).to(api::chat_route))
+            .service(web::resource(&websocket_uri).to(api::websocket_handle))
             .service(web::resource("/*").to(api::action_handle))
     })
     .bind(format!("{}:{}", conf.host, conf.port))?

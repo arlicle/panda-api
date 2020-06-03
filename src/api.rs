@@ -183,7 +183,7 @@ pub struct FormData {
     username: String,
 }
 
-pub async fn chat_route(
+pub async fn websocket_handle(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,

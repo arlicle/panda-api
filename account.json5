@@ -1,0 +1,101 @@
+{
+  name: "账号统计查询",
+  desc: "以账号为主体的数据统计查询",
+  order: 1,
+  apis: [
+    {
+      name: "账号提交统计查询",
+      desc: "账号提交统计查询",
+      method: "POST",
+      url: "/accountStatistic/queryAccountStatistic",
+      body_mode: "json",
+      body: {
+        type: { name: "查询时间类型，[Day|Week|Month]" },
+        beginDate: { name: "查询开始时间" },
+        endDate: { name: "查询截至时间" },
+        account: { name: "账号" }
+      },
+      response: {
+        code: {
+          name: "返回结果的代码",
+          type: "int",
+          desc: "登录成功返回1, 登录失败返回-1",
+          enum: [-1, 1]
+        },
+        msg: {
+          name: "登录成功返回消息",
+          type: "csentence",
+          desc: "通常返回都是空"
+        },
+        token: {
+          name: "登录成功返回的用户token",
+          type: "string",
+          required: false,
+          length: 60
+        }
+      },
+      test_data: [
+        {
+          body: { username: "edison", password: "123" },
+          response: { code: -1, msg: "密码输入不正确" }
+        },
+        {
+          body: { username: "lily", password: "123" },
+          response: { code: -2, msg: "用户名不存在" }
+        },
+        {
+          body: { username: "root", password: "123" },
+          response: {
+            code: 1,
+            msg: "登录成功",
+            token: { $mock: true, required: true }
+          }
+        },
+        {
+          body: { username: "lily" },
+          response: { code: -1, msg: "密码是必填的" }
+        },
+        {
+          body: { password: "123" },
+          response: { code: -1, msg: "用户名是必填的" }
+        }
+      ]
+    },
+    {
+      name: "用户退出登录",
+      method: "GET", // 使用GET方法请求
+      url: "/logout/",
+      query: {
+        // GET 方法请求的query参数的数据结构字段说明
+        id: { name: "用户id", type: "int" },
+        username: { name: "用户名" }
+      },
+      response: {
+        code: {
+          name: "返回结果的代码",
+          type: "int",
+          desc: "登录成功只返回1",
+          enum: [-1, 1]
+        },
+        msg: {
+          name: "登录成功返回消息",
+          type: "csentence",
+          desc: "通常返回都是空"
+        }
+      },
+      test_data: [
+        {
+          query: { id: 1, username: "root" },
+          response: { code: 1, msg: "退出成功" }
+        },
+        {
+          query: { id: 3, username: "lily" },
+          response: { code: -1, msg: "用户名和id不匹配" }
+        },
+        {
+          response: { code: -1, msg: "必须填写用户名id和用户名" }
+        }
+      ]
+    }
+  ]
+}
