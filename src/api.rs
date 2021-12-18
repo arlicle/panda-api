@@ -188,7 +188,6 @@ pub async fn websocket_handle(
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
 ) -> Result<HttpResponse, Error> {
-    println!("s {:?}", req);
     ws::start(
         WsChatSession {
             id: 0,

@@ -137,9 +137,11 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         "/name" => {
                             if v.len() == 2 {
                                 self.name = Some(v[1].to_owned());
+                                ctx.text(self.name.as_ref().unwrap());
                             } else {
                                 ctx.text("!!! name is required");
                             }
+
                         }
                         _ => ctx.text(format!("!!! unknown command: {:?}", m)),
                     }

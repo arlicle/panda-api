@@ -436,7 +436,12 @@ impl Database {
         }
 
         let d = match fs::read_to_string(Path::new(doc_file)) {
-            Ok(d) => d,
+            Ok(d) => {
+                if &d == "" {
+                    return -2;
+                }
+                d
+            },
             Err(_e) => {
                 // println!("Unable to read file: {} {:?}", doc_file, e);
                 // 文件被删除
