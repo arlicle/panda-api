@@ -1,5 +1,7 @@
 # panda-api | <a href="https://www.debugmyself.com/p/2020/1/24/panda_api_read_me/">中文文档</a>
 
+> 当前项目的代码分析、系统架构、0.7.4 语法真值和改进路线图，请从 [docs/README.md](docs/README.md) 开始阅读。旧网站文章保留为历史资料，若与当前实现不一致，以仓库内文档为准。
+
 大量使用说明，教程在中文文档中，请大家先看看中文文档和相关例子，忙于开发，等时间充足再写英文文档。
 
 Panda api makes it easier to build better api docs more quickly and easy for front end and back end.
@@ -285,6 +287,4 @@ response: {
 - [test_data使用说明](https://www.debugmyself.com/p/2020/1/27/panda-api-test_data/)
 - [Auth接口权限配置说明](https://www.debugmyself.com/p/2020/2/2/Panda-api-auth/)
 - [settings配置说明](https://www.debugmyself.com/p/2020/2/16/panda_api_settings/)
-
-
 
