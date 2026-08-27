@@ -1,0 +1,12 @@
+[package]
+name = "panda-schema"
+description = "JSON Schema validation and Panda extension boundary"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"

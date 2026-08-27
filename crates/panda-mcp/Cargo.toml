@@ -1,0 +1,12 @@
+[package]
+name = "panda-mcp"
+description = "Official RMCP adapter boundary for Panda API agent capabilities"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"

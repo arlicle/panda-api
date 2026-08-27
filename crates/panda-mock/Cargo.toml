@@ -1,0 +1,12 @@
+[package]
+name = "panda-mock"
+description = "Deterministic Panda API request matching and mock generation boundary"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"

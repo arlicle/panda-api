@@ -1,0 +1,13 @@
+[package]
+name = "panda-cli"
+description = "Panda API command-line application assembly boundary"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "panda"
+path = "src/main.rs"
