@@ -965,7 +965,7 @@ multipart 请求的处理逻辑：
 
 ## 20. CLI
 
-CLI 定义位于 [`src/main.rs`](../src/main.rs)。安装器历史上把命令暴露为 `panda`；Cargo binary target 名称是 `panda-api`，StructOpt 内部 name 仍写成 `classify`，三者需要在未来统一。
+CLI 定义位于 [`src/main.rs`](../../../compatibility/panda-0.7/src/main.rs)。安装器历史上把命令暴露为 `panda`；Cargo binary target 名称是 `panda-api`，StructOpt 内部 name 仍写成 `classify`，三者需要在未来统一。
 
 ### 20.1 服务参数
 

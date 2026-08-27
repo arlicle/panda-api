@@ -187,7 +187,7 @@ classDiagram
 
 ## 6. HTTP 边界
 
-路由在 [`src/main.rs`](../src/main.rs) 中按顺序注册。
+路由在 [`src/main.rs`](../../../compatibility/panda-0.7/src/main.rs) 中按顺序注册。
 
 | Method/路径 | Handler | 用途 | 当前风险或限制 |
 | --- | --- | --- | --- |

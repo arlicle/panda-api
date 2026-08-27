@@ -26,14 +26,14 @@ Panda API 0.7.4 是一个“文档即服务”的 Rust 单体 CLI：它扫描工
 
 | 模块 | 行数 | 实际职责 | 主要问题 |
 | --- | ---: | --- | --- |
-| [`src/main.rs`](../src/main.rs) | 188 | CLI、加载数据库、启动 watcher、Actix 路由 | 启动和命令分发耦合；CLI 名称仍为 `classify` |
-| [`src/db.rs`](../src/db.rs) | 1,637 | 文件扫描、JSON5 解析、引用合并、菜单、认证权限、内存索引 | 动态类型与大量 `unwrap`；解析、索引、菜单、权限混在一起 |
-| [`src/api.rs`](../src/api.rs) | 1,641 | 文档接口、文件服务、上传、请求匹配、认证、Mock | HTTP、文件 I/O、匹配和生成器耦合；安全边界薄弱 |
-| [`src/utils.rs`](../src/utils.rs) | 193 | 文件监听与热更新 | 每次事件都全量重载；后续增量代码不可达 |
-| [`src/server.rs`](../src/server.rs) | 202 | WebSocket 房间 Actor | 接近 Actix chat 示例，业务语义有限 |
-| [`src/websocket.rs`](../src/websocket.rs) | 198 | WebSocket session、心跳、命令 | 聊天协议写死，与 API DSL 只共享 URL |
-| [`src/client/test.rs`](../src/client/test.rs) | 184 | 对外部服务器发送测试请求 | 只支持 GET/POST，只打印响应，不断言结果 |
-| [`src/mock/`](../src/mock) | 873 | 数字、时间、文本、姓名、网络数据 Mock | 随机边界与文档多处不一致，部分实现会 panic |
+| [`src/main.rs`](../../../compatibility/panda-0.7/src/main.rs) | 188 | CLI、加载数据库、启动 watcher、Actix 路由 | 启动和命令分发耦合；CLI 名称仍为 `classify` |
+| [`src/db.rs`](../../../compatibility/panda-0.7/src/db.rs) | 1,637 | 文件扫描、JSON5 解析、引用合并、菜单、认证权限、内存索引 | 动态类型与大量 `unwrap`；解析、索引、菜单、权限混在一起 |
+| [`src/api.rs`](../../../compatibility/panda-0.7/src/api.rs) | 1,641 | 文档接口、文件服务、上传、请求匹配、认证、Mock | HTTP、文件 I/O、匹配和生成器耦合；安全边界薄弱 |
+| [`src/utils.rs`](../../../compatibility/panda-0.7/src/utils.rs) | 193 | 文件监听与热更新 | 每次事件都全量重载；后续增量代码不可达 |
+| [`src/server.rs`](../../../compatibility/panda-0.7/src/server.rs) | 202 | WebSocket 房间 Actor | 接近 Actix chat 示例，业务语义有限 |
+| [`src/websocket.rs`](../../../compatibility/panda-0.7/src/websocket.rs) | 198 | WebSocket session、心跳、命令 | 聊天协议写死，与 API DSL 只共享 URL |
+| [`src/client/test.rs`](../../../compatibility/panda-0.7/src/client/test.rs) | 184 | 对外部服务器发送测试请求 | 只支持 GET/POST，只打印响应，不断言结果 |
+| [`src/mock/`](../../../compatibility/panda-0.7/src/mock) | 873 | 数字、时间、文本、姓名、网络数据 Mock | 随机边界与文档多处不一致，部分实现会 panic |
 
 ### 2.2 内置前端
 
@@ -91,7 +91,7 @@ result: failed, exit code 101
 
 ### 4.2 测试覆盖
 
-仓库只有 [`db::test::get_field_type_test`](../src/db.rs)，覆盖对象、显式类型和数组的三条类型识别断言。以下关键路径均无测试：
+仓库只有 [`db::test::get_field_type_test`](../../../compatibility/panda-0.7/src/db.rs)，覆盖对象、显式类型和数组的三条类型识别断言。以下关键路径均无测试：
 
 - JSON5 加载错误、全局配置和 `$ref` 合并；
 - URL、method、header、body、query 与 `test_data` 匹配；
@@ -118,7 +118,7 @@ result: failed, exit code 101
 
 ### 5.4 热更新存在不可达实现
 
-[`update_api_data`](../src/utils.rs) 开头执行 `*data = db::Database::load();` 后立即 `return`，其后约百行增量更新逻辑永远不会运行。保留不可达代码提高了理解成本，也让索引维护看起来比实际可靠。
+[`update_api_data`](../../../compatibility/panda-0.7/src/utils.rs) 开头执行 `*data = db::Database::load();` 后立即 `return`，其后约百行增量更新逻辑永远不会运行。保留不可达代码提高了理解成本，也让索引维护看起来比实际可靠。
 
 ### 5.5 路由结果不稳定
 
