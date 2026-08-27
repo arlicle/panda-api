@@ -1,0 +1,44 @@
+{
+  panda: "2.0",
+
+  group: {
+    name: "Users",
+    order: 10,
+  },
+
+  routes: [
+    {
+      id: "users.get",
+      name: "Get user",
+      method: "GET",
+      path: "/users/{id}",
+
+      params: {
+        id: {
+          in: "path",
+          required: true,
+          schema: {
+            type: "integer",
+            minimum: 1,
+          },
+        },
+      },
+
+      responses: {
+        200: {
+          description: "User exists",
+          body: {
+            schema: {
+              type: "object",
+              required: ["id", "name"],
+              properties: {
+                id: { type: "integer", minimum: 1 },
+                name: { type: "string", minLength: 1 },
+              },
+            },
+          },
+        },
+      },
+    },
+  ],
+}

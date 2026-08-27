@@ -1,0 +1,19 @@
+{
+  panda: "2.0",
+
+  info: {
+    name: "Panda 2 Fixture",
+    version: "1.0.0",
+    description: "M0 design fixture; executable validation begins in M1",
+  },
+
+  servers: {
+    local: {
+      url: "http://127.0.0.1:8080",
+    },
+  },
+
+  imports: [
+    "./apis/*.panda.json5",
+  ],
+}
